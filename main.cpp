@@ -10,8 +10,124 @@ namespace dc = digitalcurling3;
 
 namespace {
 
+    struct Position {
+        float x;
+        float y;
+    };
+    struct ShotInfo {
+        float vx;
+        float vy;
+        uint8_t rotation;
+    };
 
 dc::Team g_team;  // 自身のチームID
+
+const auto HouseRadius = 1.829;
+const auto AreaMaxX = 2.375;
+const auto AreaMaxY = 40.234;
+const auto HouseCenterX = 0;
+const auto HouseCenterY = 38.405;
+const int GridSize_N = 3; // columns
+const int GridSize_M = 3; // rows
+
+std::vector<std::vector<Position>> grid(GridSize_M + 1, std::vector<Position>(GridSize_N + 1));
+std::vector<std::vector<ShotInfo>> shotData(GridSize_M + 1, std::vector<ShotInfo>(GridSize_N + 1));
+
+std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
+    float x_grid = 2 * AreaMaxX / m;
+    float y_grid = 2 * HouseRadius / n;
+    Position pos;
+    std::vector<std::vector<Position>> result(GridSize_M + 1, std::vector<Position>(GridSize_N + 1));
+    for (int i = 0; i <= m; i++) {
+        float y = AreaMaxY - i * y_grid;
+        for (int j = 0; j <= n; j++) {
+            float x = -AreaMaxX + j * x_grid;
+            pos.x = x;
+            pos.y = y;
+            result[i][j] = pos;
+        }
+    }
+    return result;
+}
+
+dc::Vector2 SimulateShot(float vx, float vy, dc::moves::Shot::Rotation rotation) {
+    dc::ISimulator::AllStones init_stones;
+    init_stones[0].emplace(dc::Vector2(), 0.f, dc::Vector2(vx, vy), rotation == dc::moves::Shot::Rotation::kCCW ? 1.57f : -1.57f);
+    auto simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+    simulator->SetStones(init_stones);
+
+    while (!simulator->AreAllStonesStopped()) {
+        simulator->Step();
+    }
+
+    return simulator->GetStones()[0]->position;
+}
+
+ShotInfo FindOptimalShot(
+    float target_x, float target_y)
+{
+    auto target = std::make_pair(target_x, target_y);
+
+
+    float best_error = std::numeric_limits<float>::max();
+    std::tuple<float, float, dc::moves::Shot::Rotation> best_shot;
+    // ランダムジェネレータの準備
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> rotation_dist(0, 1);
+    constexpr int Iteration = 80;
+    float base_adjustment = 0.1f;  // 基本の補正量
+    float min_adjustment = 0.03f;  // 最小の補正量
+    float max_adjustment = 0.15f;  // 最大の補正量
+
+    //float adjustment_factor = 0.09f; // 調整係数
+    float target_r = std::sqrt(target_x * target_x + target_y * target_y);
+    float target_speed = 0.0f;  // ゴール時の目標速度（微調整可能）
+    float v0_speed = 1.122 * 2.1f;
+    dc::moves::Shot::Rotation rotation = dc::moves::Shot::Rotation::kCW;
+    float vx = v0_speed * (target_x / target_r);
+    float vy = v0_speed * (target_y / target_r);
+
+    for (int iter = 0; iter < Iteration; ++iter) {
+        // 回転方向をランダムに選択
+        dc::moves::Shot::Rotation rotation = rotation_dist(gen) == 0
+            ? dc::moves::Shot::Rotation::kCW
+            : dc::moves::Shot::Rotation::kCCW;
+        auto final_position = SimulateShot(vx, vy, rotation);
+        float error_x = target_x - final_position.x;
+        float error_y = target_y - final_position.y;
+
+        float error = error_x * error_x + error_y * error_y;
+
+        if (error < best_error) {
+            best_error = error;
+            best_shot = std::make_tuple(vx, vy, rotation);
+            // 誤差が許容範囲内なら終了
+            if (error < 0.001f) {
+                //std::cout << "Found Optimal Shot and error is " << error << ", iteration=" << iter << "\n";
+                break;
+            }
+        }
+
+        // 動的な補正量を計算（誤差が大きいときは大きく、小さいときは細かく）
+        float adjustment_factor = std::clamp(base_adjustment * std::sqrt(error), min_adjustment, max_adjustment);
+
+        // 誤差方向の単位ベクトルを計算
+        float error_norm = std::sqrt(error);
+        float unit_error_x = error_x / error_norm;
+        float unit_error_y = error_y / error_norm;
+
+        // 単位ベクトルに基づいて速度を補正
+        vx += adjustment_factor * unit_error_x;
+        vy += adjustment_factor * unit_error_y;
+    }
+    ShotInfo shotinfo;
+    std::tie(vx, vy, rotation) = best_shot;
+    shotinfo.vx = vx;
+    shotinfo.vy = vy;
+    shotinfo.rotation = static_cast<uint8_t>(rotation);
+    return shotinfo;
+}
 
 void OnInit(
     dc::Team team,
@@ -22,12 +138,25 @@ void OnInit(
 {
     // TODO AIを作る際はここを編集してください
     g_team = team;
+    grid = MakeGrid(GridSize_M, GridSize_N);
 }
-
 
 dc::Move OnMyTurn(dc::GameState const& game_state)
 {
     // TODO AIを作る際はここを編集してください
+    for (int i = 0; i < grid.size(); ++i) {
+        for (int j = 0; j < grid[i].size(); ++j) {
+            //std::cout << "grid[" << i << "][" << j << "] = ("
+            //    << grid[i][j].x << ", " << grid[i][j].y << ")\n";
+            shotData[i][j] = FindOptimalShot(grid[i][j].x, grid[i][j].y);
+        }
+    }
+    for (int i = 0; i < grid.size(); ++i) {
+        for (int j = 0; j < grid[i].size(); ++j) {
+            std::cout << "shotData[" << i << "][" << j << "] = ("
+                << shotData[i][j].vx << ", " << shotData[i][j].vy << ", " << shotData[i][j].rotation << ")\n";
+        }
+    }
 
     dc::moves::Shot shot;
 
