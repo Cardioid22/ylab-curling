@@ -30,6 +30,34 @@ const auto HouseCenterY = 38.405;
 const int GridSize_N = 3; // columns
 const int GridSize_M = 3; // rows
 
+const std::vector<std::vector<ShotInfo>> shotInitialData = {
+{
+    { -0.0162389f, 2.46155f },
+    {  0.0860538f, 2.45753f },
+    {  0.192298f,  2.45148f },
+    {  0.283068f,  2.4415f  }
+},
+{
+    { -0.00210842f, 2.41979f },
+    { -0.176156f,   2.41203f },
+    {  0.182629f,   2.41743f },
+    {  0.00318722f, 2.42562f }
+},
+{
+    { -0.0123966f,  2.39123f },
+    {  0.0888567f,  2.38843f },
+    { -0.0794381f,  2.38983f },
+    {  0.283573f,   2.37541f }
+},
+{
+    { -0.286198f,   2.33352f },
+    {  0.0873886f,  2.34851f },
+    { -0.0853857f,  2.35229f },
+    {  0.272727f,   2.33844f }
+}
+};
+}
+
 std::vector<std::vector<Position>> grid(GridSize_M + 1, std::vector<Position>(GridSize_N + 1));
 std::vector<std::vector<ShotInfo>> shotData(GridSize_M + 1, std::vector<ShotInfo>(GridSize_N + 1));
 
@@ -139,34 +167,39 @@ void OnInit(
     // TODO AIを作る際はここを編集してください
     g_team = team;
     grid = MakeGrid(GridSize_M, GridSize_N);
-}
+
 
 dc::Move OnMyTurn(dc::GameState const& game_state)
 {
     // TODO AIを作る際はここを編集してください
-    for (int i = 0; i < grid.size(); ++i) {
-        for (int j = 0; j < grid[i].size(); ++j) {
-            //std::cout << "grid[" << i << "][" << j << "] = ("
-            //    << grid[i][j].x << ", " << grid[i][j].y << ")\n";
-            shotData[i][j] = FindOptimalShot(grid[i][j].x, grid[i][j].y);
-        }
-    }
-    for (int i = 0; i < grid.size(); ++i) {
-        for (int j = 0; j < grid[i].size(); ++j) {
-            std::cout << "shotData[" << i << "][" << j << "] = ("
-                << shotData[i][j].vx << ", " << shotData[i][j].vy << ", " << shotData[i][j].rotation << ")\n";
-        }
-    }
+    //for (int i = 0; i < grid.size(); ++i) {
+    //    for (int j = 0; j < grid[i].size(); ++j) {
+    //        //std::cout << "grid[" << i << "][" << j << "] = ("
+    //        //    << grid[i][j].x << ", " << grid[i][j].y << ")\n";
+    //        shotData[i][j] = FindOptimalShot(grid[i][j].x, grid[i][j].y);
+    //    }
+    //}
+    
 
     dc::moves::Shot shot;
+    if (g_team == static_cast<dc::Team>(0)) {
+        shot.velocity.x = shotData[game_state.shot % 8][game_state.shot / 2].vx;
+        shot.velocity.y = shotData[game_state.shot % 8][game_state.shot / 2].vy;
+        shot.rotation = static_cast<dc::moves::Shot::Rotation>(shotData[game_state.shot % 8][game_state.shot / 2].rotation);
+    }
+    else {
+        shot.velocity.x = shotData[game_state.shot % 8 + 2][game_state.shot / 2].vx;
+        shot.velocity.y = shotData[game_state.shot % 8 + 2][game_state.shot / 2].vy;
+        shot.rotation = static_cast<dc::moves::Shot::Rotation>(shotData[game_state.shot % 8 + 2][game_state.shot / 2].rotation);
+    }
 
-    // ショットの初速
-    shot.velocity.x = 0.132f;
-    shot.velocity.y = 2.3995f;
+
+    //// ショットの初速
+    //shot.velocity.x = 0.132f;
+    //shot.velocity.y = 2.3995f;
 
     // ショットの回転
-    shot.rotation = dc::moves::Shot::Rotation::kCCW; // 反時計回り
-    // shot.rotation = dc::moves::Shot::Rotation::kCW; // 時計回り
+    //shot.rotation = dc::moves::Shot::Rotation::kCCW; // 反時計回り
 
     return shot;
 }
