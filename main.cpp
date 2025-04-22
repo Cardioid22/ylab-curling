@@ -31,50 +31,21 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_N = 3; // columns
-const int GridSize_M = 3; // rows
+const int GridSize_N = 4; // columns
+const int GridSize_M = 4; // rows
 
-const std::vector<std::vector<ShotInfo>> shotInitialData = {
-    {
-        {  0.0243194f, 2.45695f, 0 },
-        {  0.0986189f, 2.45404f, 0 },
-        { -0.0986191f, 2.45404f, 1 },
-        { -0.0243196f, 2.45695f, 1 }
-    },
-    {
-        {  0.0197781f, 2.42211f, 0 },
-        {  0.0953055f, 2.41922f, 0 },
-        { -0.0953055f, 2.41922f, 1 },
-        { -0.0197780f, 2.42211f, 1 }
-    },
-    {
-        {  0.0151124f, 2.38677f, 0 },
-        {  0.0919333f, 2.38390f, 0 },
-        { -0.0919335f, 2.38390f, 1 },
-        { -0.0151126f, 2.38677f, 1 }
-    },
-    {
-        {  0.0103184f, 2.35089f, 0 },
-        {  0.0885021f, 2.34804f, 0 },
-        { -0.0885021f, 2.34804f, 1 },
-        { -0.0103183f, 2.35089f, 1 }
-    }
-};
-
-
-
-
-std::vector<std::vector<Position>> grid(GridSize_M + 1, std::vector<Position>(GridSize_N + 1));
-std::vector<std::vector<ShotInfo>> shotData(GridSize_M + 1, std::vector<ShotInfo>(GridSize_N + 1));
+std::vector<std::vector<Position>> grid(GridSize_M, std::vector<Position>(GridSize_N));
+std::vector<std::vector<ShotInfo>> shotData(GridSize_M, std::vector<ShotInfo>(GridSize_N));
+std::vector<std::vector<dc::GameState>> grid_states(GridSize_M, std::vector<dc::GameState>(GridSize_N));
 
 std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
     float x_grid = 2 * HouseRadius / m;
     float y_grid = 2 * HouseRadius / n;
     Position pos;
-    std::vector<std::vector<Position>> result(GridSize_M + 1, std::vector<Position>(GridSize_N + 1));
-    for (int i = 0; i <= m; i++) {
+    std::vector<std::vector<Position>> result(GridSize_M, std::vector<Position>(GridSize_N));
+    for (int i = 0; i < m; i++) {
         float y = AreaMaxY - i * y_grid;
-        for (int j = 0; j <= n; j++) {
+        for (int j = 0; j < n; j++) {
             float x = -HouseRadius + j * x_grid;
             pos.x = x;
             pos.y = y;
@@ -84,16 +55,21 @@ std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
     return result;
 }
 
-//dc::GameState run(dc::GameState const& state, ShotInfo const& shot) {
-//    g_simulator->Load(*g_simulator_storage);
-//    auto& current_player = *g_players[state.shot / 4];
-//    dc::Vector2 shot_velocity(shot.vx, shot.vy);
-//    dc::moves::Shot shot{ shot_velocity, rotation };
-//    dc::Move move{ shot };
-//    dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0));
-//    g_simulator->Save(*g_simulator_storage);
-//    return state;
-//}
+dc::GameState run(dc::GameState const& game_state, ShotInfo shotinfo) {
+    std::cout << "Enter run\n";
+    dc::GameState state = game_state;
+    auto& current_player = *g_players[state.shot / 4];
+    dc::Vector2 shot_velocity(shotinfo.vx, shotinfo.vy);
+    dc::moves::Shot::Rotation rotation = shotinfo.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    dc::moves::Shot shot{ shot_velocity, rotation };
+    dc::Move move{ shot };
+    std::cout << "before simulation\n";
+    dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0)); // ApplyMoveは検証するストーン以外は考慮しない!
+    g_simulator->Save(*g_simulator_storage);
+    std::cout << "After simulation\n";
+    return state;
+}
+
 dc::Vector2 EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation)
 {
     assert(target_speed >= 0.f);
@@ -205,6 +181,7 @@ void OnInit(
     std::array<size_t, 4>& player_order)
 {
     // TODO AIを作る際はここを編集してください
+    
     g_team = team;
     g_game_setting = game_setting;
     if (simulator_factory) {
@@ -214,7 +191,7 @@ void OnInit(
         g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
     }
     g_simulator_storage = g_simulator->CreateStorage();
-
+    
     // プレイヤーを生成する
     // 非対応の場合は NormalDistプレイヤーを使用する．
     assert(g_players.size() == player_factories.size());
@@ -228,29 +205,36 @@ void OnInit(
         }
 
     }
+    
     grid = MakeGrid(GridSize_M, GridSize_N);
     for (int i = 0; i < grid.size(); i++) {
         for (int j = 0; j < grid[i].size(); j++) {
-            shotData[i][j] = shotInitialData[i][j];
+            shotData[i][j] = FindShot(grid[i][j]); // 初回参考速度生成
+            //shotData[i][j] = shotInitialData[i][j];
         }
     }
-    for (int i = 0; i < grid.size(); ++i) {
-        for (int j = 0; j < grid[i].size(); ++j) {
-            //shotData[i][j] = FindShot(grid[i][j]); // 初回速度生成用
-            shotData[i][j] = shotInitialData[i][j];
-        }
-    }
+    std::cout << "This is the end of the OnInit\n";
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
 {
     // TODO AIを作る際はここを編集してください
-    for (int i = 0; i < grid.size(); ++i) {
-        for (int j = 0; j < grid[i].size(); ++j) {
-            std::cout << "shotData[" << i << "][" << j << "] = (" << shotData[i][j].vx
-                << ", " << shotData[i][j].vy << ", " << shotData[i][j].rot << ")" << "\n";
+    //for (int i = 0; i < grid.size(); ++i) {
+    //    for (int j = 0; j < grid[i].size(); ++j) {
+    //        std::cout << "shotData[" << i << "][" << j << "] = (" << shotData[i][j].vx
+    //            << ", " << shotData[i][j].vy << ", " << shotData[i][j].rot << ")" << "\n";
+    //    }
+    //}
+    for (int i = 0; i < grid.size(); i++) {
+        for (int j = 0; j < grid[i].size(); j++) {
+            grid_states[i][j] = run(game_state, shotData[i][j]); // 類似度計算で使うサンプル生成
         }
     }
-    
+    for (int i = 0; i < grid.size(); i++) {
+        for (int j = 0; j < grid[i].size(); j++) {
+            std::cout << "End: " << grid_states[i][j].end << "\n";
+            std::cout << "# of Stones: " << grid_states[i][j].stones.size() << "\n";
+        }
+    }
 
     dc::moves::Shot shot;
     if (g_team == static_cast<dc::Team>(0)) {
@@ -264,10 +248,6 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
         shot.rotation = shotData[game_state.shot / 8 + 2][game_state.shot / 2 % 4].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     }
     std::cout << "Shot: " << shot.velocity.x << ", " << shot.velocity.y << "\n";
-    //shot.velocity.x = 0.132f;
-    //shot.velocity.y = 2.3995f;
-    //shot.rotation = dc::moves::Shot::Rotation::kCCW; // 反時計回り
-
     return shot;
 }
 
