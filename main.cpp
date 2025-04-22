@@ -17,10 +17,14 @@ namespace {
     struct ShotInfo {
         float vx;
         float vy;
-        uint8_t rotation;
+        int rot;
     };
 
 dc::Team g_team;  // 自身のチームID
+dc::GameSetting g_game_setting; // ゲーム設定
+std::unique_ptr<dc::ISimulator> g_simulator; // シミュレーターのインターフェイス
+std::unique_ptr<dc::ISimulatorStorage> g_simulator_storage; // シミュレーションの状態を保存するストレージ
+std::array<std::unique_ptr<dc::IPlayer>, 4> g_players; // ゲームプレイヤー
 
 const auto HouseRadius = 1.829;
 const auto AreaMaxX = 2.375;
@@ -31,45 +35,47 @@ const int GridSize_N = 3; // columns
 const int GridSize_M = 3; // rows
 
 const std::vector<std::vector<ShotInfo>> shotInitialData = {
-{
-    { -0.0162389f, 2.46155f },
-    {  0.0860538f, 2.45753f },
-    {  0.192298f,  2.45148f },
-    {  0.283068f,  2.4415f  }
-},
-{
-    { -0.00210842f, 2.41979f },
-    { -0.176156f,   2.41203f },
-    {  0.182629f,   2.41743f },
-    {  0.00318722f, 2.42562f }
-},
-{
-    { -0.0123966f,  2.39123f },
-    {  0.0888567f,  2.38843f },
-    { -0.0794381f,  2.38983f },
-    {  0.283573f,   2.37541f }
-},
-{
-    { -0.286198f,   2.33352f },
-    {  0.0873886f,  2.34851f },
-    { -0.0853857f,  2.35229f },
-    {  0.272727f,   2.33844f }
-}
+    {
+        {  0.0243194f, 2.45695f, 0 },
+        {  0.0986189f, 2.45404f, 0 },
+        { -0.0986191f, 2.45404f, 1 },
+        { -0.0243196f, 2.45695f, 1 }
+    },
+    {
+        {  0.0197781f, 2.42211f, 0 },
+        {  0.0953055f, 2.41922f, 0 },
+        { -0.0953055f, 2.41922f, 1 },
+        { -0.0197780f, 2.42211f, 1 }
+    },
+    {
+        {  0.0151124f, 2.38677f, 0 },
+        {  0.0919333f, 2.38390f, 0 },
+        { -0.0919335f, 2.38390f, 1 },
+        { -0.0151126f, 2.38677f, 1 }
+    },
+    {
+        {  0.0103184f, 2.35089f, 0 },
+        {  0.0885021f, 2.34804f, 0 },
+        { -0.0885021f, 2.34804f, 1 },
+        { -0.0103183f, 2.35089f, 1 }
+    }
 };
-}
+
+
+
 
 std::vector<std::vector<Position>> grid(GridSize_M + 1, std::vector<Position>(GridSize_N + 1));
 std::vector<std::vector<ShotInfo>> shotData(GridSize_M + 1, std::vector<ShotInfo>(GridSize_N + 1));
 
 std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
-    float x_grid = 2 * AreaMaxX / m;
+    float x_grid = 2 * HouseRadius / m;
     float y_grid = 2 * HouseRadius / n;
     Position pos;
     std::vector<std::vector<Position>> result(GridSize_M + 1, std::vector<Position>(GridSize_N + 1));
     for (int i = 0; i <= m; i++) {
         float y = AreaMaxY - i * y_grid;
         for (int j = 0; j <= n; j++) {
-            float x = -AreaMaxX + j * x_grid;
+            float x = -HouseRadius + j * x_grid;
             pos.x = x;
             pos.y = y;
             result[i][j] = pos;
@@ -78,83 +84,117 @@ std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
     return result;
 }
 
-dc::Vector2 SimulateShot(float vx, float vy, dc::moves::Shot::Rotation rotation) {
-    dc::ISimulator::AllStones init_stones;
-    init_stones[0].emplace(dc::Vector2(), 0.f, dc::Vector2(vx, vy), rotation == dc::moves::Shot::Rotation::kCCW ? 1.57f : -1.57f);
-    auto simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
-    simulator->SetStones(init_stones);
+//dc::GameState run(dc::GameState const& state, ShotInfo const& shot) {
+//    g_simulator->Load(*g_simulator_storage);
+//    auto& current_player = *g_players[state.shot / 4];
+//    dc::Vector2 shot_velocity(shot.vx, shot.vy);
+//    dc::moves::Shot shot{ shot_velocity, rotation };
+//    dc::Move move{ shot };
+//    dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0));
+//    g_simulator->Save(*g_simulator_storage);
+//    return state;
+//}
+dc::Vector2 EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation)
+{
+    assert(target_speed >= 0.f);
+    assert(target_speed <= 4.f);
 
-    while (!simulator->AreAllStonesStopped()) {
-        simulator->Step();
-    }
+    // 初速度の大きさを逆算する
+    // 逆算には専用の関数を用いる．
 
-    return simulator->GetStones()[0]->position;
+    float const v0_speed = [&target_position, target_speed]
+        {
+            auto const target_r = target_position.Length();
+            assert(target_r > 0.f);
+
+            if (target_speed <= 0.05f)
+            {
+                float constexpr kC0[] = { 0.0005048122574925176, 0.2756242531609261 };
+                float constexpr kC1[] = { 0.00046669575066030805, -29.898958358378636, -0.0014030973174948508 };
+                float constexpr kC2[] = { 0.13968687866736632, 0.41120940058777616 };
+
+                float const c0 = kC0[0] * target_r + kC0[1];
+                float const c1 = -kC1[0] * std::log(target_r + kC1[1]) + kC1[2];
+                float const c2 = kC2[0] * target_r + kC2[1];
+
+                return std::sqrt(c0 * target_speed * target_speed + c1 * target_speed + c2);
+            }
+            else if (target_speed <= 1.f)
+            {
+                float constexpr kC0[] = { -0.0014309170115803444, 0.9858457898438147 };
+                float constexpr kC1[] = { -0.0008339331735471273, -29.86751291726946, -0.19811799977982522 };
+                float constexpr kC2[] = { 0.13967323742978, 0.42816312110477517 };
+
+                float const c0 = kC0[0] * target_r + kC0[1];
+                float const c1 = -kC1[0] * std::log(target_r + kC1[1]) + kC1[2];
+                float const c2 = kC2[0] * target_r + kC2[1];
+
+                return std::sqrt(c0 * target_speed * target_speed + c1 * target_speed + c2);
+            }
+            else
+            {
+                float constexpr kC0[] = { 1.0833113118071224e-06, -0.00012132851917870833, 0.004578093297561233, 0.9767006869364527 };
+                float constexpr kC1[] = { 0.07950648211492622, -8.228225657195706, -0.05601306077702578 };
+                float constexpr kC2[] = { 0.14140440186382008, 0.3875782508767419 };
+
+                float const c0 = kC0[0] * target_r * target_r * target_r + kC0[1] * target_r * target_r + kC0[2] * target_r + kC0[3];
+                float const c1 = -kC1[0] * std::log(target_r + kC1[1]) + kC1[2];
+                float const c2 = kC2[0] * target_r + kC2[1];
+
+                return std::sqrt(c0 * target_speed * target_speed + c1 * target_speed + c2);
+            }
+        }();
+
+    // assert(target_speed < v0_speed);
+
+    // 一度シミュレーションを行い，発射方向を決定する
+
+    dc::Vector2 const delta = [rotation, v0_speed, target_speed]
+        {
+            float const rotation_factor = rotation == dc::moves::Shot::Rotation::kCCW ? 1.f : -1.f;
+
+            // シミュレータは FCV1 シミュレータを使用する．
+            thread_local std::unique_ptr<dc::ISimulator> s_simulator;
+            if (s_simulator == nullptr)
+            {
+                s_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+            }
+
+            dc::ISimulator::AllStones init_stones;
+            init_stones[0].emplace(dc::Vector2(), 0.f, dc::Vector2(0.f, v0_speed), 1.57f * rotation_factor);
+            s_simulator->SetStones(init_stones);
+
+            while (!s_simulator->AreAllStonesStopped())
+            {
+                auto const& stones = s_simulator->GetStones();
+                auto const speed = stones[0]->linear_velocity.Length();
+                if (speed <= target_speed)
+                {
+                    return stones[0]->position;
+                }
+                s_simulator->Step();
+            }
+
+            return s_simulator->GetStones()[0]->position;
+        }();
+
+    float const delta_angle = std::atan2(delta.x, delta.y); // 注: delta.x, delta.y の順番で良い
+    float const target_angle = std::atan2(target_position.y, target_position.x);
+    float const v0_angle = target_angle + delta_angle; // 発射方向
+
+    return dc::Vector2(v0_speed * std::cos(v0_angle), v0_speed * std::sin(v0_angle));
 }
 
-ShotInfo FindOptimalShot(
-    float target_x, float target_y)
-{
-    auto target = std::make_pair(target_x, target_y);
-
-
-    float best_error = std::numeric_limits<float>::max();
-    std::tuple<float, float, dc::moves::Shot::Rotation> best_shot;
-    // ランダムジェネレータの準備
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> rotation_dist(0, 1);
-    constexpr int Iteration = 80;
-    float base_adjustment = 0.1f;  // 基本の補正量
-    float min_adjustment = 0.03f;  // 最小の補正量
-    float max_adjustment = 0.15f;  // 最大の補正量
-
-    //float adjustment_factor = 0.09f; // 調整係数
-    float target_r = std::sqrt(target_x * target_x + target_y * target_y);
-    float target_speed = 0.0f;  // ゴール時の目標速度（微調整可能）
-    float v0_speed = 1.122 * 2.1f;
-    dc::moves::Shot::Rotation rotation = dc::moves::Shot::Rotation::kCW;
-    float vx = v0_speed * (target_x / target_r);
-    float vy = v0_speed * (target_y / target_r);
-
-    for (int iter = 0; iter < Iteration; ++iter) {
-        // 回転方向をランダムに選択
-        dc::moves::Shot::Rotation rotation = rotation_dist(gen) == 0
-            ? dc::moves::Shot::Rotation::kCW
-            : dc::moves::Shot::Rotation::kCCW;
-        auto final_position = SimulateShot(vx, vy, rotation);
-        float error_x = target_x - final_position.x;
-        float error_y = target_y - final_position.y;
-
-        float error = error_x * error_x + error_y * error_y;
-
-        if (error < best_error) {
-            best_error = error;
-            best_shot = std::make_tuple(vx, vy, rotation);
-            // 誤差が許容範囲内なら終了
-            if (error < 0.001f) {
-                //std::cout << "Found Optimal Shot and error is " << error << ", iteration=" << iter << "\n";
-                break;
-            }
-        }
-
-        // 動的な補正量を計算（誤差が大きいときは大きく、小さいときは細かく）
-        float adjustment_factor = std::clamp(base_adjustment * std::sqrt(error), min_adjustment, max_adjustment);
-
-        // 誤差方向の単位ベクトルを計算
-        float error_norm = std::sqrt(error);
-        float unit_error_x = error_x / error_norm;
-        float unit_error_y = error_y / error_norm;
-
-        // 単位ベクトルに基づいて速度を補正
-        vx += adjustment_factor * unit_error_x;
-        vy += adjustment_factor * unit_error_y;
-    }
-    ShotInfo shotinfo;
-    std::tie(vx, vy, rotation) = best_shot;
-    shotinfo.vx = vx;
-    shotinfo.vy = vy;
-    shotinfo.rotation = static_cast<uint8_t>(rotation);
-    return shotinfo;
+ShotInfo FindShot(Position const& pos) {
+    dc::Vector2 target_position = { pos.x, pos.y };
+    dc::Vector2 final_speed(0, 0);
+    dc::moves::Shot::Rotation rotation = (pos.x > 0 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW);
+    final_speed = EstimateShotVelocityFCV1(target_position, 0, rotation);
+    ShotInfo shot;
+    shot.vx = final_speed.x;
+    shot.vy = final_speed.y;
+    shot.rot = rotation == dc::moves::Shot::Rotation::kCW ? 1 : 0;
+    return shot;
 }
 
 void OnInit(
@@ -162,43 +202,70 @@ void OnInit(
     dc::GameSetting const& game_setting,
     std::unique_ptr<dc::ISimulatorFactory> simulator_factory,
     std::array<std::unique_ptr<dc::IPlayerFactory>, 4> player_factories,
-    std::array<size_t, 4> & player_order)
+    std::array<size_t, 4>& player_order)
 {
     // TODO AIを作る際はここを編集してください
     g_team = team;
+    g_game_setting = game_setting;
+    if (simulator_factory) {
+        g_simulator = simulator_factory->CreateSimulator(); // simulator 生成 
+    }
+    else {
+        g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+    }
+    g_simulator_storage = g_simulator->CreateStorage();
+
+    // プレイヤーを生成する
+    // 非対応の場合は NormalDistプレイヤーを使用する．
+    assert(g_players.size() == player_factories.size());
+    for (size_t i = 0; i < g_players.size(); ++i) {
+        auto const& player_factory = player_factories[player_order[i]];
+        if (player_factory) {
+            g_players[i] = player_factory->CreatePlayer();
+        }
+        else {
+            g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+        }
+
+    }
     grid = MakeGrid(GridSize_M, GridSize_N);
-
-
+    for (int i = 0; i < grid.size(); i++) {
+        for (int j = 0; j < grid[i].size(); j++) {
+            shotData[i][j] = shotInitialData[i][j];
+        }
+    }
+    for (int i = 0; i < grid.size(); ++i) {
+        for (int j = 0; j < grid[i].size(); ++j) {
+            //shotData[i][j] = FindShot(grid[i][j]); // 初回速度生成用
+            shotData[i][j] = shotInitialData[i][j];
+        }
+    }
+}
 dc::Move OnMyTurn(dc::GameState const& game_state)
 {
     // TODO AIを作る際はここを編集してください
-    //for (int i = 0; i < grid.size(); ++i) {
-    //    for (int j = 0; j < grid[i].size(); ++j) {
-    //        //std::cout << "grid[" << i << "][" << j << "] = ("
-    //        //    << grid[i][j].x << ", " << grid[i][j].y << ")\n";
-    //        shotData[i][j] = FindOptimalShot(grid[i][j].x, grid[i][j].y);
-    //    }
-    //}
+    for (int i = 0; i < grid.size(); ++i) {
+        for (int j = 0; j < grid[i].size(); ++j) {
+            std::cout << "shotData[" << i << "][" << j << "] = (" << shotData[i][j].vx
+                << ", " << shotData[i][j].vy << ", " << shotData[i][j].rot << ")" << "\n";
+        }
+    }
     
 
     dc::moves::Shot shot;
     if (g_team == static_cast<dc::Team>(0)) {
-        shot.velocity.x = shotData[game_state.shot % 8][game_state.shot / 2].vx;
-        shot.velocity.y = shotData[game_state.shot % 8][game_state.shot / 2].vy;
-        shot.rotation = static_cast<dc::moves::Shot::Rotation>(shotData[game_state.shot % 8][game_state.shot / 2].rotation);
+        shot.velocity.x = shotData[game_state.shot / 8][game_state.shot / 2 % 4].vx;
+        shot.velocity.y = shotData[game_state.shot / 8][game_state.shot / 2 % 4].vy;
+        shot.rotation = shotData[game_state.shot / 8][game_state.shot / 2 % 4].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     }
     else {
-        shot.velocity.x = shotData[game_state.shot % 8 + 2][game_state.shot / 2].vx;
-        shot.velocity.y = shotData[game_state.shot % 8 + 2][game_state.shot / 2].vy;
-        shot.rotation = static_cast<dc::moves::Shot::Rotation>(shotData[game_state.shot % 8 + 2][game_state.shot / 2].rotation);
+        shot.velocity.x = shotData[game_state.shot / 8 + 2][game_state.shot / 2 % 4].vx;
+        shot.velocity.y = shotData[game_state.shot / 8 + 2][game_state.shot / 2 % 4].vy;
+        shot.rotation = shotData[game_state.shot / 8 + 2][game_state.shot / 2 % 4].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     }
-
-
-    //// ショットの初速
+    std::cout << "Shot: " << shot.velocity.x << ", " << shot.velocity.y << "\n";
     //shot.velocity.x = 0.132f;
     //shot.velocity.y = 2.3995f;
-
-    // ショットの回転
     //shot.rotation = dc::moves::Shot::Rotation::kCCW; // 反時計回り
 
     return shot;
