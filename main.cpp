@@ -6,6 +6,9 @@
 #include <boost/asio.hpp>
 #include "digitalcurling3/digitalcurling3.hpp"
 
+#include <fstream>
+#include <iomanip>
+
 namespace dc = digitalcurling3;
 
 namespace {
@@ -36,7 +39,7 @@ const int GridSize_M = 4; // rows
 
 std::vector<std::vector<Position>> grid(GridSize_M, std::vector<Position>(GridSize_N));
 std::vector<std::vector<ShotInfo>> shotData(GridSize_M, std::vector<ShotInfo>(GridSize_N));
-std::vector<std::vector<dc::GameState>> grid_states(GridSize_M, std::vector<dc::GameState>(GridSize_N));
+std::vector<dc::GameState> grid_states(GridSize_M * GridSize_N);
 
 std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
     float x_grid = 2 * HouseRadius / m;
@@ -56,17 +59,14 @@ std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
 }
 
 dc::GameState run(dc::GameState const& game_state, ShotInfo shotinfo) {
-    std::cout << "Enter run\n";
     dc::GameState state = game_state;
     auto& current_player = *g_players[state.shot / 4];
     dc::Vector2 shot_velocity(shotinfo.vx, shotinfo.vy);
     dc::moves::Shot::Rotation rotation = shotinfo.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     dc::moves::Shot shot{ shot_velocity, rotation };
     dc::Move move{ shot };
-    std::cout << "before simulation\n";
-    dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0)); // ApplyMoveは検証するストーン以外は考慮しない!
+    dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0)); 
     g_simulator->Save(*g_simulator_storage);
-    std::cout << "After simulation\n";
     return state;
 }
 
@@ -173,6 +173,75 @@ ShotInfo FindShot(Position const& pos) {
     return shot;
 }
 
+float dist(dc::GameState const& a, dc::GameState const& b) {
+    int v = 0;
+    int p = 2;
+    for (int team = 0; team < 2; team++) {
+        auto const stones_a = a.stones[team];
+        auto const stones_b = b.stones[team];
+        for (int index = 0; index < 8; index++) {
+            if (stones_a[index] && stones_b[index]) v++;
+        }
+    }
+    if (v == 0) return 100.0;
+
+    float distance = 0.0;
+    for (int team = 0; team < 2; team++) {
+        auto const stones_a = a.stones[team];
+        auto const stones_b = b.stones[team];
+        for (int index = 0; index < 8; index++) {
+            if (stones_a[index] && stones_b[index]) {
+                float dist_x = stones_a[index]->position.x - stones_b[index]->position.x;
+                float dist_y = stones_a[index]->position.y - stones_b[index]->position.y;
+                distance += std::sqrt((p / v) * (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
+            }
+        }
+    }
+    return distance;
+}
+
+std::vector<std::vector<float>> CategorizeShots(std::vector<dc::GameState> const& states) {
+    std::vector<std::vector<float>> states_table;
+    int S = GridSize_M * GridSize_N;
+    for (int m = 0; m < S; m++) {
+        std::vector<float> category(S);
+        dc::GameState s_m = states[m];
+        for (int n = 0; n < S; n++) {
+            dc::GameState s_n = states[n];
+            if (m == n) continue;
+            category[n] = dist(s_m, s_n);
+        }
+        states_table.push_back(category);
+    }
+    return states_table;
+}
+
+void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int shot_number) {
+    std::string folder = "table_outputs/";
+    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
+
+    std::string filename = folder + "state_similarity_shot_" + std::to_string(shot_number) + ".csv";
+    std::ofstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << "\n";
+        return;
+    }
+
+    for (const auto& row : table) {
+        for (size_t i = 0; i < row.size(); ++i) {
+            file << std::fixed << std::setprecision(5) << row[i];
+            if (i != row.size() - 1) file << ",";
+        }
+        file << "\n";
+    }
+
+    file.close();
+    std::cout << "Saved similarity table to: " << filename << "\n";
+}
+
+
+
 void OnInit(
     dc::Team team,
     dc::GameSetting const& game_setting,
@@ -224,17 +293,14 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     //            << ", " << shotData[i][j].vy << ", " << shotData[i][j].rot << ")" << "\n";
     //    }
     //}
+    int k = 0;
     for (int i = 0; i < grid.size(); i++) {
         for (int j = 0; j < grid[i].size(); j++) {
-            grid_states[i][j] = run(game_state, shotData[i][j]); // 類似度計算で使うサンプル生成
+            grid_states[k++] = run(game_state, shotData[i][j]); // 類似度計算で使うサンプル生成
         }
     }
-    for (int i = 0; i < grid.size(); i++) {
-        for (int j = 0; j < grid[i].size(); j++) {
-            std::cout << "End: " << grid_states[i][j].end << "\n";
-            std::cout << "# of Stones: " << grid_states[i][j].stones.size() << "\n";
-        }
-    }
+    auto similarity_table = CategorizeShots(grid_states);
+    SaveSimilarityTableToCSV(similarity_table, game_state.shot);
 
     dc::moves::Shot shot;
     if (g_team == static_cast<dc::Team>(0)) {
