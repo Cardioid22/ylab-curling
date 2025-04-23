@@ -195,6 +195,15 @@ float dist(dc::GameState const& a, dc::GameState const& b) {
                 float dist_y = stones_a[index]->position.y - stones_b[index]->position.y;
                 distance += std::sqrt((p / v) * (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
+            else if (!stones_a[index] && stones_b[index]) { // ex: new shot
+
+            }
+            else if (stones_a[index] && !stones_b[index]) { // stone has taken away
+
+            }
+            else {
+                break;
+            }
         }
     }
     return distance;
@@ -219,7 +228,6 @@ std::vector<std::vector<float>> CategorizeShots(std::vector<dc::GameState> const
 void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int shot_number) {
     std::string folder = "table_outputs/";
     std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
-
     std::string filename = folder + "state_similarity_shot_" + std::to_string(shot_number) + ".csv";
     std::ofstream file(filename);
 
@@ -227,7 +235,6 @@ void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int 
         std::cerr << "Failed to open file: " << filename << "\n";
         return;
     }
-
     for (const auto& row : table) {
         for (size_t i = 0; i < row.size(); ++i) {
             file << std::fixed << std::setprecision(5) << row[i];
@@ -235,7 +242,6 @@ void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int 
         }
         file << "\n";
     }
-
     file.close();
     std::cout << "Saved similarity table to: " << filename << "\n";
 }
@@ -279,7 +285,6 @@ void OnInit(
     for (int i = 0; i < grid.size(); i++) {
         for (int j = 0; j < grid[i].size(); j++) {
             shotData[i][j] = FindShot(grid[i][j]); // 初回参考速度生成
-            //shotData[i][j] = shotInitialData[i][j];
         }
     }
     std::cout << "This is the end of the OnInit\n";
@@ -303,16 +308,87 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     SaveSimilarityTableToCSV(similarity_table, game_state.shot);
 
     dc::moves::Shot shot;
-    if (g_team == static_cast<dc::Team>(0)) {
-        shot.velocity.x = shotData[game_state.shot / 8][game_state.shot / 2 % 4].vx;
-        shot.velocity.y = shotData[game_state.shot / 8][game_state.shot / 2 % 4].vy;
-        shot.rotation = shotData[game_state.shot / 8][game_state.shot / 2 % 4].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    if (game_state.shot == 0) {
+        shot.velocity.x = shotData[0][0].vx;
+        shot.velocity.y = shotData[0][0].vy;
+        shot.rotation = shotData[0][0].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     }
-    else {
-        shot.velocity.x = shotData[game_state.shot / 8 + 2][game_state.shot / 2 % 4].vx;
-        shot.velocity.y = shotData[game_state.shot / 8 + 2][game_state.shot / 2 % 4].vy;
-        shot.rotation = shotData[game_state.shot / 8 + 2][game_state.shot / 2 % 4].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    else if (game_state.shot == 1) {
+        shot.velocity.x = shotData[0][1].vx;
+        shot.velocity.y = shotData[0][1].vy;
+        shot.rotation = shotData[0][1].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     }
+    else if (game_state.shot == 2) {
+        shot.velocity.x = shotData[0][2].vx;
+        shot.velocity.y = shotData[0][2].vy;
+        shot.rotation = shotData[0][2].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 3) {
+        shot.velocity.x = shotData[0][3].vx;
+        shot.velocity.y = shotData[0][3].vy;
+        shot.rotation = shotData[0][3].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 4) {
+        shot.velocity.x = shotData[1][0].vx;
+        shot.velocity.y = shotData[1][0].vy;
+        shot.rotation = shotData[1][0].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 5) {
+        shot.velocity.x = shotData[1][1].vx;
+        shot.velocity.y = shotData[1][1].vy;
+        shot.rotation = shotData[1][1].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 6) {
+        shot.velocity.x = shotData[1][2].vx;
+        shot.velocity.y = shotData[1][2].vy;
+        shot.rotation = shotData[1][2].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 7) {
+        shot.velocity.x = shotData[1][3].vx;
+        shot.velocity.y = shotData[1][3].vy;
+        shot.rotation = shotData[1][3].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 8) {
+        shot.velocity.x = shotData[2][0].vx;
+        shot.velocity.y = shotData[2][0].vy;
+        shot.rotation = shotData[2][0].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 9) {
+        shot.velocity.x = shotData[2][1].vx;
+        shot.velocity.y = shotData[2][1].vy;
+        shot.rotation = shotData[2][1].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 10) {
+        shot.velocity.x = shotData[2][2].vx;
+        shot.velocity.y = shotData[2][2].vy;
+        shot.rotation = shotData[2][2].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 11) {
+        shot.velocity.x = shotData[2][3].vx;
+        shot.velocity.y = shotData[2][3].vy;
+        shot.rotation = shotData[2][3].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 12) {
+        shot.velocity.x = shotData[3][0].vx;
+        shot.velocity.y = shotData[3][0].vy;
+        shot.rotation = shotData[3][0].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 13) {
+        shot.velocity.x = shotData[3][1].vx;
+        shot.velocity.y = shotData[3][1].vy;
+        shot.rotation = shotData[3][1].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 14) {
+        shot.velocity.x = shotData[3][2].vx;
+        shot.velocity.y = shotData[3][2].vy;
+        shot.rotation = shotData[3][2].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+    else if (game_state.shot == 15) {
+        shot.velocity.x = shotData[3][3].vx;
+        shot.velocity.y = shotData[3][3].vy;
+        shot.rotation = shotData[3][3].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    }
+
     std::cout << "Shot: " << shot.velocity.x << ", " << shot.velocity.y << "\n";
     return shot;
 }
