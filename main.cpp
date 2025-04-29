@@ -8,6 +8,7 @@
 
 #include <fstream>
 #include <iomanip>
+#include <set>
 
 namespace dc = digitalcurling3;
 
@@ -257,6 +258,48 @@ void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int 
     std::cout << "Saved similarity table to: " << filename << "\n";
 }
 
+std::tuple<int, int, float> findClosestClusters(const std::vector<std::vector<float>>& dist, const std::vector<std::set<int>>& clusters) {
+    float min_dist = std::numeric_limits<float>::max();
+    int cluster_a = -1, cluster_b = -1;
+
+    for (int i = 0; i < clusters.size(); i++) {
+        for (int j = i + 1; j < clusters.size(); j++) {
+            for (int a : clusters[i]) {
+                for (int b : clusters[j]) {
+                    if (dist[a][b] < min_dist) {
+                        min_dist = dist[a][b];
+                        cluster_a = i;
+                        cluster_b = j;
+                    }
+                }
+            }
+        }
+    }
+    return { cluster_a, cluster_b, min_dist };
+}
+
+std::vector<std::set<int>> hierarchicalClustering(const std::vector<std::vector<float>>& dist, int n_desired_clusters = 1) {
+    int n_samples = dist.size();
+    std::vector<std::set<int>> clusters(n_samples);
+
+    for (int i = 0; i < n_samples; i++) {
+        clusters[i].insert(i);
+    }
+
+    while (clusters.size() > n_desired_clusters) {
+        auto [i, j, d] = findClosestClusters(dist, clusters);
+        if (i == -1 || j == -1) {
+            std::cout << "Failed to find the minimum clusters\n";
+            break;
+        }
+        clusters[i].insert(clusters[j].begin(), clusters[j].end());
+        std::cout << "Merge cluster[" << j << "] into cluster[" << i << "]\n";
+        clusters.erase(clusters.begin() + j);
+    }
+
+    return clusters;
+}
+
 void OnInit(
     dc::Team team,
     dc::GameSetting const& game_setting,
@@ -313,8 +356,25 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
             grid_states[k++] = run(game_state, shotData[i][j]); // 類似度計算で使うサンプル生成
         }
     }
-    auto similarity_table = CategorizeShots(grid_states);
-    SaveSimilarityTableToCSV(similarity_table, game_state.shot);
+    auto distance_table = CategorizeShots(grid_states);
+    SaveSimilarityTableToCSV(distance_table, game_state.shot);
+    std::vector<std::set<int>> clusters;
+    int n_desired_clusters = 2;
+    if (game_state.shot == 14) {
+        clusters = hierarchicalClustering(distance_table, n_desired_clusters);
+        int i = 0;
+        for (auto const& cluster : clusters) {
+            if (cluster.size() > 0) {
+                std::cout << "Cluster[" << i << "]=(";
+                for (auto const label : cluster) {
+                    std::cout << label << ", ";
+                }
+                std::cout << ")\n";
+            }
+            i++;
+        }
+    }
+
 
     dc::moves::Shot shot;
     int row = game_state.shot / GridSize_M;
