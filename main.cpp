@@ -34,22 +34,22 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_N = 4; // columns
 const int GridSize_M = 4; // rows
+const int GridSize_N = 4; // columns
 
 std::vector<std::vector<Position>> grid(GridSize_M, std::vector<Position>(GridSize_N));
 std::vector<std::vector<ShotInfo>> shotData(GridSize_M, std::vector<ShotInfo>(GridSize_N));
 std::vector<dc::GameState> grid_states(GridSize_M * GridSize_N);
 
 std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
-    float x_grid = 2 * HouseRadius / m;
-    float y_grid = 2 * HouseRadius / n;
+    float x_grid = 2 * HouseRadius / 3 / (m - 1);
+    float y_grid = 2 * HouseRadius / 3 / (n - 1);
     Position pos;
     std::vector<std::vector<Position>> result(GridSize_M, std::vector<Position>(GridSize_N));
     for (int i = 0; i < m; i++) {
-        float y = AreaMaxY - i * y_grid;
+        float y = (HouseCenterY + HouseRadius / 3) - i * y_grid;
         for (int j = 0; j < n; j++) {
-            float x = -HouseRadius + j * x_grid;
+            float x = -(HouseRadius / 3) + j * x_grid;
             pos.x = x;
             pos.y = y;
             result[i][j] = pos;
@@ -59,13 +59,24 @@ std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
 }
 
 dc::GameState run(dc::GameState const& game_state, ShotInfo shotinfo) {
+    g_simulator->Load(*g_simulator_storage);
     dc::GameState state = game_state;
-    auto& current_player = *g_players[state.shot / 4];
+    auto& current_player = *g_players[game_state.shot / 4];
     dc::Vector2 shot_velocity(shotinfo.vx, shotinfo.vy);
     dc::moves::Shot::Rotation rotation = shotinfo.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     dc::moves::Shot shot{ shot_velocity, rotation };
     dc::Move move{ shot };
-    dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0)); 
+    int cur_shot = game_state.shot;
+    if(cur_shot % 2 == 1) 
+        std::cout << "Shot detail of " << cur_shot << ": vx=" << shot_velocity.x << ", vy=" << shot_velocity.y << "\n";
+    int before_shot = static_cast<int>(state.shot);
+    //std::cout << "Before ApplyMove Shot: " << before_shot << "\n";
+    dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0));
+    int after_shot = static_cast<int>(state.shot);
+    if (before_shot != after_shot) {
+        std::cout << "State Updated! Shot has been applied to the old state.\n";
+    }
+    //std::cout << "After ApplyMove Shot: " << after_shot << "\n";
     g_simulator->Save(*g_simulator_storage);
     return state;
 }
@@ -176,33 +187,39 @@ ShotInfo FindShot(Position const& pos) {
 float dist(dc::GameState const& a, dc::GameState const& b) {
     int v = 0;
     int p = 2;
-    for (int team = 0; team < 2; team++) {
+    for (size_t team = 0; team < 2; team++) {
         auto const stones_a = a.stones[team];
         auto const stones_b = b.stones[team];
-        for (int index = 0; index < 8; index++) {
+        for (size_t index = 0; index < 8; index++) {
             if (stones_a[index] && stones_b[index]) v++;
         }
     }
-    if (v == 0) return 100.0;
+    if (v == 0) return 100.0f;
+    //std::cout << "v: " << v << "\n";
 
-    float distance = 0.0;
-    for (int team = 0; team < 2; team++) {
+    float distance = 0.0f;
+    for (size_t team = 0; team < 2; team++) {
         auto const stones_a = a.stones[team];
         auto const stones_b = b.stones[team];
-        for (int index = 0; index < 8; index++) {
+        for (size_t index = 0; index < 8; index++) {
             if (stones_a[index] && stones_b[index]) {
                 float dist_x = stones_a[index]->position.x - stones_b[index]->position.x;
                 float dist_y = stones_a[index]->position.y - stones_b[index]->position.y;
+                distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
+            }
+            else if (stones_b[index]) { // ex: new shot
+                float dist_x = stones_b[index]->position.x;
+                float dist_y = stones_b[index]->position.y;
                 distance += std::sqrt((p / v) * (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
-            else if (!stones_a[index] && stones_b[index]) { // ex: new shot
-
-            }
-            else if (stones_a[index] && !stones_b[index]) { // stone has taken away
-
+            else if (stones_a[index]) { // stone has taken away
+                float dist_x = stones_a[index]->position.x;
+                float dist_y = stones_a[index]->position.y;
+                distance += std::sqrt((p / v) * (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
             else {
-                break;
+                distance += 10.0f;
+                //std::cout << "All Stones has taken away!\n";
             }
         }
     }
@@ -217,8 +234,12 @@ std::vector<std::vector<float>> CategorizeShots(std::vector<dc::GameState> const
         dc::GameState s_m = states[m];
         for (int n = 0; n < S; n++) {
             dc::GameState s_n = states[n];
-            if (m == n) continue;
-            category[n] = dist(s_m, s_n);
+            if (m == n) {
+                category[n] = -1.0f;
+            }
+            else {
+                category[n] = dist(s_m, s_n);
+            }
         }
         states_table.push_back(category);
     }
@@ -237,7 +258,7 @@ void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int 
     }
     for (const auto& row : table) {
         for (size_t i = 0; i < row.size(); ++i) {
-            file << std::fixed << std::setprecision(5) << row[i];
+            file << std::fixed << std::setprecision(10) << row[i];
             if (i != row.size() - 1) file << ",";
         }
         file << "\n";
@@ -246,6 +267,19 @@ void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int 
     std::cout << "Saved similarity table to: " << filename << "\n";
 }
 
+void printGameState(const dc::GameState& state) {
+    for (int team = 0; team < 2; ++team) {
+        std::cout << (team == static_cast<int>(g_team) ? "MyTeam\n" : "OppTeam\n");
+        for (int idx = 0; idx < 8; ++idx) {
+            if (state.stones[team][idx]) {
+                std::cout << "Team " << team << " Stone " << idx
+                    << ": (" << state.stones[team][idx]->position.x
+                    << ", " << state.stones[team][idx]->position.y << ")"
+                    << std::endl;
+            }
+        }
+    }
+}
 
 
 void OnInit(
@@ -304,91 +338,30 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
             grid_states[k++] = run(game_state, shotData[i][j]); // 類似度計算で使うサンプル生成
         }
     }
+    if (game_state.shot % 2 == 0) {
+        for (int i = 0; i < grid_states.size(); i++) {
+            std::cout << "State[" << i << "]------\n";
+            printGameState(grid_states[i]);
+        }
+
+    }
+
     auto similarity_table = CategorizeShots(grid_states);
+    //if (game_state.shot % 2 == 1) {
+    //    for (int i = 0; i < similarity_table.size(); i++) {
+    //        for (int j = 0; j < similarity_table[i].size(); j++) {
+    //            std::cout << "Similarity of State[" << i << "] and State[" << j << "]: " << similarity_table[i][j] << "\n";
+    //        }
+    //    }
+    //}
     SaveSimilarityTableToCSV(similarity_table, game_state.shot);
 
     dc::moves::Shot shot;
-    if (game_state.shot == 0) {
-        shot.velocity.x = shotData[0][0].vx;
-        shot.velocity.y = shotData[0][0].vy;
-        shot.rotation = shotData[0][0].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 1) {
-        shot.velocity.x = shotData[0][1].vx;
-        shot.velocity.y = shotData[0][1].vy;
-        shot.rotation = shotData[0][1].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 2) {
-        shot.velocity.x = shotData[0][2].vx;
-        shot.velocity.y = shotData[0][2].vy;
-        shot.rotation = shotData[0][2].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 3) {
-        shot.velocity.x = shotData[0][3].vx;
-        shot.velocity.y = shotData[0][3].vy;
-        shot.rotation = shotData[0][3].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 4) {
-        shot.velocity.x = shotData[1][0].vx;
-        shot.velocity.y = shotData[1][0].vy;
-        shot.rotation = shotData[1][0].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 5) {
-        shot.velocity.x = shotData[1][1].vx;
-        shot.velocity.y = shotData[1][1].vy;
-        shot.rotation = shotData[1][1].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 6) {
-        shot.velocity.x = shotData[1][2].vx;
-        shot.velocity.y = shotData[1][2].vy;
-        shot.rotation = shotData[1][2].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 7) {
-        shot.velocity.x = shotData[1][3].vx;
-        shot.velocity.y = shotData[1][3].vy;
-        shot.rotation = shotData[1][3].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 8) {
-        shot.velocity.x = shotData[2][0].vx;
-        shot.velocity.y = shotData[2][0].vy;
-        shot.rotation = shotData[2][0].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 9) {
-        shot.velocity.x = shotData[2][1].vx;
-        shot.velocity.y = shotData[2][1].vy;
-        shot.rotation = shotData[2][1].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 10) {
-        shot.velocity.x = shotData[2][2].vx;
-        shot.velocity.y = shotData[2][2].vy;
-        shot.rotation = shotData[2][2].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 11) {
-        shot.velocity.x = shotData[2][3].vx;
-        shot.velocity.y = shotData[2][3].vy;
-        shot.rotation = shotData[2][3].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 12) {
-        shot.velocity.x = shotData[3][0].vx;
-        shot.velocity.y = shotData[3][0].vy;
-        shot.rotation = shotData[3][0].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 13) {
-        shot.velocity.x = shotData[3][1].vx;
-        shot.velocity.y = shotData[3][1].vy;
-        shot.rotation = shotData[3][1].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 14) {
-        shot.velocity.x = shotData[3][2].vx;
-        shot.velocity.y = shotData[3][2].vy;
-        shot.rotation = shotData[3][2].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-    else if (game_state.shot == 15) {
-        shot.velocity.x = shotData[3][3].vx;
-        shot.velocity.y = shotData[3][3].vy;
-        shot.rotation = shotData[3][3].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    }
-
+    int row = game_state.shot / GridSize_M;
+    int col = game_state.shot % GridSize_N;
+    shot.velocity.x = shotData[row][col].vx;
+    shot.velocity.y = shotData[row][col].vy;
+    shot.rotation = shotData[row][col].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     std::cout << "Shot: " << shot.velocity.x << ", " << shot.velocity.y << "\n";
     return shot;
 }
