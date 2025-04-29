@@ -66,17 +66,7 @@ dc::GameState run(dc::GameState const& game_state, ShotInfo shotinfo) {
     dc::moves::Shot::Rotation rotation = shotinfo.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     dc::moves::Shot shot{ shot_velocity, rotation };
     dc::Move move{ shot };
-    int cur_shot = game_state.shot;
-    if(cur_shot % 2 == 1) 
-        std::cout << "Shot detail of " << cur_shot << ": vx=" << shot_velocity.x << ", vy=" << shot_velocity.y << "\n";
-    int before_shot = static_cast<int>(state.shot);
-    //std::cout << "Before ApplyMove Shot: " << before_shot << "\n";
     dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0));
-    int after_shot = static_cast<int>(state.shot);
-    if (before_shot != after_shot) {
-        std::cout << "State Updated! Shot has been applied to the old state.\n";
-    }
-    //std::cout << "After ApplyMove Shot: " << after_shot << "\n";
     g_simulator->Save(*g_simulator_storage);
     return state;
 }
@@ -210,15 +200,15 @@ float dist(dc::GameState const& a, dc::GameState const& b) {
             else if (stones_b[index]) { // ex: new shot
                 float dist_x = stones_b[index]->position.x;
                 float dist_y = stones_b[index]->position.y;
-                distance += std::sqrt((p / v) * (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
+                distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
             else if (stones_a[index]) { // stone has taken away
                 float dist_x = stones_a[index]->position.x;
                 float dist_y = stones_a[index]->position.y;
-                distance += std::sqrt((p / v) * (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
+                distance += std::sqrt( (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
             else {
-                distance += 10.0f;
+                break;
                 //std::cout << "All Stones has taken away!\n";
             }
         }
@@ -266,21 +256,6 @@ void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int 
     file.close();
     std::cout << "Saved similarity table to: " << filename << "\n";
 }
-
-void printGameState(const dc::GameState& state) {
-    for (int team = 0; team < 2; ++team) {
-        std::cout << (team == static_cast<int>(g_team) ? "MyTeam\n" : "OppTeam\n");
-        for (int idx = 0; idx < 8; ++idx) {
-            if (state.stones[team][idx]) {
-                std::cout << "Team " << team << " Stone " << idx
-                    << ": (" << state.stones[team][idx]->position.x
-                    << ", " << state.stones[team][idx]->position.y << ")"
-                    << std::endl;
-            }
-        }
-    }
-}
-
 
 void OnInit(
     dc::Team team,
@@ -338,22 +313,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
             grid_states[k++] = run(game_state, shotData[i][j]); // 類似度計算で使うサンプル生成
         }
     }
-    if (game_state.shot % 2 == 0) {
-        for (int i = 0; i < grid_states.size(); i++) {
-            std::cout << "State[" << i << "]------\n";
-            printGameState(grid_states[i]);
-        }
-
-    }
-
     auto similarity_table = CategorizeShots(grid_states);
-    //if (game_state.shot % 2 == 1) {
-    //    for (int i = 0; i < similarity_table.size(); i++) {
-    //        for (int j = 0; j < similarity_table[i].size(); j++) {
-    //            std::cout << "Similarity of State[" << i << "] and State[" << j << "]: " << similarity_table[i][j] << "\n";
-    //        }
-    //    }
-    //}
     SaveSimilarityTableToCSV(similarity_table, game_state.shot);
 
     dc::moves::Shot shot;
