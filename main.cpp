@@ -200,12 +200,12 @@ float dist(dc::GameState const& a, dc::GameState const& b) {
             }
             else if (stones_b[index]) { // ex: new shot
                 float dist_x = stones_b[index]->position.x;
-                float dist_y = stones_b[index]->position.y;
+                float dist_y = stones_b[index]->position.y - HouseCenterY;
                 distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
             else if (stones_a[index]) { // stone has taken away
                 float dist_x = stones_a[index]->position.x;
-                float dist_y = stones_a[index]->position.y;
+                float dist_y = stones_a[index]->position.y - HouseCenterY;
                 distance += std::sqrt( (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
             else {
@@ -277,14 +277,18 @@ std::tuple<int, int, float> findClosestClusters(const std::vector<std::vector<fl
     }
     return { cluster_a, cluster_b, min_dist };
 }
-
-std::vector<std::set<int>> hierarchicalClustering(const std::vector<std::vector<float>>& dist, int n_desired_clusters = 1) {
+using LinkageRow = std::tuple<int, int, float, int>;
+using LinkageMatrix = std::vector<LinkageRow>;
+LinkageMatrix hierarchicalClustering(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters, int n_desired_clusters = 1) {
     int n_samples = dist.size();
-    std::vector<std::set<int>> clusters(n_samples);
+    std::vector<int> cluster_ids(n_samples);
 
     for (int i = 0; i < n_samples; i++) {
         clusters[i].insert(i);
+        cluster_ids[i] = i;
     }
+    int next_cluster_id = n_samples;
+    LinkageMatrix linkage;
 
     while (clusters.size() > n_desired_clusters) {
         auto [i, j, d] = findClosestClusters(dist, clusters);
@@ -292,12 +296,29 @@ std::vector<std::set<int>> hierarchicalClustering(const std::vector<std::vector<
             std::cout << "Failed to find the minimum clusters\n";
             break;
         }
+        int id_i = cluster_ids[i];
+        int id_j = cluster_ids[j];
+        int new_size = clusters[i].size() + clusters[j].size();
+        linkage.emplace_back(id_i, id_j, d, new_size);
+
         clusters[i].insert(clusters[j].begin(), clusters[j].end());
         std::cout << "Merge cluster[" << j << "] into cluster[" << i << "]\n";
         clusters.erase(clusters.begin() + j);
+        cluster_ids[i] = next_cluster_id++;
+        cluster_ids.erase(cluster_ids.begin() + j);
     }
+    return linkage;
+}
 
-    return clusters;
+void printLinkage(LinkageMatrix linkage) {
+    std::cout << "Linkage Matrix:\n";
+    std::cout << "Cluster1 Cluster2 Distance Size\n";
+    for (auto const& [a, b, dist, size] : linkage) {
+        std::cout << std::setw(8) << a
+            << std::setw(9) << b
+            << std::setw(9) << std::fixed << std::setprecision(2) << dist
+            << std::setw(6) << size << "\n";
+    }
 }
 
 void OnInit(
@@ -358,12 +379,13 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     }
     auto distance_table = CategorizeShots(grid_states);
     SaveSimilarityTableToCSV(distance_table, game_state.shot);
-    std::vector<std::set<int>> clusters;
-    int n_desired_clusters = 2;
-    if (game_state.shot == 14) {
-        clusters = hierarchicalClustering(distance_table, n_desired_clusters);
-        int i = 0;
-        for (auto const& cluster : clusters) {
+    std::vector<std::set<int>> clusters(distance_table.size());
+    int n_desired_clusters = 6;
+    if (game_state.shot % 2 == 0) {
+        LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
+        printLinkage(linkage);
+        for (int i = 0; i < clusters.size(); i++) {
+            auto const& cluster = clusters[i];
             if (cluster.size() > 0) {
                 std::cout << "Cluster[" << i << "]=(";
                 for (auto const label : cluster) {
@@ -371,7 +393,6 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
                 }
                 std::cout << ")\n";
             }
-            i++;
         }
     }
 
