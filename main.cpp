@@ -35,22 +35,22 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 4; // rows
-const int GridSize_N = 4; // columns
+const int GridSize_M = 30; // rows
+const int GridSize_N = 30; // columns
 
 std::vector<std::vector<Position>> grid(GridSize_M, std::vector<Position>(GridSize_N));
 std::vector<std::vector<ShotInfo>> shotData(GridSize_M, std::vector<ShotInfo>(GridSize_N));
 std::vector<dc::GameState> grid_states(GridSize_M * GridSize_N);
 
 std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
-    float x_grid = 2 * HouseRadius / 3 / (m - 1);
-    float y_grid = 2 * HouseRadius / 3 / (n - 1);
+    float x_grid = 2 * AreaMaxX / (m - 1);
+    float y_grid = 2 * HouseRadius / (n - 1);
     Position pos;
     std::vector<std::vector<Position>> result(GridSize_M, std::vector<Position>(GridSize_N));
-    for (int i = 0; i < m; i++) {
-        float y = (HouseCenterY + HouseRadius / 3) - i * y_grid;
+    for (float i = 0; i < m; i++) {
+        float y = 40.f - i * y_grid;
         for (int j = 0; j < n; j++) {
-            float x = -(HouseRadius / 3) + j * x_grid;
+            float x = -AreaMaxX + j * x_grid;
             pos.x = x;
             pos.y = y;
             result[i][j] = pos;
