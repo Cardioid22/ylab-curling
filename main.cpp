@@ -38,8 +38,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 4; // rows
-const int GridSize_N = 4; // columns
+const int GridSize_M = 8; // rows
+const int GridSize_N = 8; // columns
 
 std::vector<std::vector<Position>> grid(GridSize_M, std::vector<Position>(GridSize_N));
 std::vector<std::vector<ShotInfo>> shotData(GridSize_M, std::vector<ShotInfo>(GridSize_N));
@@ -304,7 +304,7 @@ LinkageMatrix hierarchicalClustering(const std::vector<std::vector<float>>& dist
         linkage.emplace_back(id_i, id_j, d, new_size);
 
         clusters[i].insert(clusters[j].begin(), clusters[j].end());
-        std::cout << "Merge cluster[" << j << "] into cluster[" << i << "]\n";
+        //std::cout << "Merge cluster[" << j << "] into cluster[" << i << "]\n";
         clusters.erase(clusters.begin() + j);
         cluster_ids[i] = next_cluster_id++;
         cluster_ids.erase(cluster_ids.begin() + j);
@@ -326,7 +326,7 @@ void printLinkage(LinkageMatrix linkage) {
 void OutputClusterGridToCSV(const std::vector<int>& state_index_to_cluster,
     int rows, int cols,
     const std::string& filename, const int shot_num) {
-    std::string folder = "cluster_distribution_" + std::to_string(rows) + "_" + std::to_string(cols) + "/";
+    std::string folder = "hierarchical_clustering/cluster_distribution_" + std::to_string(rows) + "_" + std::to_string(cols) + "/";
     std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
     std::string new_filename = folder + filename + "_" + std::to_string(shot_num) + ".csv";
     std::ofstream file(new_filename);
@@ -349,7 +349,7 @@ void OutputClusterGridToCSV(const std::vector<int>& state_index_to_cluster,
     std::cout << "Cluster grid written to " << new_filename << "\n";
 }
 
-float compute_silhouette_score(
+float ComputeSilhouetteScore(
     const std::vector<std::vector<float>>& distance_matrix,
     const std::vector<int>& state_index_to_cluster
 ) {
@@ -399,11 +399,8 @@ float compute_silhouette_score(
     return total / N;
 }
 
-#include <fstream>
-#include <iomanip>  // for std::setprecision
-
 void ExportStoneCoordinatesToCSV(const dc::GameState& game_state, const std::string& filename, const int shot_num) {
-    std::string folder = "Stone_Coordinates_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
+    std::string folder = "hierarchical_clustering/Stone_Coordinates_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
     std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
     std::string new_filename = folder + filename + std::to_string(shot_num) + ".csv";
     std::ofstream file(new_filename);
@@ -439,6 +436,76 @@ void ExportStoneCoordinatesToCSV(const dc::GameState& game_state, const std::str
 
     file.close();
     std::cout << "Stone coordinates exported to " << new_filename << "\n";
+}
+
+float ComputeIntraClusterDistance(
+    const std::vector<std::vector<float>>& dist,
+    const std::vector<std::set<int>>& clsters) {
+
+    float total = 0.0f;
+    int count = 0;
+    for (const auto& cluster_set : clsters) {
+        std::vector<int> cluster(cluster_set.begin(), cluster_set.end());
+        float sum = 0.0f;
+        count = 0;
+        for (int i = 0; i < cluster.size(); ++i) {
+            for (int j = i + 1; j < cluster.size(); ++j) {
+                sum += dist[cluster[i]][cluster[j]];
+                count++;
+            }
+        }
+        total += sum;
+    }
+    if (count > 0) total /= count;
+    return total;
+}
+
+void IntraToCSV(const std::vector<float>& scores, const int shot_num) {
+    std::string folder = "hierarchical_clustering/Intra_Cluster_Scores_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
+    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
+    // Create filename with shot number
+    std::string filename = "intra_cluster_scores_shot_" + std::to_string(shot_num) + ".csv";
+    std::string new_filename = folder + filename;
+
+    std::ofstream file(new_filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << new_filename << "\n";
+        return;
+    }
+
+    file << "k,intra_score\n";
+    for (size_t k = 2; k < scores.size(); ++k) {
+        file << k << "," << std::fixed << std::setprecision(5) << scores[k] << "\n";
+    }
+
+    file.close();
+    std::cout << "Intra-cluster scores saved to: " << new_filename << "\n";
+}
+
+void SilhouetteToCSV(float score, int shot_num, int k_cluster) {
+    std::string folder = "hierarchical_clustering/SilhouetteScores_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
+    std::filesystem::create_directories(folder);
+    std::string filename = folder + "silhouette_scores_cluster_" + std::to_string(k_cluster) + ".csv";
+
+    // Check if file exists
+    bool file_exists = std::filesystem::exists(filename);
+
+    std::ofstream file(filename, std::ios::app); // Open in append mode
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filename << "\n";
+        return;
+    }
+
+    // Write header only if file didn't exist before
+    if (!file_exists) {
+        file << "shot,silhouette_score\n";
+    }
+
+    // Write current score
+    file << shot_num << "," << std::fixed << std::setprecision(5) << score << "\n";
+    file.close();
+
+    std::cout << "Silhouette score for shot " << shot_num << " saved to: " << filename << "\n";
 }
 
 
@@ -495,28 +562,41 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     SaveSimilarityTableToCSV(distance_table, game_state.shot);
 
     std::vector<std::set<int>> clusters(distance_table.size()); // 最初はすべて一つずつの集合として捉える
-    int n_desired_clusters = 4;
+    int n_desired_clusters = 8;
     std::vector<int> state_index_to_cluster(grid_states.size());
     ExportStoneCoordinatesToCSV(game_state, "shot_", game_state.shot);
-    LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
-    printLinkage(linkage);
-    for (int i = 0; i < clusters.size(); i++) {
-        auto const& cluster = clusters[i];
-        if (cluster.size() > 0) {
-            std::cout << "Cluster[" << i << "]=(";
-            for (auto const label : cluster) {
-                state_index_to_cluster[label] = i;
-                std::cout << label << ", ";
-            }
-            std::cout << ")\n";
+    if (game_state.shot % 2 == 0) { // 偶数投げのとき、elbowをチェック(クラスタ数が変動する)
+        std::vector<float> intra_score(17);
+        for (int k = 2; k <= 16; k++) {
+            std::vector<std::set<int>> clusters(distance_table.size());
+            std::cout << "k =" << k << "\n";
+            LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, k);
+            intra_score[k] = ComputeIntraClusterDistance(distance_table, clusters);
+            IntraToCSV(intra_score, game_state.shot);
+            std::cout << "k = " << k << "score: " << intra_score[k] << "\n";
         }
     }
-    OutputClusterGridToCSV(state_index_to_cluster, GridSize_M, GridSize_N, "cluster_distribution_test", game_state.shot);
-    float silhscore = compute_silhouette_score(distance_table, state_index_to_cluster);
-    std::cout << "Silhouette Score: " << silhscore << "\n";
-    if (game_state.shot == 8 || game_state.shot == 14) {
-
+    else { // 奇数投げのとき、シルエットと分布をチェック(クラスタ数不変)
+        float silh_score = 0.f;
+        LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
+        //printLinkage(linkage);
+        for (int i = 0; i < clusters.size(); i++) {
+            auto const& cluster = clusters[i];
+            if (cluster.size() > 0) {
+                std::cout << "Cluster[" << i << "]=(";
+                for (auto const label : cluster) {
+                    state_index_to_cluster[label] = i;
+                    std::cout << label << ", ";
+                }
+                std::cout << ")\n";
+            }
+        }
+        OutputClusterGridToCSV(state_index_to_cluster, GridSize_M, GridSize_N, "cluster_distribution_test", game_state.shot);
+        silh_score = ComputeSilhouetteScore(distance_table, state_index_to_cluster);
+        std::cout << "Silhouette Score: " << silh_score << "\n";
+        SilhouetteToCSV(silh_score, game_state.shot, n_desired_clusters);
     }
+
 
     dc::moves::Shot shot;
     int row = game_state.shot / GridSize_M;
