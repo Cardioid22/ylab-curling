@@ -38,8 +38,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 8; // rows
-const int GridSize_N = 8; // columns
+const int GridSize_M = 4; // rows
+const int GridSize_N = 4; // columns
 
 std::vector<std::vector<Position>> grid(GridSize_M, std::vector<Position>(GridSize_N));
 std::vector<std::vector<ShotInfo>> shotData(GridSize_M, std::vector<ShotInfo>(GridSize_N));
@@ -399,14 +399,11 @@ float ComputeSilhouetteScore(
     return total / N;
 }
 
-void ExportStoneCoordinatesToCSV(const dc::GameState& game_state, const std::string& filename, const int shot_num) {
-    std::string folder = "hierarchical_clustering/Stone_Coordinates_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
-    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
-    std::string new_filename = folder + filename + std::to_string(shot_num) + ".csv";
-    std::ofstream file(new_filename);
+void ExportStoneCoordinatesToCSV(const dc::GameState& game_state, const std::string& filename) {
+    std::ofstream file(filename);
 
     if (!file.is_open()) {
-        std::cerr << "Error: Could not open file: " << new_filename << "\n";
+        std::cerr << "Error: Could not open file: " << filename << "\n";
         return;
     }
 
@@ -435,7 +432,46 @@ void ExportStoneCoordinatesToCSV(const dc::GameState& game_state, const std::str
     file << "\n";
 
     file.close();
-    std::cout << "Stone coordinates exported to " << new_filename << "\n";
+    std::cout << "Stone coordinates exported to " << filename << "\n";
+}
+
+void ExportStonesByCluster(
+    const std::vector<int>& state_index_to_cluster,
+    const std::vector<dc::GameState>& all_game_states, const int shot_num)
+{
+    std::string base_folder = "hierarchical_clustering/Stone_Coordinates_" +
+        std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
+    std::string shot_folder = base_folder + "shot" + std::to_string(shot_num) + "/";
+    // Delete old shot folder if it exists
+    if (std::filesystem::exists(shot_folder)) {
+        std::filesystem::remove_all(shot_folder);
+        std::cout << "Old folder removed: " << shot_folder << "\n";
+    }
+    std::filesystem::create_directories(shot_folder);
+
+    for (int index = 0; index < state_index_to_cluster.size(); index++) {
+        int state_index = index;
+        int cluster_id = state_index_to_cluster[state_index];
+        if (state_index >= all_game_states.size()) {
+            std::cerr << "Invalid state index: " << state_index << "\n";
+            continue;
+        }
+
+        const auto& game_state = all_game_states[state_index];
+
+        // Construct folder: hierarchical_clustering/Stone_Coordinates_M_N/shotK/ClusterX/
+        std::stringstream cluster_folder_ss;
+        cluster_folder_ss << shot_folder << "Cluster" << cluster_id << "/";
+        std::string cluster_folder = cluster_folder_ss.str();
+        std::filesystem::create_directories(cluster_folder);
+
+        // File: ClusterX/stateY.csv
+        std::string state_filename = "state" + std::to_string(state_index);
+
+        ExportStoneCoordinatesToCSV(game_state, cluster_folder + state_filename + ".csv");
+    }
+
+    std::cout << "Export complete: Stones sorted into cluster folders.\n";
 }
 
 float ComputeIntraClusterDistance(
@@ -562,9 +598,9 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     SaveSimilarityTableToCSV(distance_table, game_state.shot);
 
     std::vector<std::set<int>> clusters(distance_table.size()); // 最初はすべて一つずつの集合として捉える
-    int n_desired_clusters = 8;
+    int n_desired_clusters = GridSize_M == 4 ? 4 : 8;
     std::vector<int> state_index_to_cluster(grid_states.size());
-    ExportStoneCoordinatesToCSV(game_state, "shot_", game_state.shot);
+    //ExportStoneCoordinatesToCSV(game_state, "shot_", game_state.shot);  
     if (game_state.shot % 2 == 0) { // 偶数投げのとき、elbowをチェック(クラスタ数が変動する)
         std::vector<float> intra_score(17);
         for (int k = 2; k <= 16; k++) {
@@ -576,7 +612,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
             std::cout << "k = " << k << "score: " << intra_score[k] << "\n";
         }
     }
-    else { // 奇数投げのとき、シルエットと分布をチェック(クラスタ数不変)
+    else { // 奇数投げのとき、シルエットをチェック(クラスタ数不変)
         float silh_score = 0.f;
         LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
         //printLinkage(linkage);
@@ -590,13 +626,13 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
                 }
                 std::cout << ")\n";
             }
+            ExportStonesByCluster(state_index_to_cluster, grid_states, game_state.shot);
         }
-        OutputClusterGridToCSV(state_index_to_cluster, GridSize_M, GridSize_N, "cluster_distribution_test", game_state.shot);
         silh_score = ComputeSilhouetteScore(distance_table, state_index_to_cluster);
         std::cout << "Silhouette Score: " << silh_score << "\n";
         SilhouetteToCSV(silh_score, game_state.shot, n_desired_clusters);
     }
-
+    OutputClusterGridToCSV(state_index_to_cluster, GridSize_M, GridSize_N, "cluster_distribution_test", game_state.shot);
 
     dc::moves::Shot shot;
     int row = game_state.shot / GridSize_M;
