@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import math
+import re
 
-grid = 8
+grid = 4
 input_folder = (
-    f"build/Release/hierarchical_clustering/cluster_distribution_{grid}_{grid}/"
+    f"../build/Release/hierarchical_clustering/cluster_distribution_{grid}_{grid}/"
 )
-output_folder = f"hierarchical_clustering/output_distribution_{grid}_{grid}"
+output_folder = f"../images/hierarchical_clustering/output_distribution_{grid}_{grid}/"
 os.makedirs(output_folder, exist_ok=True)
 
 cmap = plt.get_cmap("tab10")
@@ -50,6 +51,8 @@ def save_cluster_distribution_plot(filename):
     plt.tight_layout()
 
     output_path = os.path.join(output_folder, filename.replace(".csv", ".png"))
+    if os.path.exists(output_path):
+        os.remove(output_path)
     plt.savefig(output_path, dpi=300)
     plt.close()
     print(f"Saved: {output_path}")
@@ -98,13 +101,22 @@ def save_combined_image(
     plt.tight_layout()
 
     combined_path = os.path.join(output_folder, combined_filename)
+    if os.path.exists(combined_path):
+        os.remove(combined_path)
     plt.savefig(combined_path, dpi=300)
     plt.close()
     print(f"Combined image saved to: {combined_path}")
 
 
 # Process all CSV files
-files = sorted([f for f in os.listdir(input_folder) if f.endswith(".csv")])
+def extract_number(filename):
+    match = re.search(r"(\d+)", filename)
+    return int(match.group(1)) if match else -1
+
+
+files = sorted(
+    [f for f in os.listdir(input_folder) if f.endswith(".csv")], key=extract_number
+)
 for f in files:
     save_cluster_distribution_plot(f)
 

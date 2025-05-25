@@ -4,7 +4,7 @@ import os
 
 grid = 8
 cluster = 8
-folder = f"build/Release/hierarchical_clustering/SilhouetteScores_{grid}_{grid}/"
+folder = f"../build/Release/hierarchical_clustering/SilhouetteScores_{grid}_{grid}/"
 file_path = os.path.join(folder, f"silhouette_scores_cluster_{cluster}.csv")
 
 # Load the single CSV file

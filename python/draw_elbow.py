@@ -5,7 +5,7 @@ import os
 import re
 
 grid = 8
-folder = f"build/Release/hierarchical_clustering/Intra_Cluster_Scores_{grid}_{grid}/"
+folder = f"../build/Release/hierarchical_clustering/Intra_Cluster_Scores_{grid}_{grid}/"
 pattern = os.path.join(folder, "intra_cluster_scores_shot_*.csv")
 
 
