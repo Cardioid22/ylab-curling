@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include <set>
+#include "src/mcts.h"
 
 namespace dc = digitalcurling3;
 
@@ -584,6 +585,10 @@ void OnInit(
             shotData[i][j] = FindShot(grid[i][j]); // 初回参考速度生成
         }
     }
+    //MCTS obj;
+    //obj.a = 1;
+    //obj.b = 2;
+    //obj.print_msg();
     std::cout << "This is the end of the OnInit\n";
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
@@ -600,39 +605,21 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     std::vector<std::set<int>> clusters(distance_table.size()); // 最初はすべて一つずつの集合として捉える
     int n_desired_clusters = GridSize_M == 4 ? 4 : 8;
     std::vector<int> state_index_to_cluster(grid_states.size());
-    //ExportStoneCoordinatesToCSV(game_state, "shot_", game_state.shot);  
-    if (game_state.shot % 2 == 0) { // 偶数投げのとき、elbowをチェック(クラスタ数が変動する)
-        std::vector<float> intra_score(17);
-        for (int k = 2; k <= 16; k++) {
-            std::vector<std::set<int>> clusters(distance_table.size());
-            std::cout << "k =" << k << "\n";
-            LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, k);
-            intra_score[k] = ComputeIntraClusterDistance(distance_table, clusters);
-            IntraToCSV(intra_score, game_state.shot);
-            std::cout << "k = " << k << "score: " << intra_score[k] << "\n";
-        }
-    }
-    else { // 奇数投げのとき、シルエットをチェック(クラスタ数不変)
-        float silh_score = 0.f;
-        LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
-        //printLinkage(linkage);
-        for (int i = 0; i < clusters.size(); i++) {
-            auto const& cluster = clusters[i];
-            if (cluster.size() > 0) {
-                std::cout << "Cluster[" << i << "]=(";
-                for (auto const label : cluster) {
-                    state_index_to_cluster[label] = i;
-                    std::cout << label << ", ";
-                }
-                std::cout << ")\n";
+    LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
+    //printLinkage(linkage);
+    for (int i = 0; i < clusters.size(); i++) {
+        auto const& cluster = clusters[i];
+        if (cluster.size() > 0) {
+            std::cout << "Cluster[" << i << "]=(";
+            for (auto const label : cluster) {
+                state_index_to_cluster[label] = i;
+                std::cout << label << ", ";
             }
-            ExportStonesByCluster(state_index_to_cluster, grid_states, game_state.shot);
+            std::cout << ")\n";
         }
-        silh_score = ComputeSilhouetteScore(distance_table, state_index_to_cluster);
-        std::cout << "Silhouette Score: " << silh_score << "\n";
-        SilhouetteToCSV(silh_score, game_state.shot, n_desired_clusters);
     }
-    OutputClusterGridToCSV(state_index_to_cluster, GridSize_M, GridSize_N, "cluster_distribution_test", game_state.shot);
+    ExportStonesByCluster(state_index_to_cluster, grid_states, game_state.shot); // stone coordinate to csv
+    OutputClusterGridToCSV(state_index_to_cluster, GridSize_M, GridSize_N, "cluster_distribution_test", game_state.shot); // cluster distribution
 
     dc::moves::Shot shot;
     int row = game_state.shot / GridSize_M;
