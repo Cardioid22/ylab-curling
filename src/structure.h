@@ -11,5 +11,7 @@ struct ShotInfo {
     float vy;
     int rot;
 };
+using LinkageRow = std::tuple<int, int, float, int>;
+using LinkageMatrix = std::vector<LinkageRow>;
 
 #endif
