@@ -5,6 +5,7 @@
 #include "digitalcurling3/digitalcurling3.hpp"
 #include "structure.h"
 #include "simulator.h"
+#include "clustering.h"
 #include <vector>
 namespace dc = digitalcurling3;
 
@@ -19,27 +20,33 @@ public:
 	dc::GameState state;
 	ShotInfo selected_shot;
 	std::vector<ShotInfo> untried_shots;
+	std::unordered_map<int, ShotInfo> state_to_shot_table;
 	bool terminal;
 	SimulatorWrapper simulator_wrapper;
+	Clustering algo;
 	MCTS_Node(MCTS_Node* parent, std::vector<ShotInfo> shot_candidates, dc::GameState& const game_state);
 	bool is_fully_expanded() const;
 	MCTS_Node* select_best_child(double c = 1.41);
 	void expand();
 	void rollout();
-	double calculate_winrate() const ;
+	double calculate_winrate() const;
 	void backpropagate(double w, int n);
 private:
-	std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(const ShotInfo& shotinfo, dc::GameState& const game_state);
-	dc::GameState MCTS_Node::getNextState(ShotInfo shotinfo);
+	std::vector<ShotInfo> generate_possible_shots_after(const ShotInfo& shotinfo, dc::GameState& const game_state);
+	dc::GameState getNextState(ShotInfo shotinfo);
 };
 
 class MCTS {
 public:
-	MCTS(MCTS_Node* root);
+	MCTS(dc::GameState root_state, std::vector<ShotInfo> root_shots);
+
+	void grow_tree(int max_iter, double max_limited_time);  // main loop
 	MCTS_Node* select_best_child();
-	void grow_tree(int max_iter, double max_limited_time);
+	ShotInfo get_best_shot();
 
-
+private:
+	std::unique_ptr<MCTS_Node> root;
+	Clustering algo;
 };
 
 #endif // _MCTS_H_
