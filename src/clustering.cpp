@@ -1,18 +1,21 @@
 ﻿#include <iostream>
+#include <set>
 #include "clustering.h"
 #include "structure.h"
 #include "digitalcurling3/digitalcurling3.hpp"
 
 namespace dc = digitalcurling3;
-
-Clustering::Clustering() : n_desired_clusters(4), states(states){}
+Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states) 
+: n_desired_clusters(k_clusters), states(all_states)
+{
+}
 
 float Clustering::dist(dc::GameState const& a, dc::GameState const& b) {
     int v = 0;
     int p = 2;
     for (size_t team = 0; team < 2; team++) {
-        auto const stones_a = a.stones[team];
-        auto const stones_b = b.stones[team];
+        auto const& stones_a = a.stones[team];
+        auto const& stones_b = b.stones[team];
         for (size_t index = 0; index < 8; index++) {
             if (stones_a[index] && stones_b[index]) v++;
         }
@@ -22,8 +25,8 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) {
 
     float distance = 0.0f;
     for (size_t team = 0; team < 2; team++) {
-        auto const stones_a = a.stones[team];
-        auto const stones_b = b.stones[team];
+        auto const& stones_a = a.stones[team];
+        auto const& stones_b = b.stones[team];
         for (size_t index = 0; index < 8; index++) {
             if (stones_a[index] && stones_b[index]) {
                 float dist_x = stones_a[index]->position.x - stones_b[index]->position.x;
@@ -32,12 +35,12 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) {
             }
             else if (stones_b[index]) { // ex: new shot
                 float dist_x = stones_b[index]->position.x;
-                float dist_y = stones_b[index]->position.y - HouseCenterY;
+                float dist_y = stones_b[index]->position.y - HouseCenterY_;
                 distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
             else if (stones_a[index]) { // stone has taken away
                 float dist_x = stones_a[index]->position.x;
-                float dist_y = stones_a[index]->position.y - HouseCenterY;
+                float dist_y = stones_a[index]->position.y - HouseCenterY_;
                 distance += std::sqrt( (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
             }
             else {
@@ -51,7 +54,7 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) {
 
 std::vector<std::vector<float>> Clustering::MakeDistanceTable(std::vector<dc::GameState> const& states) {
     std::vector<std::vector<float>> states_table;
-    int S = GridSize_M * GridSize_N;
+    int S = GridSize_M_ * GridSize_N_;
     for (int m = 0; m < S; m++) {
         std::vector<float> category(S);
         dc::GameState s_m = states[m];
@@ -126,7 +129,7 @@ std::vector<std::set<int>> Clustering::getClusters() {
     return clusters;
 }
 
-std::vector<int> Clustering::getRecommndedStates(std::vector<std::set<int>> clusters) {
+std::vector<int> Clustering::getRecommendedStates(std::vector<std::set<int>> clusters) {
     std::vector<int> recommend;
     for (const auto& cluster : clusters) {
         if (!cluster.empty()) {
