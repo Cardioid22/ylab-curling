@@ -10,23 +10,14 @@
 #include <iomanip>
 #include <set>
 #include "src/mcts.h"
+#include "src/structure.h"
+#include "src/clustering.h"
+//#include "src/drawer.h"
 
 namespace dc = digitalcurling3;
 
 namespace {
 
-    struct Position {
-        float x;
-        float y;
-    };
-    struct ShotInfo {
-        float vx;
-        float vy;
-        int rot;
-    };
-
-    using LinkageRow = std::tuple<int, int, float, int>;
-    using LinkageMatrix = std::vector<LinkageRow>;
 
 dc::Team g_team;  // 自身のチームID
 dc::GameSetting g_game_setting; // ゲーム設定
@@ -42,38 +33,26 @@ const auto HouseCenterY = 38.405;
 const int GridSize_M = 4; // rows
 const int GridSize_N = 4; // columns
 
-std::vector<std::vector<Position>> grid(GridSize_M, std::vector<Position>(GridSize_N));
-std::vector<std::vector<ShotInfo>> shotData(GridSize_M, std::vector<ShotInfo>(GridSize_N));
-std::vector<dc::GameState> grid_states(GridSize_M * GridSize_N);
+std::vector<Position> grid;
+std::vector<ShotInfo> shotData;
+std::unordered_map<int, ShotInfo> state_to_shot_table;
+std::vector<dc::GameState> grid_states;
 
-std::vector<std::vector<Position>> MakeGrid(const int m, const int n) {
+std::vector<Position> MakeGrid(const int m, const int n) {
     float x_grid = 2 * (2 * HouseRadius / 3) / (m - 1);
     float y_grid = 2 * (2 * HouseRadius / 3) / (n - 1);
     Position pos;
-    std::vector<std::vector<Position>> result(GridSize_M, std::vector<Position>(GridSize_N));
+    std::vector<Position> result(GridSize_M * GridSize_N);
     for (float i = 0; i < m; i++) {
         float y = HouseCenterY + (2 * HouseRadius / 3) - i * y_grid;
         for (int j = 0; j < n; j++) {
             float x = -(2 * HouseRadius / 3) + j * x_grid;
             pos.x = x;
             pos.y = y;
-            result[i][j] = pos;
+            result.push_back(pos);
         }
     }
     return result;
-}
-
-dc::GameState run(dc::GameState const& game_state, ShotInfo shotinfo) {
-    g_simulator->Load(*g_simulator_storage);
-    dc::GameState state = game_state;
-    auto& current_player = *g_players[game_state.shot / 4];
-    dc::Vector2 shot_velocity(shotinfo.vx, shotinfo.vy);
-    dc::moves::Shot::Rotation rotation = shotinfo.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    dc::moves::Shot shot{ shot_velocity, rotation };
-    dc::Move move{ shot };
-    dc::ApplyMove(g_game_setting, *g_simulator, current_player, state, move, std::chrono::milliseconds(0));
-    g_simulator->Save(*g_simulator_storage);
-    return state;
 }
 
 dc::Vector2 EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation)
@@ -168,6 +147,7 @@ dc::Vector2 EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float t
 }
 
 ShotInfo FindShot(Position const& pos) {
+    std::cout << "Finding Shot...\n";
     dc::Vector2 target_position = { pos.x, pos.y };
     dc::Vector2 final_speed(0, 0);
     dc::moves::Shot::Rotation rotation = (pos.x > 0 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW);
@@ -179,372 +159,56 @@ ShotInfo FindShot(Position const& pos) {
     return shot;
 }
 
-float dist(dc::GameState const& a, dc::GameState const& b) {
-    int v = 0;
-    int p = 2;
-    for (size_t team = 0; team < 2; team++) {
-        auto const stones_a = a.stones[team];
-        auto const stones_b = b.stones[team];
-        for (size_t index = 0; index < 8; index++) {
-            if (stones_a[index] && stones_b[index]) v++;
-        }
+void run_single_simulation(dc::GameState const& state, const ShotInfo& shot) {
+    std::cout << "Single Run Simulation Begin.\n";
+    g_simulator->Load(*g_simulator_storage);
+    dc::GameState sim_state = state;
+    auto& current_player = *g_players[sim_state.shot / 4];
+    if (!&current_player) {
+        std::cout << "Player is null.\n";
     }
-    if (v == 0) return 100.0f;
-    //std::cout << "v: " << v << "\n";
-
-    float distance = 0.0f;
-    for (size_t team = 0; team < 2; team++) {
-        auto const stones_a = a.stones[team];
-        auto const stones_b = b.stones[team];
-        for (size_t index = 0; index < 8; index++) {
-            if (stones_a[index] && stones_b[index]) {
-                float dist_x = stones_a[index]->position.x - stones_b[index]->position.x;
-                float dist_y = stones_a[index]->position.y - stones_b[index]->position.y;
-                distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
-            }
-            else if (stones_b[index]) { // ex: new shot
-                float dist_x = stones_b[index]->position.x;
-                float dist_y = stones_b[index]->position.y - HouseCenterY;
-                distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
-            }
-            else if (stones_a[index]) { // stone has taken away
-                float dist_x = stones_a[index]->position.x;
-                float dist_y = stones_a[index]->position.y - HouseCenterY;
-                distance += std::sqrt( (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
-            }
-            else {
-                break;
-                //std::cout << "All Stones has taken away!\n";
-            }
-        }
-    }
-    return distance;
+    dc::Vector2 velocity(shot.vx, shot.vy);
+    auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    dc::moves::Shot shot_move{ velocity, rot };
+    dc::Move move{ shot_move };
+    std::cout << "debug check1\n";
+    dc::ApplyMove(g_game_setting, *g_simulator, current_player, sim_state, move, std::chrono::milliseconds(0)); // forward one state
+    std::cout << "debug check2\n";
+    g_simulator->Save(*g_simulator_storage);
+    std::cout << "Single Run Simulation Done.\n";
 }
 
-std::vector<std::vector<float>> MakeDistanceTable(std::vector<dc::GameState> const& states) {
-    std::vector<std::vector<float>> states_table;
-    int S = GridSize_M * GridSize_N;
-    for (int m = 0; m < S; m++) {
-        std::vector<float> category(S);
-        dc::GameState s_m = states[m];
-        for (int n = 0; n < S; n++) {
-            dc::GameState s_n = states[n];
-            if (m == n) {
-                category[n] = -1.0f;
-            }
-            else {
-                category[n] = dist(s_m, s_n);
-            }
-        }
-        states_table.push_back(category);
+float evaluate(dc::GameState& state) {
+    dc::Team o_team = dc::GetOpponentTeam(g_team);
+    if (state.IsGameOver()) {
+        int my_team_score = state.GetTotalScore(g_team);
+        int op_team_score = state.GameState::GetTotalScore(o_team);
+        return my_team_score - op_team_score;
     }
-    return states_table;
+    else return 0;
 }
 
-void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int shot_number) {
-    std::string folder = "table_outputs_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
-    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
-    std::string filename = folder + "state_similarity_shot_" + std::to_string(shot_number) + ".csv";
-    std::ofstream file(filename);
-
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << filename << "\n";
-        return;
-    }
-    for (const auto& row : table) {
-        for (size_t i = 0; i < row.size(); ++i) {
-            file << std::fixed << std::setprecision(10) << row[i];
-            if (i != row.size() - 1) file << ",";
+double run_simulations(dc::GameState const& state, const ShotInfo& shot) {
+    std::cout << "Multi Run Simulation Begin.\n";
+    dc::GameState sim_state = state;  // Copy state
+    for (int i = sim_state.shot; i < 15; ++i) {
+        g_simulator->Load(*g_simulator_storage);
+        auto& current_player = *g_players[sim_state.shot / 4];
+        if (!&current_player) {
+            std::cout << "Player is null.\n";
         }
-        file << "\n";
+        dc::Vector2 velocity(shot.vx, shot.vy);
+        auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+        dc::moves::Shot shot_move{ velocity, rot };
+        dc::Move move{ shot_move };
+        dc::ApplyMove(g_game_setting, *g_simulator, current_player, sim_state, move, std::chrono::milliseconds(0));
+        g_simulator->Save(*g_simulator_storage);
+
+        if (sim_state.IsGameOver()) break;
     }
-    file.close();
-    std::cout << "Saved similarity table to: " << filename << "\n";
+    std::cout << "Multi Run Simulation Done.\n";
+    return evaluate(sim_state);  // You define this: e.g., 1.0 for win, 0.0 for loss
 }
-
-std::tuple<int, int, float> findClosestClusters(const std::vector<std::vector<float>>& dist, const std::vector<std::set<int>>& clusters) {
-    float min_dist = std::numeric_limits<float>::max();
-    int cluster_a = -1, cluster_b = -1;
-
-    for (int i = 0; i < clusters.size(); i++) {
-        for (int j = i + 1; j < clusters.size(); j++) {
-            for (int a : clusters[i]) {
-                for (int b : clusters[j]) {
-                    if (dist[a][b] < min_dist) {
-                        min_dist = dist[a][b];
-                        cluster_a = i;
-                        cluster_b = j;
-                    }
-                }
-            }
-        }
-    }
-    return { cluster_a, cluster_b, min_dist };
-}
-
-LinkageMatrix hierarchicalClustering(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters, int n_desired_clusters = 1) {
-    int n_samples = dist.size();
-    std::vector<int> cluster_ids(n_samples);
-
-    for (int i = 0; i < n_samples; i++) {
-        clusters[i].insert(i);
-        cluster_ids[i] = i;
-    }
-    int next_cluster_id = n_samples;
-    LinkageMatrix linkage;
-
-    while (clusters.size() > n_desired_clusters) {
-        auto [i, j, d] = findClosestClusters(dist, clusters);
-        if (i == -1 || j == -1) {
-            std::cout << "Failed to find the minimum clusters\n";
-            break;
-        }
-        int id_i = cluster_ids[i];
-        int id_j = cluster_ids[j];
-        int new_size = clusters[i].size() + clusters[j].size();
-        linkage.emplace_back(id_i, id_j, d, new_size);
-
-        clusters[i].insert(clusters[j].begin(), clusters[j].end());
-        //std::cout << "Merge cluster[" << j << "] into cluster[" << i << "]\n";
-        clusters.erase(clusters.begin() + j);
-        cluster_ids[i] = next_cluster_id++;
-        cluster_ids.erase(cluster_ids.begin() + j);
-    }
-    return linkage;
-}
-
-void printLinkage(LinkageMatrix linkage) {
-    std::cout << "Linkage Matrix:\n";
-    std::cout << "Cluster1 Cluster2 Distance Size\n";
-    for (auto const& [a, b, dist, size] : linkage) {
-        std::cout << std::setw(8) << a
-            << std::setw(9) << b
-            << std::setw(9) << std::fixed << std::setprecision(2) << dist
-            << std::setw(6) << size << "\n";
-    }
-}
-
-void OutputClusterGridToCSV(const std::vector<int>& state_index_to_cluster,
-    int rows, int cols,
-    const std::string& filename, const int shot_num) {
-    std::string folder = "hierarchical_clustering/cluster_distribution_" + std::to_string(rows) + "_" + std::to_string(cols) + "/";
-    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
-    std::string new_filename = folder + filename + "_" + std::to_string(shot_num) + ".csv";
-    std::ofstream file(new_filename);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open " << new_filename << "\n";
-        return;
-    }
-
-    for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
-            int index = r * cols + c;
-            int cluster = state_index_to_cluster.at(index);  // Assumes all indices exist
-            file << cluster;
-            if (c < cols - 1) file << ",";
-        }
-        file << "\n";
-    }
-
-    file.close();
-    std::cout << "Cluster grid written to " << new_filename << "\n";
-}
-
-float ComputeSilhouetteScore(
-    const std::vector<std::vector<float>>& distance_matrix,
-    const std::vector<int>& state_index_to_cluster
-) {
-    int N = distance_matrix.size();
-    std::vector<float> silhouette_values(N, 0.0f);
-
-    for (int i = 0; i < N; ++i) {
-        int cluster_i = state_index_to_cluster[i];
-        std::vector<float> a_dists, b_dists;
-
-        float a = 0.0f, b = std::numeric_limits<float>::max();
-
-        // Distances to same-cluster members (a)
-        int a_count = 0;
-        for (int j = 0; j < N; ++j) {
-            if (i != j && state_index_to_cluster[j] == cluster_i) {
-                a += distance_matrix[i][j];
-                ++a_count;
-            }
-        }
-        if (a_count > 0) a /= a_count;
-
-        // Distances to other clusters (b)
-        std::map<int, std::pair<float, int>> cluster_sums;
-        for (int j = 0; j < N; ++j) {
-            int cluster_j = state_index_to_cluster[j];
-            if (cluster_j != cluster_i) {
-                cluster_sums[cluster_j].first += distance_matrix[i][j];
-                cluster_sums[cluster_j].second++;
-            }
-        }
-
-        for (const auto& [cluster, sum_pair] : cluster_sums) {
-            float avg = sum_pair.first / sum_pair.second;
-            if (avg < b) b = avg;
-        }
-
-        float s = 0.0f;
-        if (a_count > 0 && std::max(a, b) > 0.0f) {
-            s = (b - a) / std::max(a, b);
-        }
-        silhouette_values[i] = s;
-    }
-
-    // Average silhouette score
-    float total = std::accumulate(silhouette_values.begin(), silhouette_values.end(), 0.0f);
-    return total / N;
-}
-
-void ExportStoneCoordinatesToCSV(const dc::GameState& game_state, const std::string& filename) {
-    std::ofstream file(filename);
-
-    if (!file.is_open()) {
-        std::cerr << "Error: Could not open file: " << filename << "\n";
-        return;
-    }
-
-    // Write header
-    for (int team = 0; team < 2; ++team) {
-        for (int i = 0; i < 8; ++i) {
-            file << "team" << team << "_stone" << i << "_x,";
-            file << "team" << team << "_stone" << i << "_y,";
-        }
-    }
-    file << "\n";
-
-    // Write data rows
-    const auto& state = game_state;
-    for (int team = 0; team < 2; ++team) {
-        for (int i = 0; i < 8; ++i) {
-            if (state.stones[team][i]) {
-                file << std::fixed << std::setprecision(3) << state.stones[team][i]->position.x << ",";
-                file << std::fixed << std::setprecision(3) << state.stones[team][i]->position.y << ",";
-            }
-            else {
-                file << "NaN,NaN,";
-            }
-        }
-    }
-    file << "\n";
-
-    file.close();
-    std::cout << "Stone coordinates exported to " << filename << "\n";
-}
-
-void ExportStonesByCluster(
-    const std::vector<int>& state_index_to_cluster,
-    const std::vector<dc::GameState>& all_game_states, const int shot_num)
-{
-    std::string base_folder = "hierarchical_clustering/Stone_Coordinates_" +
-        std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
-    std::string shot_folder = base_folder + "shot" + std::to_string(shot_num) + "/";
-    // Delete old shot folder if it exists
-    if (std::filesystem::exists(shot_folder)) {
-        std::filesystem::remove_all(shot_folder);
-        std::cout << "Old folder removed: " << shot_folder << "\n";
-    }
-    std::filesystem::create_directories(shot_folder);
-
-    for (int index = 0; index < state_index_to_cluster.size(); index++) {
-        int state_index = index;
-        int cluster_id = state_index_to_cluster[state_index];
-        if (state_index >= all_game_states.size()) {
-            std::cerr << "Invalid state index: " << state_index << "\n";
-            continue;
-        }
-
-        const auto& game_state = all_game_states[state_index];
-
-        // Construct folder: hierarchical_clustering/Stone_Coordinates_M_N/shotK/ClusterX/
-        std::stringstream cluster_folder_ss;
-        cluster_folder_ss << shot_folder << "Cluster" << cluster_id << "/";
-        std::string cluster_folder = cluster_folder_ss.str();
-        std::filesystem::create_directories(cluster_folder);
-
-        // File: ClusterX/stateY.csv
-        std::string state_filename = "state" + std::to_string(state_index);
-
-        ExportStoneCoordinatesToCSV(game_state, cluster_folder + state_filename + ".csv");
-    }
-
-    std::cout << "Export complete: Stones sorted into cluster folders.\n";
-}
-
-float ComputeIntraClusterDistance(
-    const std::vector<std::vector<float>>& dist,
-    const std::vector<std::set<int>>& clsters) {
-
-    float total = 0.0f;
-    int count = 0;
-    for (const auto& cluster_set : clsters) {
-        std::vector<int> cluster(cluster_set.begin(), cluster_set.end());
-        float sum = 0.0f;
-        count = 0;
-        for (int i = 0; i < cluster.size(); ++i) {
-            for (int j = i + 1; j < cluster.size(); ++j) {
-                sum += dist[cluster[i]][cluster[j]];
-                count++;
-            }
-        }
-        total += sum;
-    }
-    if (count > 0) total /= count;
-    return total;
-}
-
-void IntraToCSV(const std::vector<float>& scores, const int shot_num) {
-    std::string folder = "hierarchical_clustering/Intra_Cluster_Scores_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
-    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
-    // Create filename with shot number
-    std::string filename = "intra_cluster_scores_shot_" + std::to_string(shot_num) + ".csv";
-    std::string new_filename = folder + filename;
-
-    std::ofstream file(new_filename);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file for writing: " << new_filename << "\n";
-        return;
-    }
-
-    file << "k,intra_score\n";
-    for (size_t k = 2; k < scores.size(); ++k) {
-        file << k << "," << std::fixed << std::setprecision(5) << scores[k] << "\n";
-    }
-
-    file.close();
-    std::cout << "Intra-cluster scores saved to: " << new_filename << "\n";
-}
-
-void SilhouetteToCSV(float score, int shot_num, int k_cluster) {
-    std::string folder = "hierarchical_clustering/SilhouetteScores_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
-    std::filesystem::create_directories(folder);
-    std::string filename = folder + "silhouette_scores_cluster_" + std::to_string(k_cluster) + ".csv";
-
-    // Check if file exists
-    bool file_exists = std::filesystem::exists(filename);
-
-    std::ofstream file(filename, std::ios::app); // Open in append mode
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file for writing: " << filename << "\n";
-        return;
-    }
-
-    // Write header only if file didn't exist before
-    if (!file_exists) {
-        file << "shot,silhouette_score\n";
-    }
-
-    // Write current score
-    file << shot_num << "," << std::fixed << std::setprecision(5) << score << "\n";
-    file.close();
-
-    std::cout << "Silhouette score for shot " << shot_num << " saved to: " << filename << "\n";
-}
-
 
 void OnInit(
     dc::Team team,
@@ -564,7 +228,7 @@ void OnInit(
         g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
     }
     g_simulator_storage = g_simulator->CreateStorage();
-    
+
     // プレイヤーを生成する
     // 非対応の場合は NormalDistプレイヤーを使用する．csv
     assert(g_players.size() == player_factories.size());
@@ -579,55 +243,56 @@ void OnInit(
 
     }
     
+    std::cout << "CurlingAI Initialize Begin.\n";
     grid = MakeGrid(GridSize_M, GridSize_N);
-    for (int i = 0; i < grid.size(); i++) {
-        for (int j = 0; j < grid[i].size(); j++) {
-            shotData[i][j] = FindShot(grid[i][j]); // 初回参考速度生成
-        }
+    for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
+        auto shotinfo = FindShot(grid[i]);
+        shotData.push_back(shotinfo);
+        state_to_shot_table[i] = shotinfo;
     }
-    //MCTS obj;
-    //obj.a = 1;
-    //obj.b = 2;
-    //obj.print_msg();
-    std::cout << "This is the end of the OnInit\n";
+   
+    std::cout << "CurlingAI Initialize Done.\n";
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
 {
-    int k = 0;
-    for (int i = 0; i < grid.size(); i++) {
-        for (int j = 0; j < grid[i].size(); j++) {
-            grid_states[k++] = run(game_state, shotData[i][j]); // 類似度計算で使うサンプル生成
-        }
+    std::cout << "CurlingAI DecideMove Begin.\n";
+    for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
+        ShotInfo shot = shotData[i];
+        dc::GameState result_state = game_state;
+        run_single_simulation(result_state, shot); // simulate one outcome
+        grid_states.push_back(result_state);
     }
-    auto distance_table = MakeDistanceTable(grid_states);
-    SaveSimilarityTableToCSV(distance_table, game_state.shot);
+    std::cout << "CurlingAI grid_states Calculation Done.\n";
 
-    std::vector<std::set<int>> clusters(distance_table.size()); // 最初はすべて一つずつの集合として捉える
-    int n_desired_clusters = GridSize_M == 4 ? 4 : 8;
-    std::vector<int> state_index_to_cluster(grid_states.size());
-    LinkageMatrix linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
-    //printLinkage(linkage);
-    for (int i = 0; i < clusters.size(); i++) {
-        auto const& cluster = clusters[i];
-        if (cluster.size() > 0) {
-            std::cout << "Cluster[" << i << "]=(";
-            for (auto const label : cluster) {
-                state_index_to_cluster[label] = i;
-                std::cout << label << ", ";
-            }
-            std::cout << ")\n";
-        }
-    }
-    ExportStonesByCluster(state_index_to_cluster, grid_states, game_state.shot); // stone coordinate to csv
-    OutputClusterGridToCSV(state_index_to_cluster, GridSize_M, GridSize_N, "cluster_distribution_test", game_state.shot); // cluster distribution
+    Clustering algo(4, grid_states);
+    //auto clusters = algo.getClusters(); // Segmentation fault here!
+    //auto recommended_states = algo.getRecommendedStates(clusters);
+    std::cout << "CurlingAI recommended_states Calculation Done.\n";
+    //std::vector<ShotInfo> candidate_shots{ {0.0, 0.0, 0} };
+    //for (auto const& rs: recommended_states) {
+    //    ShotInfo s = state_to_shot_table[rs];
+    //    candidate_shots.push_back(s);
+    //}
+    //std::cout << "CurlingAI candidates_shots Calculation Done.\n";
 
+    //// --- MCTS Search ---
+    //dc::GameState const& current_state = game_state;
+    //MCTS mcts(current_state, candidate_shots, grid_states, state_to_shot_table);
+    //mcts.grow_tree(500, 3.0);
+    //std::cout << "MCTS Iteration Done.\n";
+    //ShotInfo best = mcts.get_best_shot();
+    //std::cout << "CuringAI Recieve Best Shot Done.\n";
+    //dc::moves::Shot final_shot;
+    //final_shot.velocity.x = best.vx;
+    //final_shot.velocity.y = best.vy;
+    //final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    //
+    //std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "\n";
+    //return final_shot;
     dc::moves::Shot shot;
-    int row = game_state.shot / GridSize_M;
-    int col = game_state.shot % GridSize_N;
-    shot.velocity.x = shotData[row][col].vx;
-    shot.velocity.y = shotData[row][col].vy;
-    shot.rotation = shotData[row][col].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    std::cout << "Shot: " << shot.velocity.x << ", " << shot.velocity.y << "\n";
+    shot.velocity.x = 2.5;
+    shot.velocity.y = 0.3;
+    shot.rotation = dc::moves::Shot::Rotation::kCW;
     return shot;
 }
 
