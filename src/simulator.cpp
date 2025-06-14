@@ -1,21 +1,34 @@
-#include "simulator.h"
+﻿#include "simulator.h"
 #include "digitalcurling3/digitalcurling3.hpp"
 #include "structure.h"
+#include "game_context.h"
+#include <iostream>
 
 namespace dc = digitalcurling3;
 
-SimulatorWrapper::SimulatorWrapper() : g_game_setting(g_game_setting), g_team(g_team) {
+SimulatorWrapper::SimulatorWrapper(
+    dc::Team team,
+    dc::GameSetting const& game_setting
+) : g_team(team), g_game_setting(game_setting) 
+{
     initialize();
 }
 
-void SimulatorWrapper::initialize() {
-    simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
-    for (auto& player : players) {
-        player = dc::players::PlayerNormalDistFactory().CreatePlayer();
+void SimulatorWrapper::initialize(
+) 
+{
+    g_simulator_ = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+
+    g_simulator_storage_ = g_simulator_->CreateStorage();
+
+    // プレイヤーを生成する
+    // 非対応の場合は NormalDistプレイヤーを使用する．
+    for (size_t i = 0; i < g_players.size(); ++i) {
+        g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
     }
 }
 
-float SimulatorWrapper::evaluate(dc::GameState& state) {
+float SimulatorWrapper::evaluate(dc::GameState& state) const {
     dc::Team o_team = dc::GetOpponentTeam(g_team);
     if (state.IsGameOver()) {
         int my_team_score = state.GetTotalScore(g_team);
@@ -25,29 +38,45 @@ float SimulatorWrapper::evaluate(dc::GameState& state) {
     else return 0;
 }
 
-void SimulatorWrapper::run_single_simulation(dc::GameState& state, const ShotInfo& shot) {
+void SimulatorWrapper::run_single_simulation(dc::GameState const& state, const ShotInfo& shot) {
+    std::cout << "Single Run Simulation Begin.\n";
+    if (!g_simulator_ || !g_simulator_storage_) throw std::runtime_error("Simulator or storage not initialized");
+    g_simulator_->Load(*g_simulator_storage_);
     dc::GameState sim_state = state;
-    auto& current_player = *players[sim_state.shot / 4];
+    auto& current_player = *g_players[sim_state.shot / 4];
+    if (!&current_player) {
+        std::cout << "Player is null.\n";
+    }
     dc::Vector2 velocity(shot.vx, shot.vy);
     auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     dc::moves::Shot shot_move{ velocity, rot };
     dc::Move move{ shot_move };
-    dc::ApplyMove(g_game_setting, *simulator, current_player, sim_state, move, std::chrono::milliseconds(0));
+    std::cout << "debug check1\n";
+    dc::ApplyMove(g_game_setting, *g_simulator_, current_player, sim_state, move, std::chrono::milliseconds(0));
+    std::cout << "debug check2\n";
+    g_simulator_->Save(*g_simulator_storage_);
+    std::cout << "Single Run Simulation Done.\n";
 }
 
-double SimulatorWrapper::run_simulation(dc::GameState& state, const ShotInfo& shot) {
+double SimulatorWrapper::run_simulation(dc::GameState const& state, const ShotInfo& shot) {
+    std::cout << "Multi Run Simulation Begin.\n";
     dc::GameState sim_state = state;  // Copy state
     for (int i = sim_state.shot; i < 15; ++i) {
-        auto& current_player = *players[sim_state.shot / 4];
+        g_simulator_->Load(*g_simulator_storage_);
+        auto& current_player = *g_players[sim_state.shot / 4];
+        if (!&current_player) {
+            std::cout << "Player is null.\n";
+        }
         dc::Vector2 velocity(shot.vx, shot.vy);
         auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
         dc::moves::Shot shot_move{ velocity, rot };
         dc::Move move{ shot_move };
-        dc::ApplyMove(g_game_setting, *simulator, current_player, sim_state, move, std::chrono::milliseconds(0));
+        dc::ApplyMove(g_game_setting, *g_simulator_, current_player, sim_state, move, std::chrono::milliseconds(0));
+        g_simulator_->Save(*g_simulator_storage_);
 
         if (sim_state.IsGameOver()) break;
     }
-
+    std::cout << "Multi Run Simulation Done.\n";
     return evaluate(sim_state);  // You define this: e.g., 1.0 for win, 0.0 for loss
 }
 
@@ -143,6 +172,7 @@ dc::Vector2 SimulatorWrapper::EstimateShotVelocityFCV1(dc::Vector2 const& target
 }
 
 ShotInfo SimulatorWrapper::FindShot(Position const& pos) {
+    std::cout << "Finding Shot...\n";
     dc::Vector2 target_position = { pos.x, pos.y };
     dc::Vector2 final_speed(0, 0);
     dc::moves::Shot::Rotation rotation = (pos.x > 0 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW);
