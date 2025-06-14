@@ -12,6 +12,7 @@
 #include "src/mcts.h"
 #include "src/structure.h"
 #include "src/clustering.h"
+#include "src/simulator.h"
 //#include "src/drawer.h"
 
 namespace dc = digitalcurling3;
@@ -37,6 +38,7 @@ std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
 std::unordered_map<int, ShotInfo> state_to_shot_table;
 std::vector<dc::GameState> grid_states;
+std::unique_ptr<SimulatorWrapper> simWrapper;
 
 std::vector<Position> MakeGrid(const int m, const int n) {
     float x_grid = 2 * (2 * HouseRadius / 3) / (m - 1);
@@ -171,9 +173,9 @@ void run_single_simulation(dc::GameState const& state, const ShotInfo& shot) {
     auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     dc::moves::Shot shot_move{ velocity, rot };
     dc::Move move{ shot_move };
-    std::cout << "debug check1\n";
+    //std::cout << "debug check1\n";
     dc::ApplyMove(g_game_setting, *g_simulator, current_player, sim_state, move, std::chrono::milliseconds(0)); // forward one state
-    std::cout << "debug check2\n";
+    //std::cout << "debug check2\n";
     g_simulator->Save(*g_simulator_storage);
     std::cout << "Single Run Simulation Done.\n";
 }
@@ -250,7 +252,7 @@ void OnInit(
         shotData.push_back(shotinfo);
         state_to_shot_table[i] = shotinfo;
     }
-   
+    simWrapper = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
     std::cout << "CurlingAI Initialize Done.\n";
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
@@ -259,35 +261,23 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         dc::GameState result_state = game_state;
-        run_single_simulation(result_state, shot); // simulate one outcome
+        simWrapper->run_single_simulation(result_state, shot); // simulate one outcome
         grid_states.push_back(result_state);
     }
     std::cout << "CurlingAI grid_states Calculation Done.\n";
 
-    Clustering algo(4, grid_states);
-    //auto clusters = algo.getClusters(); // Segmentation fault here!
-    //auto recommended_states = algo.getRecommendedStates(clusters);
-    std::cout << "CurlingAI recommended_states Calculation Done.\n";
-    //std::vector<ShotInfo> candidate_shots{ {0.0, 0.0, 0} };
-    //for (auto const& rs: recommended_states) {
-    //    ShotInfo s = state_to_shot_table[rs];
-    //    candidate_shots.push_back(s);
-    //}
-    //std::cout << "CurlingAI candidates_shots Calculation Done.\n";
-
-    //// --- MCTS Search ---
-    //dc::GameState const& current_state = game_state;
-    //MCTS mcts(current_state, candidate_shots, grid_states, state_to_shot_table);
-    //mcts.grow_tree(500, 3.0);
-    //std::cout << "MCTS Iteration Done.\n";
-    //ShotInfo best = mcts.get_best_shot();
-    //std::cout << "CuringAI Recieve Best Shot Done.\n";
-    //dc::moves::Shot final_shot;
-    //final_shot.velocity.x = best.vx;
-    //final_shot.velocity.y = best.vy;
-    //final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    //
-    //std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "\n";
+    // --- MCTS Search ---
+    dc::GameState const& current_state = game_state;
+    MCTS mcts(current_state, grid_states, state_to_shot_table, std::move(simWrapper));
+    mcts.grow_tree(9, 100.0);
+    std::cout << "MCTS Iteration Done.\n";
+    ShotInfo best = mcts.get_best_shot();
+    std::cout << "CuringAI Recieve Best Shot Done.\n";
+    dc::moves::Shot final_shot;
+    final_shot.velocity.x = best.vx;
+    final_shot.velocity.y = best.vy;
+    final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "\n";
     //return final_shot;
     dc::moves::Shot shot;
     shot.velocity.x = 2.5;
