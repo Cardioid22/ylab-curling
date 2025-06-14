@@ -31,7 +31,7 @@ private:
 	std::vector<std::set<int>> clusters;
 	LinkageMatrix linkage;
 
-	float dist(dc::GameState const& a, dc::GameState const& b);
+	float dist(dc::GameState const& a, dc::GameState const& b) const;
 	std::vector<std::vector<float>> MakeDistanceTable(std::vector<dc::GameState> const& states);
 	std::tuple<int, int, float> findClosestClusters(const std::vector<std::vector<float>>& dist, const std::vector<std::set<int>>& clusters);
     LinkageMatrix hierarchicalClustering(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters, int n_desired_clusters = 4);

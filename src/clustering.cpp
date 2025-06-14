@@ -6,11 +6,18 @@
 
 namespace dc = digitalcurling3;
 Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states) 
-: n_desired_clusters(k_clusters), states(all_states)
+: n_desired_clusters(k_clusters)
 {
+    states.resize(all_states.size());
+    std::copy(all_states.begin(), all_states.end(), states.begin());
+    clusters.resize(all_states.size());
+    if (states.empty()) {
+        std::cerr << "[Clustering Error] 'states' is empty in getClusters().\n";
+        return;
+    }
 }
 
-float Clustering::dist(dc::GameState const& a, dc::GameState const& b) {
+float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
     int v = 0;
     int p = 2;
     for (size_t team = 0; team < 2; team++) {
@@ -53,8 +60,9 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) {
 }
 
 std::vector<std::vector<float>> Clustering::MakeDistanceTable(std::vector<dc::GameState> const& states) {
+    std::cout << "Make DitanceTable Begin\n";
     std::vector<std::vector<float>> states_table;
-    int S = GridSize_M_ * GridSize_N_;
+    const int S = GridSize_M_ * GridSize_N_;
     for (int m = 0; m < S; m++) {
         std::vector<float> category(S);
         dc::GameState s_m = states[m];
@@ -69,6 +77,7 @@ std::vector<std::vector<float>> Clustering::MakeDistanceTable(std::vector<dc::Ga
         }
         states_table.push_back(category);
     }
+    std::cout << "Make DitanceTable Done\n";
     return states_table;
 }
 
@@ -102,7 +111,7 @@ LinkageMatrix Clustering::hierarchicalClustering(const std::vector<std::vector<f
     }
     int next_cluster_id = n_samples;
     LinkageMatrix linkage;
-
+    std::cout << "Clustering Algo working...\n";
     while (clusters.size() > n_desired_clusters) {
         auto [i, j, d] = findClosestClusters(dist, clusters);
         if (i == -1 || j == -1) {
