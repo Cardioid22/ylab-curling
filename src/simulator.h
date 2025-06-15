@@ -18,9 +18,9 @@ public:
     std::unique_ptr<dc::ISimulatorStorage> g_simulator_storage_;
     std::array<std::unique_ptr<dc::IPlayer>, 4> g_players; // ゲームプレイヤー
 
-    void run_single_simulation(dc::GameState const& state, const ShotInfo& shot);
-    double run_simulation(dc::GameState const& state, const ShotInfo& shot);  // return win/loss
-    float evaluate(dc::GameState& state) const;
+    dc::GameState run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot);
+    double run_simulations(dc::GameState const& game_state, const ShotInfo& shot);  // return win/loss
+    float evaluate(dc::GameState& game_state) const;
     dc::Vector2 SimulatorWrapper::EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation);
     ShotInfo FindShot(Position const& pos);
 private:

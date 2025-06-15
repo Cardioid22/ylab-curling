@@ -28,22 +28,22 @@ void SimulatorWrapper::initialize(
     }
 }
 
-float SimulatorWrapper::evaluate(dc::GameState& state) const {
+float SimulatorWrapper::evaluate(dc::GameState& game_state) const {
     dc::Team o_team = dc::GetOpponentTeam(g_team);
-    if (state.IsGameOver()) {
-        int my_team_score = state.GetTotalScore(g_team);
-        int op_team_score = state.GameState::GetTotalScore(o_team);
+    if (game_state.IsGameOver()) {
+        int my_team_score = game_state.GetTotalScore(g_team);
+        int op_team_score = game_state.GameState::GetTotalScore(o_team);
         return my_team_score - op_team_score;
     }
     else return 0;
 }
 
-void SimulatorWrapper::run_single_simulation(dc::GameState const& state, const ShotInfo& shot) {
-    std::cout << "Single Run Simulation Begin.\n";
+dc::GameState SimulatorWrapper::run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot) {
+    //std::cout << "Single Run Simulation Begin.\n";
+    dc::GameState new_state = game_state;
     if (!g_simulator_ || !g_simulator_storage_) throw std::runtime_error("Simulator or storage not initialized");
     g_simulator_->Load(*g_simulator_storage_);
-    dc::GameState sim_state = state;
-    auto& current_player = *g_players[sim_state.shot / 4];
+    auto& current_player = *g_players[new_state.shot / 4];
     if (!&current_player) {
         std::cout << "Player is null.\n";
     }
@@ -51,15 +51,15 @@ void SimulatorWrapper::run_single_simulation(dc::GameState const& state, const S
     auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     dc::moves::Shot shot_move{ velocity, rot };
     dc::Move move{ shot_move };
-    std::cout << "debug check1\n";
-    dc::ApplyMove(g_game_setting, *g_simulator_, current_player, sim_state, move, std::chrono::milliseconds(0));
-    std::cout << "debug check2\n";
+    //std::cout << "debug check1\n";
+    dc::ApplyMove(g_game_setting, *g_simulator_, current_player, new_state, move, std::chrono::milliseconds(0));
+    //std::cout << "debug check2\n";
     g_simulator_->Save(*g_simulator_storage_);
-    std::cout << "Single Run Simulation Done.\n";
+    //std::cout << "Single Run Simulation Done.\n";
+    return new_state;
 }
 
-double SimulatorWrapper::run_simulation(dc::GameState const& state, const ShotInfo& shot) {
-    std::cout << "Multi Run Simulation Begin.\n";
+double SimulatorWrapper::run_simulations(dc::GameState const& state, const ShotInfo& shot) {
     dc::GameState sim_state = state;  // Copy state
     for (int i = sim_state.shot; i < 15; ++i) {
         g_simulator_->Load(*g_simulator_storage_);
@@ -70,14 +70,16 @@ double SimulatorWrapper::run_simulation(dc::GameState const& state, const ShotIn
         dc::Vector2 velocity(shot.vx, shot.vy);
         auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
         dc::moves::Shot shot_move{ velocity, rot };
-        dc::Move move{ shot_move };
+        dc::Move move{ shot_move }; // this move should be random
         dc::ApplyMove(g_game_setting, *g_simulator_, current_player, sim_state, move, std::chrono::milliseconds(0));
         g_simulator_->Save(*g_simulator_storage_);
 
-        if (sim_state.IsGameOver()) break;
+        if (sim_state.IsGameOver()) {
+            std::cout << "Game is Over!!\n";
+            break;
+        } 
     }
-    std::cout << "Multi Run Simulation Done.\n";
-    return evaluate(sim_state);  // You define this: e.g., 1.0 for win, 0.0 for loss
+    return evaluate(sim_state);
 }
 
 dc::Vector2 SimulatorWrapper::EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation)
