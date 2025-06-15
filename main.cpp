@@ -257,11 +257,9 @@ void OnInit(
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
 {
-    std::cout << "CurlingAI DecideMove Begin.\n";
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
-        dc::GameState result_state = game_state;
-        simWrapper->run_single_simulation(result_state, shot); // simulate one outcome
+        dc::GameState result_state = simWrapper->run_single_simulation(game_state, shot); // simulate one outcome
         grid_states.push_back(result_state);
     }
     std::cout << "CurlingAI grid_states Calculation Done.\n";
@@ -269,10 +267,8 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     // --- MCTS Search ---
     dc::GameState const& current_state = game_state;
     MCTS mcts(current_state, grid_states, state_to_shot_table, std::move(simWrapper));
-    mcts.grow_tree(9, 100.0);
-    std::cout << "MCTS Iteration Done.\n";
+    mcts.grow_tree(10, 100.0);
     ShotInfo best = mcts.get_best_shot();
-    std::cout << "CuringAI Recieve Best Shot Done.\n";
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;
     final_shot.velocity.y = best.vy;
