@@ -21,6 +21,8 @@ public:
     ShotInfo selected_shot;
     bool terminal = false;
     bool selected = false;
+    int degree = 0;
+    int label = 0;
 
     std::unique_ptr<std::vector<ShotInfo>> untried_shots;  // Make it optional/lazy
     std::shared_ptr<SimulatorWrapper> simulator;
@@ -34,13 +36,18 @@ public:
     );
 	bool is_fully_expanded() const;
 	MCTS_Node* select_best_child(double c = 1.41);
+    MCTS_Node* select_worst_child(double c = 1.41);
 	void expand(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table);
 	void rollout();
 	double calculate_winrate() const;
 	void backpropagate(double w, int n);
+    bool IsOpponentTurn() const;
+    void print_tree(int indent = 0) const;
 private:
+    int max_degree = 4;
+
 	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table);
-	dc::GameState getNextState(ShotInfo shotinfo);
+	dc::GameState getNextState(ShotInfo shotinfo) const;
 };
 
 class MCTS {
