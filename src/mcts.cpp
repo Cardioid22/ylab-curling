@@ -137,6 +137,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         std::nullopt,  // child will generate their own if selected later
         shot
     );
+    child_node->rollout();
     if (children.size() <= max_degree) {
         children.push_back(std::move(child_node));
         degree++;
@@ -150,6 +151,7 @@ void MCTS_Node::rollout() {
         : simulator->run_simulations(state, selected_shot);
     wins += game_score > 0 ? 1 : 0;
     visits += 1;
+    backpropagate(wins, 1);
 }
 double MCTS_Node::calculate_winrate() const {
     return visits == 0 ? 0.0 : static_cast<double>(wins) / visits;
@@ -248,8 +250,8 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
         }
         std::cout << "Expand Node #" << node->label << "\n";
         node->expand(all_states_, state_to_shot_table_);
-        node->rollout();
-        node->backpropagate(node->wins, 1);
+        //node->rollout();
+        //node->backpropagate(node->wins, 1);
     }
     root_->print_tree();
     std::cout << "MCTS Iteration Done.\n";
