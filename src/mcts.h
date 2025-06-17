@@ -41,7 +41,7 @@ public:
 	void rollout();
 	double calculate_winrate() const;
 	void backpropagate(double w, int n);
-    bool IsOpponentTurn() const;
+    bool NextIsOpponenTurn() const;
     void print_tree(int indent = 0) const;
 private:
     int max_degree = 4;
@@ -59,7 +59,6 @@ public:
     );
 
 	void grow_tree(int max_iter, double max_limited_time);  // main loop
-    MCTS_Node* get_best_child();
 	ShotInfo get_best_shot();
 
 private:
@@ -67,6 +66,7 @@ private:
     std::vector<dc::GameState> all_states_;
     std::unordered_map<int, ShotInfo> state_to_shot_table_;
     std::shared_ptr<SimulatorWrapper> simulator_;
+    MCTS_Node* best_child_ = nullptr;
 };
 
 #endif // _MCTS_H_

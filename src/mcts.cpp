@@ -1,6 +1,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <random>
 #include "mcts.h"
 #include "digitalcurling3/digitalcurling3.hpp"
 
@@ -96,13 +97,14 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         return;
     }
     if (!selected) {
-        std::cout << "MCTS_Node was not selected before. Generating possible shots...\n";
-        if (!IsOpponentTurn()) {
+        std::cout << "MCTS_Node was not selected before.\n";
+        if (NextIsOpponenTurn()) {
+            std::cout << "Generating possible shots...\n";
             untried_shots = std::make_unique<std::vector<ShotInfo>>(
                 generate_possible_shots_after(all_states, state_to_shot_table)
             );
+            std::cout << "Possible shots generated properly.\n";
         }
-        std::cout << "Possible shots generated properly.\n";
         selected = true;
     }
     if (selected && is_fully_expanded()) {
@@ -110,20 +112,21 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         return;
     }
     ShotInfo shot = { 0.3, 2.5, 0 };
-    if (IsOpponentTurn()) {
+    if (NextIsOpponenTurn()) {
+        // Pick one untried shot and create a new child node
+        std::cout << "My Turn. Genrating Shot From Untried_Shots...\n";
+        shot = untried_shots->back();
+        untried_shots->pop_back();
+        std::cout << "Untried_Shots: " << untried_shots->size() << "\n";
+    }
+    else {
         // randomly pick one shot and create a new child node
         std::cout << "Opponent Turn. Genrating Random Shots...\n";
         float vx = vx_dist(gen);
         float vy = vy_dist(gen);
         int rot = (vx > 0.0f) ? 0 : 1;
-        ShotInfo random_shot = {vx, vy, rot};
+        ShotInfo random_shot = { vx, vy, rot };
         shot = random_shot;
-    }
-    else {
-        // Pick one untried shot and create a new child node
-        std::cout << "My Turn. Genrating Shot From Untried_Shots...\n";
-        shot = untried_shots->back();
-        untried_shots->pop_back();
     }
     //int c_shot = static_cast<int>(state.shot);
     //std::cout << "Current Shot is " << c_shot << "\n";
@@ -142,21 +145,21 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         children.push_back(std::move(child_node));
         degree++;
     }
-    std::cout << "MCTS_Node New Node Generated Done. Degree: " << degree << ",# of children: " << children.size() << ", # of Untried Shots: " << untried_shots->size() << "\n";
+    std::cout << "MCTS_Node New Node Generated Done. Degree: " << degree << ",# of children: " << children.size() << "\n";
 }
 void MCTS_Node::rollout() {
     std::cout << "Rollout from node #" << label << "\n";
     double game_score = terminal
         ? simulator->evaluate(state)
         : simulator->run_simulations(state, selected_shot);
-    wins += game_score > 0 ? 1 : 0;
-    visits += 1;
+    wins = game_score > 0 ? 1 : 0;
     backpropagate(wins, 1);
 }
 double MCTS_Node::calculate_winrate() const {
     return visits == 0 ? 0.0 : static_cast<double>(wins) / visits;
 }
 void MCTS_Node::backpropagate(double w, int n) {
+    wins += w;
     visits += n;
     if (parent) {
         parent->backpropagate(w, n);
@@ -185,17 +188,12 @@ dc::GameState MCTS_Node::getNextState(ShotInfo shotinfo) const {
     return next_state;
 }
 
-bool MCTS_Node::IsOpponentTurn() const {
-    //dc::Team my_team = simulator->g_team;
-    //dc::Team o_team = dc::GetOpponentTeam(my_team);
-    //int current_shot = static_cast<int>(state.shot);
-    //if (o_team == state.hammer) {
-    //    return current_shot % 2 == 1;
-    //}
-    //else {
-    //    return current_shot % 2 == 0;
-    //}
-    return false;
+bool MCTS_Node::NextIsOpponenTurn() const {
+    std::cout << "Shot Num: " << static_cast<int>(state.shot) << "\n";
+    dc::Team current_move_team = state.GetNextTeam(); // not next, it's the team who decide move now.
+    std::cout << "Next Team is: " << static_cast<int>(current_move_team) << "\n";
+    dc::Team my_team = simulator->g_team;
+    return current_move_team == my_team;
 }
 
 void MCTS_Node::print_tree(int indent) const {
@@ -234,12 +232,14 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
 
         MCTS_Node* node = root_.get();
         while (node->selected && node->is_fully_expanded()) {
-            MCTS_Node* next;
-            if (node->IsOpponentTurn()) {
-                next = node->select_worst_child();
+            MCTS_Node* next = nullptr;
+            if (node->NextIsOpponenTurn()) {
+                std::cout << "Select Best Child\n";
+                next = node->select_best_child();
             }
             else {
-                next = node->select_best_child();
+                std::cout << "Select Worst Child\n";
+                next = node->select_worst_child();
             }
             if (next == nullptr) {
                 std::cerr << "No selectable child found.\n";
@@ -250,33 +250,18 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
         }
         std::cout << "Expand Node #" << node->label << "\n";
         node->expand(all_states_, state_to_shot_table_);
-        //node->rollout();
-        //node->backpropagate(node->wins, 1);
     }
+    best_child_ = root_->select_best_child(); // all root child has -inf for the shotinfo!!
     root_->print_tree();
     std::cout << "MCTS Iteration Done.\n";
 }
 
-MCTS_Node* MCTS::get_best_child() {
-    MCTS_Node* best = nullptr;
-    int max_score = -std::numeric_limits<double>::infinity();
-
-    for (const auto& child : root_->children) {
-        if (child->score > max_score) {
-            best = child.get();
-            max_score = child->score;
-        }
-    }
-    return best;
-}
-
 ShotInfo MCTS::get_best_shot() {
-    MCTS_Node* best_node = get_best_child();
-    if (!best_node) {
+    if (!best_child_) {
         std::cerr << "No children found after tree search. Returning default shot." << "\n";
         return ShotInfo{ 0.0f, 0.0f, 0 };
     }
     else {
-        return best_node->selected_shot;
+        return best_child_->selected_shot;
     }
 }
