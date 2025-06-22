@@ -103,6 +103,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
             untried_shots = std::make_unique<std::vector<ShotInfo>>(
                 generate_possible_shots_after(all_states, state_to_shot_table)
             );
+            std::cout << "[After]Untried Shots Size: " << untried_shots->size() << "\n";
             std::cout << "Possible shots generated properly.\n";
         }
         selected = true;
@@ -170,10 +171,10 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
     const std::vector<dc::GameState> all_states,
     const std::unordered_map<int, ShotInfo> state_to_shot_table) 
 {
+    std::vector<int> recommended_states;
     std::vector<ShotInfo> candidates;
     Clustering algo(4, all_states);
-    auto clusters = algo.getClusters();
-    auto recommended_states = algo.getRecommendedStates(clusters);
+    recommended_states = algo.getRecommendedStates();
     for (int state_index : recommended_states) {
         auto it = state_to_shot_table.find(state_index);
         if (it != state_to_shot_table.end()) {

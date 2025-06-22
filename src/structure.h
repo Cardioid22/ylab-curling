@@ -13,7 +13,7 @@ struct Position {
 struct ShotInfo {
     float vx;
     float vy;
-    int rot;
+    int rot; // 1: CW, 0: CCW.
 };
 
 using LinkageRow = std::tuple<int, int, float, int>;
