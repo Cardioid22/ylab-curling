@@ -44,15 +44,19 @@ std::vector<Position> MakeGrid(const int m, const int n) {
     float x_grid = 2 * (2 * HouseRadius / 3) / (m - 1);
     float y_grid = 2 * (2 * HouseRadius / 3) / (n - 1);
     Position pos;
-    std::vector<Position> result(GridSize_M * GridSize_N);
+    std::vector<Position> result;
     for (float i = 0; i < m; i++) {
         float y = HouseCenterY + (2 * HouseRadius / 3) - i * y_grid;
         for (int j = 0; j < n; j++) {
             float x = -(2 * HouseRadius / 3) + j * x_grid;
             pos.x = x;
             pos.y = y;
+            //std::cout << "x: " << x << ", y: " << y << "\n";
             result.push_back(pos);
         }
+    }
+    for (auto s : result) {
+        std::cout << "s.x: " << s.x << ", s.y: " << s.y << "\n";
     }
     return result;
 }
@@ -246,10 +250,19 @@ void OnInit(
     }
     
     std::cout << "CurlingAI Initialize Begin.\n";
+    int S = GridSize_M * GridSize_N;
+    grid.resize(S);
+    shotData.resize(S);
+    grid_states.resize(S);
     grid = MakeGrid(GridSize_M, GridSize_N);
+    std::cout << "grid[6].x: " << grid[6].x << ", grid[6].y: " << grid[6].y << "\n";
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
-        auto shotinfo = FindShot(grid[i]);
-        shotData.push_back(shotinfo);
+        ShotInfo shotinfo = FindShot(grid[i]);
+        std::cout << "  ShotInfo for grid[" << i << "]: "
+            << "vx = " << shotinfo.vx << ", "
+            << "vy = " << shotinfo.vy << ", "
+            << "rot = " << shotinfo.rot << "\n";
+        shotData[i] = shotinfo;
         state_to_shot_table[i] = shotinfo;
     }
     simWrapper = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
@@ -259,8 +272,9 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
 {
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
+        std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
         dc::GameState result_state = simWrapper->run_single_simulation(game_state, shot); // simulate one outcome
-        grid_states.push_back(result_state);
+        grid_states[i] = result_state;
     }
     std::cout << "CurlingAI grid_states Calculation Done.\n";
 
