@@ -14,8 +14,8 @@ class Clustering {
 public:
 	Clustering(int k_clusters, std::vector<dc::GameState> all_states);
 
-	std::vector<std::set<int>> getClusters(void);
-	std::vector<int> getRecommendedStates(std::vector<std::set<int>> clusters);
+	std::vector<std::set<int>> getClusters();
+	std::vector<int> getRecommendedStates();
 
 private:
 	const float HouseRadius_ = 1.829;

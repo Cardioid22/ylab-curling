@@ -138,7 +138,8 @@ std::vector<std::set<int>> Clustering::getClusters() {
     return clusters;
 }
 
-std::vector<int> Clustering::getRecommendedStates(std::vector<std::set<int>> clusters) {
+std::vector<int> Clustering::getRecommendedStates() {
+    auto clusters = getClusters();
     std::vector<int> recommend;
     for (const auto& cluster : clusters) {
         if (!cluster.empty()) {
