@@ -31,8 +31,8 @@ void SimulatorWrapper::initialize(
 float SimulatorWrapper::evaluate(dc::GameState& game_state) const {
     dc::Team o_team = dc::GetOpponentTeam(g_team);
     if (game_state.IsGameOver()) {
-        int my_team_score = game_state.GetTotalScore(g_team);
-        int op_team_score = game_state.GameState::GetTotalScore(o_team);
+        int my_team_score = static_cast<int>(game_state.GetTotalScore(g_team));
+        int op_team_score = static_cast<int>(game_state.GameState::GetTotalScore(o_team));
         return my_team_score - op_team_score;
     }
     else return 0;
@@ -61,7 +61,7 @@ dc::GameState SimulatorWrapper::run_single_simulation(dc::GameState const& game_
 
 double SimulatorWrapper::run_simulations(dc::GameState const& state, const ShotInfo& shot) {
     dc::GameState sim_state = state;  // Copy state
-    for (int i = sim_state.shot; i < 15; ++i) {
+    for (int i = sim_state.shot; i < 16; ++i) {
         g_simulator_->Load(*g_simulator_storage_);
         auto& current_player = *g_players[sim_state.shot / 4];
         if (!&current_player) {
@@ -79,6 +79,7 @@ double SimulatorWrapper::run_simulations(dc::GameState const& state, const ShotI
             break;
         } 
     }
+
     return evaluate(sim_state);
 }
 
