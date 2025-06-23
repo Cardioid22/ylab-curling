@@ -51,7 +51,7 @@ public:
     bool NextIsOpponentTurn() const;
     void print_tree(int indent = 0) const;
 private:
-    int max_degree = 4;
+    int max_degree = 8;
 
 	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table);
 	dc::GameState getNextState(ShotInfo shotinfo) const;
@@ -67,6 +67,7 @@ public:
 
 	void grow_tree(int max_iter, double max_limited_time);  // main loop
 	ShotInfo get_best_shot();
+    void MCTS::report_rollout_result() const;
 
 private:
 	std::unique_ptr<MCTS_Node> root_;
@@ -74,6 +75,13 @@ private:
     std::unordered_map<int, ShotInfo> state_to_shot_table_;
     std::shared_ptr<SimulatorWrapper> simulator_;
     MCTS_Node* best_child_ = nullptr;
+ 
+    int clustered_rollouts = 0;
+    double clustered_total_score = 0.0;
+
+    int random_rollouts = 0;
+    double random_total_score = 0.0;
+
 };
 
 #endif // _MCTS_H_

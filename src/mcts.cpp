@@ -104,6 +104,14 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
             untried_shots = std::make_unique<std::vector<ShotInfo>>(
                 generate_possible_shots_after(all_states, state_to_shot_table)
             );
+            for (int i = 0; i < 3; i++) {
+                float vx = vx_dist(gen);
+                float vy = vy_dist(gen);
+                int rot = (vx > 0.0f) ? 0 : 1;
+                ShotInfo random_shot = { vx, vy, rot };
+                untried_shots->push_back(random_shot);
+            }
+            untried_shots->push_back({ 0.1, 2.5, 1 });
             std::cout << "[After]Untried Shots Size: " << untried_shots->size() << "\n";
             std::cout << "Possible shots generated properly.\n";
         }
@@ -119,7 +127,12 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         std::cout << "My Turn. Genrating Shot From Untried_Shots...\n";
         shot = untried_shots->back();
         untried_shots->pop_back();
-        shot_source = NodeSource::Clustered;
+        if (untried_shots->size() > 4) {
+            shot_source = NodeSource::Random;
+        }
+        else {
+            shot_source = NodeSource::Clustered;
+        }
         std::cout << "Untried_Shots: " << untried_shots->size() << "\n";
     }
     else {
@@ -132,11 +145,11 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         shot = random_shot;
         shot_source = NodeSource::Random;
     }
-    //int c_shot = static_cast<int>(state.shot);
-    //std::cout << "Current Shot is " << c_shot << "\n";
     dc::GameState next_state = getNextState(shot);
-    //int n_shot = static_cast<int>(next_state.shot);
-    //std::cout << "Next Shot is " << n_shot << "\n";
+    if (next_state.IsGameOver()) {
+        terminal = true;
+        std::cout << "New child state is gameover!\n";
+    }
     auto child_node = std::make_unique<MCTS_Node>(
         this,
         next_state,
@@ -275,4 +288,52 @@ ShotInfo MCTS::get_best_shot() {
     else {
         return best_child_->selected_shot;
     }
+}
+
+void MCTS::report_rollout_result() const {
+    if (!root_) {
+        std::cerr << "No root node.\n";
+        return;
+    }
+
+    std::cout << "=== MCTS Rollout Result Summary ===\n";
+
+    int clustered_count = 0, random_count = 0;
+    float max_clustered_score = -1e9, max_random_score = -1e9;
+    float total_clustered_score = 0.0, total_random_score = 0.0;
+
+    for (const auto& child : root_->children) {
+        std::string label;
+        if (child->source == NodeSource::Clustered) {
+            label = "Clustered";
+            clustered_count++;
+            total_clustered_score += child->score;
+            max_clustered_score = std::max(max_clustered_score, child->score);
+        }
+        else if (child->source == NodeSource::Random) {
+            label = "Random";
+            random_count++;
+            total_random_score += child->score;
+            max_random_score = std::max(max_random_score, child->score);
+        }
+        else {
+            label = "Unknown";
+        }
+
+        std::cout << "[" << label << "] "
+            << "Visits: " << child->visits
+            << ", Wins: " << child->wins
+            << ", Score: " << child->score << "\n";
+    }
+
+    std::cout << "--- Summary ---\n";
+    if (clustered_count > 0) {
+        std::cout << "Clustered Avg Score: " << (total_clustered_score / clustered_count)
+            << ", Max Score: " << max_clustered_score << "\n";
+    }
+    if (random_count > 0) {
+        std::cout << "Random Avg Score: " << (total_random_score / random_count)
+            << ", Max Score: " << max_random_score << "\n";
+    }
+    std::cout << "==============================\n";
 }

@@ -55,9 +55,6 @@ std::vector<Position> MakeGrid(const int m, const int n) {
             result.push_back(pos);
         }
     }
-    for (auto s : result) {
-        std::cout << "s.x: " << s.x << ", s.y: " << s.y << "\n";
-    }
     return result;
 }
 
@@ -272,7 +269,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
 {
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
-        std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
+        //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
         dc::GameState result_state = simWrapper->run_single_simulation(game_state, shot); // simulate one outcome
         grid_states[i] = result_state;
     }
@@ -281,7 +278,8 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     // --- MCTS Search ---
     dc::GameState const& current_state = game_state;
     MCTS mcts(current_state, grid_states, state_to_shot_table, std::move(simWrapper));
-    mcts.grow_tree(10, 100.0);
+    mcts.grow_tree(20, 600.0);
+    mcts.report_rollout_result();
     ShotInfo best = mcts.get_best_shot();
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;
