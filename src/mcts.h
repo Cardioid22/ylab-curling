@@ -9,6 +9,12 @@
 
 namespace dc = digitalcurling3;
 
+enum class NodeSource {
+    Clustered,
+    Random
+};
+
+
 class MCTS_Node {
 
 public:
@@ -26,6 +32,7 @@ public:
 
     std::unique_ptr<std::vector<ShotInfo>> untried_shots;  // Make it optional/lazy
     std::shared_ptr<SimulatorWrapper> simulator;
+    NodeSource source = NodeSource::Clustered;
 
     MCTS_Node(
         MCTS_Node* parent,
@@ -41,7 +48,7 @@ public:
 	void rollout();
 	double calculate_winrate() const;
 	void backpropagate(double w, int n);
-    bool NextIsOpponenTurn() const;
+    bool NextIsOpponentTurn() const;
     void print_tree(int indent = 0) const;
 private:
     int max_degree = 4;

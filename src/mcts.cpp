@@ -92,13 +92,14 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     static std::mt19937 gen(rd());
     std::uniform_real_distribution<float> vx_dist(-0.3f, 0.3f);
     std::uniform_real_distribution<float> vy_dist(2.3f, 2.5f);
+    NodeSource shot_source;
     if (terminal) {
         std::cout << "Game Reached the End\n";
         return;
     }
     if (!selected) {
         std::cout << "MCTS_Node was not selected before.\n";
-        if (NextIsOpponenTurn()) {
+        if (NextIsOpponentTurn()) {
             std::cout << "Generating possible shots...\n";
             untried_shots = std::make_unique<std::vector<ShotInfo>>(
                 generate_possible_shots_after(all_states, state_to_shot_table)
@@ -113,11 +114,12 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         return;
     }
     ShotInfo shot = { 0.3, 2.5, 0 };
-    if (NextIsOpponenTurn()) {
+    if (NextIsOpponentTurn()) {
         // Pick one untried shot and create a new child node
         std::cout << "My Turn. Genrating Shot From Untried_Shots...\n";
         shot = untried_shots->back();
         untried_shots->pop_back();
+        shot_source = NodeSource::Clustered;
         std::cout << "Untried_Shots: " << untried_shots->size() << "\n";
     }
     else {
@@ -128,6 +130,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         int rot = (vx > 0.0f) ? 0 : 1;
         ShotInfo random_shot = { vx, vy, rot };
         shot = random_shot;
+        shot_source = NodeSource::Random;
     }
     //int c_shot = static_cast<int>(state.shot);
     //std::cout << "Current Shot is " << c_shot << "\n";
@@ -141,6 +144,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         std::nullopt,  // child will generate their own if selected later
         shot
     );
+    child_node->source = shot_source;
     child_node->rollout();
     if (children.size() <= max_degree) {
         children.push_back(std::move(child_node));
@@ -154,6 +158,12 @@ void MCTS_Node::rollout() {
         ? simulator->evaluate(state)
         : simulator->run_simulations(state, selected_shot);
     wins = game_score > 0 ? 1 : 0;
+    if (source == NodeSource::Clustered) {
+        std::cout << "[Clustered] rollout score: " << game_score << "\n";
+    }
+    else {
+        std::cout << "[Random] rollout score: " << game_score << "\n";
+    }
     backpropagate(wins, 1);
 }
 double MCTS_Node::calculate_winrate() const {
@@ -189,7 +199,7 @@ dc::GameState MCTS_Node::getNextState(ShotInfo shotinfo) const {
     return next_state;
 }
 
-bool MCTS_Node::NextIsOpponenTurn() const {
+bool MCTS_Node::NextIsOpponentTurn() const {
     std::cout << "Shot Num: " << static_cast<int>(state.shot) << "\n";
     dc::Team current_move_team = state.GetNextTeam(); // not next, it's the team who decide move now.
     std::cout << "Next Team is: " << static_cast<int>(current_move_team) << "\n";
@@ -234,7 +244,7 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
         MCTS_Node* node = root_.get();
         while (node->selected && node->is_fully_expanded()) {
             MCTS_Node* next = nullptr;
-            if (node->NextIsOpponenTurn()) {
+            if (node->NextIsOpponentTurn()) {
                 std::cout << "Select Best Child\n";
                 next = node->select_best_child();
             }
