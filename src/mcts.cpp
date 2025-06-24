@@ -94,7 +94,6 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     std::uniform_real_distribution<float> vy_dist(2.3f, 2.5f);
     NodeSource shot_source;
     if (terminal) {
-        std::cout << "Game Reached the End\n";
         return;
     }
     if (!selected) {
@@ -113,7 +112,6 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
             }
             untried_shots->push_back({ 0.1, 2.5, 1 });
             std::cout << "[After]Untried Shots Size: " << untried_shots->size() << "\n";
-            std::cout << "Possible shots generated properly.\n";
         }
         selected = true;
     }
@@ -125,15 +123,15 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     if (NextIsOpponentTurn()) {
         // Pick one untried shot and create a new child node
         std::cout << "My Turn. Genrating Shot From Untried_Shots...\n";
-        shot = untried_shots->back();
-        untried_shots->pop_back();
         if (untried_shots->size() > 4) {
             shot_source = NodeSource::Random;
         }
         else {
             shot_source = NodeSource::Clustered;
         }
-        std::cout << "Untried_Shots: " << untried_shots->size() << "\n";
+        shot = untried_shots->back();
+        untried_shots->pop_back();
+        //std::cout << "Untried_Shots: " << untried_shots->size() << "\n";
     }
     else {
         // randomly pick one shot and create a new child node
@@ -149,6 +147,8 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     if (next_state.IsGameOver()) {
         terminal = true;
         std::cout << "New child state is gameover!\n";
+        this->rollout();
+        return;
     }
     auto child_node = std::make_unique<MCTS_Node>(
         this,
@@ -177,7 +177,7 @@ void MCTS_Node::rollout() {
     else {
         std::cout << "[Random] rollout score: " << game_score << "\n";
     }
-    backpropagate(wins, 1);
+    backpropagate(wins, 1); //if terminate is true, that node's visits will also +1 for now.
 }
 double MCTS_Node::calculate_winrate() const {
     return visits == 0 ? 0.0 : static_cast<double>(wins) / visits;
@@ -213,9 +213,7 @@ dc::GameState MCTS_Node::getNextState(ShotInfo shotinfo) const {
 }
 
 bool MCTS_Node::NextIsOpponentTurn() const {
-    std::cout << "Shot Num: " << static_cast<int>(state.shot) << "\n";
     dc::Team current_move_team = state.GetNextTeam(); // not next, it's the team who decide move now.
-    std::cout << "Next Team is: " << static_cast<int>(current_move_team) << "\n";
     dc::Team my_team = simulator->g_team;
     return current_move_team == my_team;
 }
@@ -233,7 +231,7 @@ void MCTS_Node::print_tree(int indent) const {
 MCTS::MCTS(dc::GameState const& root_state, 
     std::vector<dc::GameState> states, 
     std::unordered_map<int, ShotInfo> state_to_shot_table, 
-    std::unique_ptr<SimulatorWrapper> simWrapper)
+    std::shared_ptr<SimulatorWrapper> simWrapper)
 : state_to_shot_table_(std::move(state_to_shot_table)), simulator_(std::move(simWrapper))
 {
     all_states_.resize(states.size());
@@ -244,6 +242,7 @@ MCTS::MCTS(dc::GameState const& root_state,
 void MCTS::grow_tree(int max_iter, double max_limited_time) {
     using Clock = std::chrono::high_resolution_clock;
     auto start_time = Clock::now();
+    max_iteration = max_iter;
     std::cout << "MCTS Tree Begin.\n";
     for (int iter = 0; iter < max_iter; ++iter) {
         if (max_limited_time > 0) {
@@ -323,7 +322,10 @@ void MCTS::report_rollout_result() const {
         std::cout << "[" << label << "] "
             << "Visits: " << child->visits
             << ", Wins: " << child->wins
-            << ", Score: " << child->score << "\n";
+            << ", Score: " << child->score
+            << ", Vx: " << child->selected_shot.vx
+            << ", Vy: " << child->selected_shot.vy
+            << ", Rotation: " << child->selected_shot.rot << "\n";
     }
 
     std::cout << "--- Summary ---\n";
@@ -336,4 +338,44 @@ void MCTS::report_rollout_result() const {
             << ", Max Score: " << max_random_score << "\n";
     }
     std::cout << "==============================\n";
+}
+
+void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_num) const {
+    if (!root_) {
+        std::cerr << "No root node to export.\n";
+        return;
+    }
+    std::string folder = "../../MCTS_Output_" + std::to_string(max_iteration) + "_Iterations" + "/";
+    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
+    std::string new_filename = folder + filename + "_" + std::to_string(shot_num) + ".csv";
+    std::ofstream file(new_filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << "\n";
+        return;
+    }
+
+    // Write CSV header
+    file << "Type,Visits,Wins,Score\n";
+
+    for (const auto& child : root_->children) {
+        std::string label;
+        if (child->source == NodeSource::Clustered) {
+            label = "Clustered";
+        }
+        else if (child->source == NodeSource::Random) {
+            label = "Random";
+        }
+        else {
+            label = "Unknown";
+        }
+
+        file << label << ","
+            << child->visits << ","
+            << child->wins << ","
+            << child->score << "\n";
+    }
+
+    file.close();
+    std::cout << "Rollout result exported to: " << filename << "\n";
 }

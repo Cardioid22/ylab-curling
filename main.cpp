@@ -38,7 +38,7 @@ std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
 std::unordered_map<int, ShotInfo> state_to_shot_table;
 std::vector<dc::GameState> grid_states;
-std::unique_ptr<SimulatorWrapper> simWrapper;
+std::shared_ptr<SimulatorWrapper> simWrapper;
 
 std::vector<Position> MakeGrid(const int m, const int n) {
     float x_grid = 2 * (2 * HouseRadius / 3) / (m - 1);
@@ -162,11 +162,11 @@ ShotInfo FindShot(Position const& pos) {
     return shot;
 }
 
-void run_single_simulation(dc::GameState const& state, const ShotInfo& shot) {
-    std::cout << "Single Run Simulation Begin.\n";
+dc::GameState run_single_simulation(dc::GameState const& state, const ShotInfo& shot) {
+    dc::GameState new_state = state;
+    if (!g_simulator || !g_simulator_storage) throw std::runtime_error("Simulator or storage not initialized");
     g_simulator->Load(*g_simulator_storage);
-    dc::GameState sim_state = state;
-    auto& current_player = *g_players[sim_state.shot / 4];
+    auto& current_player = *g_players[new_state.shot / 4];
     if (!&current_player) {
         std::cout << "Player is null.\n";
     }
@@ -174,11 +174,9 @@ void run_single_simulation(dc::GameState const& state, const ShotInfo& shot) {
     auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     dc::moves::Shot shot_move{ velocity, rot };
     dc::Move move{ shot_move };
-    //std::cout << "debug check1\n";
-    dc::ApplyMove(g_game_setting, *g_simulator, current_player, sim_state, move, std::chrono::milliseconds(0)); // forward one state
-    //std::cout << "debug check2\n";
+    dc::ApplyMove(g_game_setting, *g_simulator, current_player, new_state, move, std::chrono::milliseconds(0));
     g_simulator->Save(*g_simulator_storage);
-    std::cout << "Single Run Simulation Done.\n";
+    return new_state;
 }
 
 float evaluate(dc::GameState& state) {
@@ -252,7 +250,6 @@ void OnInit(
     shotData.resize(S);
     grid_states.resize(S);
     grid = MakeGrid(GridSize_M, GridSize_N);
-    std::cout << "grid[6].x: " << grid[6].x << ", grid[6].y: " << grid[6].y << "\n";
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shotinfo = FindShot(grid[i]);
         std::cout << "  ShotInfo for grid[" << i << "]: "
@@ -270,16 +267,17 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
-        dc::GameState result_state = simWrapper->run_single_simulation(game_state, shot); // simulate one outcome
+        dc::GameState result_state = run_single_simulation(game_state, shot); // simulate one outcome
         grid_states[i] = result_state;
     }
     std::cout << "CurlingAI grid_states Calculation Done.\n";
 
     // --- MCTS Search ---
     dc::GameState const& current_state = game_state;
-    MCTS mcts(current_state, grid_states, state_to_shot_table, std::move(simWrapper));
-    mcts.grow_tree(20, 600.0);
-    mcts.report_rollout_result();
+    MCTS mcts(current_state, grid_states, state_to_shot_table, simWrapper);
+    mcts.grow_tree(100, 600.0);
+    //mcts.report_rollout_result();
+    mcts.export_rollout_result_to_csv("final_children", game_state.shot);
     ShotInfo best = mcts.get_best_shot();
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;

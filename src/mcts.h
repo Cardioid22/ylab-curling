@@ -6,6 +6,7 @@
 #include "structure.h"
 #include "clustering.h"
 #include "simulator.h"
+#include <fstream>
 
 namespace dc = digitalcurling3;
 
@@ -62,12 +63,13 @@ public:
 	MCTS(dc::GameState const& root_state, 
         std::vector<dc::GameState> states, 
         std::unordered_map<int, ShotInfo> state_to_shot_table,
-        std::unique_ptr<SimulatorWrapper> simWrapper
+        std::shared_ptr<SimulatorWrapper> simWrapper
     );
 
 	void grow_tree(int max_iter, double max_limited_time);  // main loop
 	ShotInfo get_best_shot();
-    void MCTS::report_rollout_result() const;
+    void report_rollout_result() const;
+    void export_rollout_result_to_csv(const std::string& filename, int shot_num) const;
 
 private:
 	std::unique_ptr<MCTS_Node> root_;
@@ -75,7 +77,7 @@ private:
     std::unordered_map<int, ShotInfo> state_to_shot_table_;
     std::shared_ptr<SimulatorWrapper> simulator_;
     MCTS_Node* best_child_ = nullptr;
- 
+    int max_iteration = 0;
     int clustered_rollouts = 0;
     double clustered_total_score = 0.0;
 
