@@ -35,16 +35,25 @@ find_package(Threads REQUIRED)
 
 
 # 実行ファイルを定義します
-add_executable(digitalcurling3_simple_client  # 実行ファイルの名前はここの名前になります．なおプロジェクト名と一致させる必要はありません．
+add_executable(ylab_client  # 実行ファイルの名前はここの名前になります．なおプロジェクト名と一致させる必要はありません．
     main.cpp
     # ソースファイルやヘッダーファイルを追加する場合，ファイルを作成した後にファイル名をここに列挙します．
-    # example.hpp
+    src/mcts.cpp
+    src/mcts.h
+    src/structure.h
+    src/clustering.cpp
+    src/clustering.h
+    src/simulator.h
+    src/simulator.cpp
+    src/analysis.cpp
+    src/analysis.h
     # example.cpp
+
 )
 
 # リンクするライブラリを指定します
 # インクルードディレクトリとリンクするライブラリファイルが設定されます
-target_link_libraries(digitalcurling3_simple_client  # add_executable() で実行ファイル名を変更した場合，同様にここも変更する必要があります．
+target_link_libraries(ylab_client  # add_executable() で実行ファイル名を変更した場合，同様にここも変更する必要があります．
   PRIVATE
     digitalcurling3::digitalcurling3
     Boost::headers
