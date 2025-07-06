@@ -32,13 +32,13 @@ private:
 	std::vector<std::vector<int>> recommend_states;
 	LinkageMatrix linkage;
 
-	bool Clustering::IsInHouse(float x, float y) const;
+	bool IsInHouse(float x, float y) const;
 	float dist(dc::GameState const& a, dc::GameState const& b) const;
 	std::vector<std::vector<float>> MakeDistanceTable(std::vector<dc::GameState> const& states);
 	std::tuple<int, int, float> findClosestClusters(const std::vector<std::vector<float>>& dist, const std::vector<std::set<int>>& clusters);
     LinkageMatrix hierarchicalClustering(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters, int n_desired_clusters = 4);
 	std::vector<std::vector<int>> calculateMedioid(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters);
-	void Clustering::debug_clusters();
+	void debug_clusters();
 };
 
 #endif

@@ -21,7 +21,7 @@ public:
     dc::GameState run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot);
     double run_simulations(dc::GameState const& game_state, const ShotInfo& shot);  // return win/loss
     float evaluate(dc::GameState& game_state) const;
-    dc::Vector2 SimulatorWrapper::EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation);
+    dc::Vector2 EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation);
     ShotInfo FindShot(Position const& pos);
 private:
     std::unique_ptr<dc::ISimulator> g_simulator_;
