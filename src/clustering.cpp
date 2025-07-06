@@ -2,6 +2,7 @@
 #include <set>
 #include "clustering.h"
 #include "structure.h"
+#include "analysis.h"
 #include "digitalcurling3/digitalcurling3.hpp"
 
 namespace dc = digitalcurling3;
@@ -15,6 +16,12 @@ Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states)
         std::cerr << "[Clustering Error] 'states' is empty in getClusters().\n";
         return;
     }
+}
+
+bool Clustering::IsInHouse(float x, float y) const {
+    const float HouseRadius = 1.829;
+    const float HouseCenterY = 38.405;
+    return std::pow(x, 2) + std::pow(y - HouseCenterY, 2) <= std::pow(HouseRadius / 3, 2);
 }
 
 float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
@@ -39,16 +46,27 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
                 float dist_x = stones_a[index]->position.x - stones_b[index]->position.x;
                 float dist_y = stones_a[index]->position.y - stones_b[index]->position.y;
                 distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
+                //if (IsInHouse(stones_a[index]->position.x, stones_a[index]->position.y) && !IsInHouse(stones_b[index]->position.x, stones_b[index]->position.y)
+                //    || !IsInHouse(stones_a[index]->position.x, stones_a[index]->position.y) && IsInHouse(stones_b[index]->position.x, stones_b[index]->position.y)) 
+                //{
+                //    distance += 5.0f;
+                //}
             }
             else if (stones_b[index]) { // ex: new shot
                 float dist_x = stones_b[index]->position.x;
                 float dist_y = stones_b[index]->position.y - HouseCenterY_;
-                distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
+                distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
+                if (IsInHouse(stones_b[index]->position.x, stones_b[index]->position.y)) {
+                    distance += 5.0f;
+                }
             }
             else if (stones_a[index]) { // stone has taken away
                 float dist_x = stones_a[index]->position.x;
                 float dist_y = stones_a[index]->position.y - HouseCenterY_;
-                distance += std::sqrt( (std::pow(dist_x, 2) + std::pow(dist_y, 2))); // 欠損値処理をしている
+                distance += std::sqrt( (std::pow(dist_x, 2) + std::pow(dist_y, 2)));
+                if (IsInHouse(stones_a[index]->position.x, stones_a[index]->position.y)) {
+                    distance += 5.0f;
+                }
             }
             else {
                 break;
@@ -78,6 +96,11 @@ std::vector<std::vector<float>> Clustering::MakeDistanceTable(std::vector<dc::Ga
         states_table.push_back(category);
     }
     std::cout << "Make DitanceTable Done\n";
+    int shot_num = static_cast<int>(states[0].shot);
+    if (shot_num == 14 || shot_num  == 15) {
+        Analysis an;
+        an.SaveSimilarityTableToCSV(states_table, shot_num);
+    }
     return states_table;
 }
 
@@ -132,19 +155,65 @@ LinkageMatrix Clustering::hierarchicalClustering(const std::vector<std::vector<f
     return linkage;
 }
 
+std::vector<std::vector<int>> Clustering::calculateMedioid(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters) {
+    std::vector<std::vector<int>> medoids;
+    for (const auto& cluster: clusters) {
+        std::vector<int> cluster_medoids;
+        if (cluster.empty()) {
+            continue;
+        }
+        if (cluster.size() == 1) {
+            cluster_medoids.push_back(*cluster.begin());
+        }
+        else {
+            float min_total_distance = std::numeric_limits<float>::max();
+            int best_medoid = -1;
+            for (int candidate : cluster) {
+                float total_distance = 0.0f;
+                for (int other : cluster) {
+                    if (candidate != other) {
+                        total_distance += dist[candidate][other];
+                    }
+                }
+                if (total_distance < min_total_distance) {
+                    min_total_distance = total_distance;
+                    best_medoid = candidate;
+                }
+            }
+            cluster_medoids.push_back(best_medoid);
+        }
+        medoids.push_back(cluster_medoids);
+    }
+    return medoids;
+}
+
 std::vector<std::set<int>> Clustering::getClusters() {
     auto distance_table = MakeDistanceTable(states);
     linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
+    recommend_states = calculateMedioid(distance_table, clusters);
     return clusters;
 }
 
 std::vector<int> Clustering::getRecommendedStates() {
     auto clusters = getClusters();
     std::vector<int> recommend;
-    for (const auto& cluster : clusters) {
+    for (const auto& cluster : recommend_states) {
         if (!cluster.empty()) {
             recommend.push_back(*cluster.begin());
         }
     }
+    debug_clusters();
     return recommend;
+}
+
+void Clustering::debug_clusters() {
+    std::cout << "=== Debug Clusters ===\n";
+    int id = 0;
+    for (auto const& cluster : clusters) {
+        std::cout << "Cluster # " << id++ << " (" << cluster.size() << " states):\n";
+        for (int label : cluster) {
+            std::cout << label << " ";
+        }
+        std::cout << "\n";
+    }
 }

@@ -90,8 +90,8 @@ MCTS_Node* MCTS_Node::select_worst_child(double c) {
 void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) {
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> vx_dist(-0.3f, 0.3f);
-    std::uniform_real_distribution<float> vy_dist(2.3f, 2.5f);
+    std::uniform_real_distribution<float> vx_dist(-0.25f, 0.25f);
+    std::uniform_real_distribution<float> vy_dist(2.4f, 2.6f);
     NodeSource shot_source;
     if (terminal) {
         return;
@@ -110,7 +110,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
                 ShotInfo random_shot = { vx, vy, rot };
                 untried_shots->push_back(random_shot);
             }
-            untried_shots->push_back({ 0.1, 2.5, 1 });
+            untried_shots->push_back({ 0.1, 2.5, 0 });
             std::cout << "[After]Untried Shots Size: " << untried_shots->size() << "\n";
         }
         selected = true;

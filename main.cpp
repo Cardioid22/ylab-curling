@@ -153,7 +153,7 @@ ShotInfo FindShot(Position const& pos) {
     std::cout << "Finding Shot...\n";
     dc::Vector2 target_position = { pos.x, pos.y };
     dc::Vector2 final_speed(0, 0);
-    dc::moves::Shot::Rotation rotation = (pos.x > 0 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW);
+    dc::moves::Shot::Rotation rotation = (pos.x > 0 ? dc::moves::Shot::Rotation::kCCW : dc::moves::Shot::Rotation::kCW);
     final_speed = EstimateShotVelocityFCV1(target_position, 0, rotation);
     ShotInfo shot;
     shot.vx = final_speed.x;
@@ -211,6 +211,60 @@ double run_simulations(dc::GameState const& state, const ShotInfo& shot) {
     return evaluate(sim_state);  // You define this: e.g., 1.0 for win, 0.0 for loss
 }
 
+dc::moves::Shot test(dc::GameState const& game_state) {
+    int shot_num = static_cast<int>(game_state.shot);
+    dc::moves::Shot shot;
+    dc::Vector2 vel;
+    switch (shot_num)
+    {
+    case 0: 
+        vel =  dc::Vector2(0.0, 38.8);
+        vel = EstimateShotVelocityFCV1(vel, 0, dc::moves::Shot::Rotation::kCCW);
+        shot.velocity.x = vel.x;
+        shot.velocity.y = vel.y;
+        shot.rotation = dc::moves::Shot::Rotation::kCCW;
+        break;
+    case 1:
+        vel = dc::Vector2(0.2, 38.405);
+        vel = EstimateShotVelocityFCV1(vel, 0, dc::moves::Shot::Rotation::kCCW);
+        shot.velocity.x = vel.x;
+        shot.velocity.y = vel.y;
+        shot.rotation = dc::moves::Shot::Rotation::kCCW;
+        break;
+    case 2:
+        vel = dc::Vector2(-0.5, 38.2);
+        vel = EstimateShotVelocityFCV1(vel, 0, dc::moves::Shot::Rotation::kCW);
+        shot.velocity.x = vel.x;
+        shot.velocity.y = vel.y;
+        shot.rotation = dc::moves::Shot::Rotation::kCW;
+        break;
+    case 3:
+        vel = dc::Vector2(-0.3, 38.0);
+        vel = EstimateShotVelocityFCV1(vel, 0, dc::moves::Shot::Rotation::kCW);
+        shot.velocity.x = vel.x;
+        shot.velocity.y = vel.y;
+        shot.rotation = dc::moves::Shot::Rotation::kCW;
+        break;
+    case 4:
+        vel = dc::Vector2(1.2, 38.6);
+        vel = EstimateShotVelocityFCV1(vel, 0, dc::moves::Shot::Rotation::kCW);
+        shot.velocity.x = vel.x;
+        shot.velocity.y = vel.y;
+        shot.rotation = dc::moves::Shot::Rotation::kCW;
+        break;
+    case 5:
+        vel = dc::Vector2(0.8, 37.8);
+        vel = EstimateShotVelocityFCV1(vel, 0, dc::moves::Shot::Rotation::kCW);
+        shot.velocity.x = vel.x;
+        shot.velocity.y = vel.y;
+        shot.rotation = dc::moves::Shot::Rotation::kCW;
+        break;
+    default:
+        break;
+    }
+    return shot;
+}
+
 void OnInit(
     dc::Team team,
     dc::GameSetting const& game_setting,
@@ -250,7 +304,7 @@ void OnInit(
     shotData.resize(S);
     grid_states.resize(S);
     grid = MakeGrid(GridSize_M, GridSize_N);
-    for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
+    for (int i = 0; i < S; ++i) {
         ShotInfo shotinfo = FindShot(grid[i]);
         std::cout << "  ShotInfo for grid[" << i << "]: "
             << "vx = " << shotinfo.vx << ", "
@@ -264,6 +318,23 @@ void OnInit(
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
 {
+    //dc::moves::Shot shot;
+    //shot.velocity.x = shotData[static_cast<int>(game_state.shot)].vx;
+    //shot.velocity.y = shotData[static_cast<int>(game_state.shot)].vy;
+    //shot.rotation = shotData[static_cast<int>(game_state.shot)].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    //return shot;
+    //if (game_state.shot < 6) {
+    //    dc::moves::Shot test_shot = test(game_state);
+    //    return test_shot;
+    //}
+    //if (game_state.hammer == g_team) {
+    //    dc::moves::Shot shot;
+    //    shot.velocity.x = 0.1;
+    //    shot.velocity.y = 2.5;
+    //    shot.rotation = dc::moves::Shot::Rotation::kCCW;
+    //    return shot;
+    //}
+
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
@@ -275,7 +346,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     // --- MCTS Search ---
     dc::GameState const& current_state = game_state;
     MCTS mcts(current_state, grid_states, state_to_shot_table, simWrapper);
-    mcts.grow_tree(100, 600.0);
+    mcts.grow_tree(100, 3600.0);
     //mcts.report_rollout_result();
     mcts.export_rollout_result_to_csv("final_children", game_state.shot);
     ShotInfo best = mcts.get_best_shot();
@@ -285,11 +356,12 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "\n";
     //return final_shot;
-    dc::moves::Shot shot;
-    shot.velocity.x = 2.5;
-    shot.velocity.y = 0.3;
-    shot.rotation = dc::moves::Shot::Rotation::kCW;
-    return shot;
+    //dc::moves::Shot shot;
+    //shot.velocity.x = 2.5;
+    //shot.velocity.y = 0.1;
+    //shot.rotation = dc::moves::Shot::Rotation::kCW;
+    //return shot;
+    return final_shot;
 }
 
 

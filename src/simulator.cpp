@@ -178,7 +178,7 @@ ShotInfo SimulatorWrapper::FindShot(Position const& pos) {
     std::cout << "Finding Shot...\n";
     dc::Vector2 target_position = { pos.x, pos.y };
     dc::Vector2 final_speed(0, 0);
-    dc::moves::Shot::Rotation rotation = (pos.x > 0 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW);
+    dc::moves::Shot::Rotation rotation = (pos.x > 0 ? dc::moves::Shot::Rotation::kCCW : dc::moves::Shot::Rotation::kCW);
     final_speed = EstimateShotVelocityFCV1(target_position, 0, rotation);
     ShotInfo shot;
     shot.vx = final_speed.x;
