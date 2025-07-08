@@ -4,6 +4,7 @@
 #include <string>
 #include <set>
 #include "digitalcurling3/digitalcurling3.hpp"
+#include "structure.h"
 #ifndef _Analysis_H
 #define _Analysis_H
 
@@ -12,6 +13,7 @@ namespace dc = digitalcurling3;
 class Analysis {
 public:
 Analysis(int grid_size_m = 4, int grid_size_n = 4);
+void LinkageMatrixToCSV(const LinkageMatrix& linkage) const;
 void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int shot_number);
 void OutputClusterGridToCSV(const std::vector<int>& state_index_to_cluster,
     int rows, int cols,

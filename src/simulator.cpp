@@ -1,7 +1,6 @@
 ﻿#include "simulator.h"
 #include "digitalcurling3/digitalcurling3.hpp"
 #include "structure.h"
-#include "game_context.h"
 #include <iostream>
 
 namespace dc = digitalcurling3;

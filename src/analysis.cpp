@@ -1,4 +1,5 @@
 #include "analysis.h"
+#include "structure.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -11,6 +12,18 @@ namespace dc = digitalcurling3;
 Analysis::Analysis(int grid_size_m, int grid_size_n)
     : GridSize_M(grid_size_m), GridSize_N(grid_size_n) {
 }
+void Analysis::LinkageMatrixToCSV(const LinkageMatrix& linkage) const {
+    std::string folder = "linkage_outputs_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
+    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
+    std::string filename = folder + "linkage_matrix.csv";
+    std::ofstream file(filename);
+
+    for (const auto& [i, j, d, n] : linkage) {
+        file << i << "," << j << "," << d << "," << n << "\n";
+    }
+    file.close();
+}
+
 void Analysis::SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int shot_number) {
     std::string folder = "table_outputs_" + std::to_string(GridSize_M) + "_" + std::to_string(GridSize_N) + "/";
     std::filesystem::create_directories(folder); // Create the folder if it doesn't exist

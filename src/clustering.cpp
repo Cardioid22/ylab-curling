@@ -18,11 +18,40 @@ Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states)
     }
 }
 
-bool Clustering::IsInHouse(float x, float y) const {
+bool Clustering::IsInHouse(const std::optional<dc::Transform>& stone) const {
+    float x = stone->position.x;
+    float y = stone->position.y;
     const float HouseRadius = 1.829;
     const float HouseCenterY = 38.405;
-    return std::pow(x, 2) + std::pow(y - HouseCenterY, 2) <= std::pow(HouseRadius / 3, 2);
+    return std::pow(x, 2) + std::pow(y - HouseCenterY, 2) <= std::pow(2 * HouseRadius / 3, 2);
 }
+
+std::vector<std::pair<size_t, size_t>> Clustering::SortStones(const std::array<std::array<std::optional<dc::Transform>, 8>, 2>& all_stones) const {
+    std::vector<std::tuple<float, size_t, size_t>> distances;
+
+    for (size_t team = 0; team < 2; ++team) {
+        for (size_t index = 0; index < 8; ++index) {
+            if (all_stones[team][index]) {
+                float x = all_stones[team][index]->position.x;
+                float y = all_stones[team][index]->position.y;
+                float dist = std::sqrt(std::pow(x, 2) + std::pow(y - HouseCenterY_, 2));
+                distances.emplace_back(dist, team, index);
+            }
+        }
+    }
+
+    // Sort based on distance
+    std::sort(distances.begin(), distances.end());
+
+    // Extract sorted (team, index) pairs
+    std::vector<std::pair<size_t, size_t>> sorted_stones;
+    for (auto& [dist, team, index] : distances) {
+        sorted_stones.emplace_back(team, index);
+    }
+
+    return sorted_stones;
+}
+
 
 float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
     int v = 0;
@@ -46,34 +75,41 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
                 float dist_x = stones_a[index]->position.x - stones_b[index]->position.x;
                 float dist_y = stones_a[index]->position.y - stones_b[index]->position.y;
                 distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
-                //if (IsInHouse(stones_a[index]->position.x, stones_a[index]->position.y) && !IsInHouse(stones_b[index]->position.x, stones_b[index]->position.y)
-                //    || !IsInHouse(stones_a[index]->position.x, stones_a[index]->position.y) && IsInHouse(stones_b[index]->position.x, stones_b[index]->position.y)) 
-                //{
-                //    distance += 5.0f;
-                //}
+                if ((IsInHouse(stones_a[index]) && !IsInHouse(stones_b[index])) || (!IsInHouse(stones_a[index]) && IsInHouse(stones_b[index]))) {
+                    distance += 5.0f;
+                }
             }
             else if (stones_b[index]) { // ex: new shot
                 float dist_x = stones_b[index]->position.x;
                 float dist_y = stones_b[index]->position.y - HouseCenterY_;
                 distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
-                if (IsInHouse(stones_b[index]->position.x, stones_b[index]->position.y)) {
+                if (IsInHouse(stones_b[index])) {
                     distance += 5.0f;
                 }
             }
             else if (stones_a[index]) { // stone has taken away
                 float dist_x = stones_a[index]->position.x;
                 float dist_y = stones_a[index]->position.y - HouseCenterY_;
-                distance += std::sqrt( (std::pow(dist_x, 2) + std::pow(dist_y, 2)));
-                if (IsInHouse(stones_a[index]->position.x, stones_a[index]->position.y)) {
+                distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
+                if (IsInHouse(stones_a[index])) {
                     distance += 5.0f;
                 }
             }
             else {
-                break;
+                continue;
                 //std::cout << "All Stones has taken away!\n";
             }
         }
     }
+    auto const& all_stones_a = a.stones;
+    auto const& all_stones_b = b.stones;
+    std::vector<std::pair<size_t, size_t>> sorted_stones_a, sorted_stones_b;
+    sorted_stones_a = SortStones(all_stones_a);
+    sorted_stones_b = SortStones(all_stones_b);
+    auto [team_a, index_a] = sorted_stones_a[0];
+    auto [team_b, index_b] = sorted_stones_b[0];
+    if (team_a != team_b) distance += 10.0f;
+
     return distance;
 }
 
@@ -97,8 +133,8 @@ std::vector<std::vector<float>> Clustering::MakeDistanceTable(std::vector<dc::Ga
     }
     std::cout << "Make DitanceTable Done\n";
     int shot_num = static_cast<int>(states[0].shot);
-    if (shot_num == 14 || shot_num  == 15) {
-        Analysis an;
+    if (shot_num % 2 == 1) {
+        Analysis an;       
         an.SaveSimilarityTableToCSV(states_table, shot_num);
     }
     return states_table;
@@ -110,14 +146,20 @@ std::tuple<int, int, float> Clustering::findClosestClusters(const std::vector<st
 
     for (int i = 0; i < clusters.size(); i++) {
         for (int j = i + 1; j < clusters.size(); j++) {
+            float total_dist = 0.0f;
+            int pair_count = 0;
             for (int a : clusters[i]) {
                 for (int b : clusters[j]) {
-                    if (dist[a][b] < min_dist) {
-                        min_dist = dist[a][b];
-                        cluster_a = i;
-                        cluster_b = j;
-                    }
+                    total_dist += dist[a][b];
+                    pair_count++;
                 }
+            }
+            float avg_dist = total_dist / pair_count;
+
+            if (avg_dist < min_dist) {
+                min_dist = avg_dist;
+                cluster_a = i;
+                cluster_b = j;
             }
         }
     }
@@ -203,6 +245,7 @@ std::vector<int> Clustering::getRecommendedStates() {
         }
     }
     debug_clusters();
+    //genrateLinkage();
     return recommend;
 }
 
@@ -217,3 +260,9 @@ void Clustering::debug_clusters() {
         std::cout << "\n";
     }
 }
+
+void Clustering::genrateLinkage() const {
+    Analysis an;
+    an.LinkageMatrixToCSV(linkage);
+}
+

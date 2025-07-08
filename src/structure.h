@@ -17,6 +17,11 @@ struct ShotInfo {
 };
 
 using LinkageRow = std::tuple<int, int, float, int>;
+// <i, j, d, n>
+// 	Cluster index i merged at this step
+//  Cluster index j merged at this step
+//  Distance between cluster i and j (merge cost)
+// Number of samples in the new merged cluster
 using LinkageMatrix = std::vector<LinkageRow>;
 
 #endif
