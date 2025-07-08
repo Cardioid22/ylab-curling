@@ -13,7 +13,6 @@
 #include "src/structure.h"
 #include "src/clustering.h"
 #include "src/simulator.h"
-//#include "src/drawer.h"
 
 namespace dc = digitalcurling3;
 
@@ -345,10 +344,11 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
 
     // --- MCTS Search ---
     dc::GameState const& current_state = game_state;
+    int shot_num = static_cast<int>(game_state.shot);
     MCTS mcts(current_state, grid_states, state_to_shot_table, simWrapper);
     mcts.grow_tree(100, 3600.0);
     //mcts.report_rollout_result();
-    mcts.export_rollout_result_to_csv("final_children", game_state.shot);
+    mcts.export_rollout_result_to_csv("final_children", shot_num);
     ShotInfo best = mcts.get_best_shot();
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;
