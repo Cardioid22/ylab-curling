@@ -103,14 +103,14 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
             untried_shots = std::make_unique<std::vector<ShotInfo>>(
                 generate_possible_shots_after(all_states, state_to_shot_table)
             );
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 4; i++) {
                 float vx = vx_dist(gen);
                 float vy = vy_dist(gen);
                 int rot = (vx > 0.0f) ? 0 : 1;
                 ShotInfo random_shot = { vx, vy, rot };
                 untried_shots->push_back(random_shot);
             }
-            untried_shots->push_back({ 0.1, 2.5, 0 });
+            //untried_shots->push_back({ 0.1, 2.5, 0 });
             std::cout << "[After]Untried Shots Size: " << untried_shots->size() << "\n";
         }
         selected = true;
@@ -119,7 +119,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         std::cerr << "Warning: Cannot expanded this node any more!" << "\n";
         return;
     }
-    ShotInfo shot = { 0.3, 2.5, 0 };
+    ShotInfo shot = { 0.1, 2.5, 0 };
     if (NextIsOpponentTurn()) {
         // Pick one untried shot and create a new child node
         std::cout << "My Turn. Genrating Shot From Untried_Shots...\n";
@@ -196,11 +196,12 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
 {
     std::vector<int> recommended_states;
     std::vector<ShotInfo> candidates;
-    Clustering algo(4, all_states);
+    int cluster_num = static_cast<int>(std::log2(all_states.size()));
+    Clustering algo(cluster_num, all_states);
     recommended_states = algo.getRecommendedStates();
     for (int state_index : recommended_states) {
         auto it = state_to_shot_table.find(state_index);
-        if (it != state_to_shot_table.end()) {
+        if (it != state_to_shot_table.end() && candidates.size() < max_degree) {
             candidates.push_back(it->second);
         }
     }

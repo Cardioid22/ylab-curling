@@ -30,8 +30,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 4; // rows
-const int GridSize_N = 4; // columns
+const int GridSize_M = 6; // rows
+const int GridSize_N = 6; // columns
 
 std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
@@ -40,17 +40,23 @@ std::vector<dc::GameState> grid_states;
 std::shared_ptr<SimulatorWrapper> simWrapper;
 
 std::vector<Position> MakeGrid(const int m, const int n) {
-    float x_grid = 2 * (2 * HouseRadius / 3) / (m - 1);
-    float y_grid = 2 * (2 * HouseRadius / 3) / (n - 1);
+    const float x_min = -HouseRadius;
+    const float x_max = HouseRadius;
+    const float y_min = 36.0;
+    const float y_max = 40.0;
+
+    float x_grid = (x_max - x_min) / (m - 1);
+    float y_grid = (y_max - y_min) / (n - 1);
+
+    float x_start = -((m - 1) / 2.0) * x_grid; // center based
     Position pos;
     std::vector<Position> result;
-    for (float i = 0; i < m; i++) {
-        float y = HouseCenterY + (2 * HouseRadius / 3) - i * y_grid;
-        for (int j = 0; j < n; j++) {
-            float x = -(2 * HouseRadius / 3) + j * x_grid;
+    for (int j = 0; j < n; ++j) {
+        float y = y_max - j * y_grid;
+        for (int i = 0; i < m; ++i) {
+            float x = x_start + i * x_grid;
             pos.x = x;
             pos.y = y;
-            //std::cout << "x: " << x << ", y: " << y << "\n";
             result.push_back(pos);
         }
     }
@@ -346,7 +352,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     dc::GameState const& current_state = game_state;
     int shot_num = static_cast<int>(game_state.shot);
     MCTS mcts(current_state, grid_states, state_to_shot_table, simWrapper);
-    mcts.grow_tree(100, 3600.0);
+    mcts.grow_tree(10, 3600.0);
     //mcts.report_rollout_result();
     mcts.export_rollout_result_to_csv("final_children", shot_num);
     ShotInfo best = mcts.get_best_shot();
@@ -355,11 +361,10 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     final_shot.velocity.y = best.vy;
     final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "\n";
-    //return final_shot;
     //dc::moves::Shot shot;
-    //shot.velocity.x = 2.5;
-    //shot.velocity.y = 0.1;
-    //shot.rotation = dc::moves::Shot::Rotation::kCW;
+    //shot.velocity.x = shotData[static_cast<int>(game_state.shot)].vx;
+    //shot.velocity.y = shotData[static_cast<int>(game_state.shot)].vy;
+    //shot.rotation = shotData[static_cast<int>(game_state.shot)].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     //return shot;
     return final_shot;
 }

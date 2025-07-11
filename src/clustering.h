@@ -17,7 +17,6 @@ public:
 
 	std::vector<std::set<int>> getClusters();
 	std::vector<int> getRecommendedStates();
-	void genrateLinkage() const;
 
 private:
 	const float HouseRadius_ = 1.829;

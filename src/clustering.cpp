@@ -134,7 +134,7 @@ std::vector<std::vector<float>> Clustering::MakeDistanceTable(std::vector<dc::Ga
     std::cout << "Make DitanceTable Done\n";
     int shot_num = static_cast<int>(states[0].shot);
     if (shot_num % 2 == 1) {
-        Analysis an;       
+        Analysis an(GridSize_M_, GridSize_N_);       
         an.SaveSimilarityTableToCSV(states_table, shot_num);
     }
     return states_table;
@@ -245,12 +245,12 @@ std::vector<int> Clustering::getRecommendedStates() {
         }
     }
     debug_clusters();
-    //genrateLinkage();
     return recommend;
 }
 
 void Clustering::debug_clusters() {
     std::cout << "=== Debug Clusters ===\n";
+    std::cout << "Desired Cluster #: " << n_desired_clusters << "\n";
     int id = 0;
     for (auto const& cluster : clusters) {
         std::cout << "Cluster # " << id++ << " (" << cluster.size() << " states):\n";
@@ -261,8 +261,4 @@ void Clustering::debug_clusters() {
     }
 }
 
-void Clustering::genrateLinkage() const {
-    Analysis an;
-    an.LinkageMatrixToCSV(linkage);
-}
 
