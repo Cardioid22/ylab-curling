@@ -54,7 +54,7 @@ public:
 private:
     int max_degree = 8;
 
-	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table);
+	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) const;
 	dc::GameState getNextState(ShotInfo shotinfo) const;
 };
 
@@ -69,7 +69,7 @@ public:
 	void grow_tree(int max_iter, double max_limited_time);  // main loop
 	ShotInfo get_best_shot();
     void report_rollout_result() const;
-    void export_rollout_result_to_csv(const std::string& filename, int shot_num) const;
+    void export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n) const;
 
 private:
 	std::unique_ptr<MCTS_Node> root_;

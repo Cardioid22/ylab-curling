@@ -89,9 +89,9 @@ MCTS_Node* MCTS_Node::select_worst_child(double c) {
 
 void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) {
     static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> vx_dist(-0.25f, 0.25f);
-    std::uniform_real_distribution<float> vy_dist(2.4f, 2.6f);
+    static std::mt19937 gen(10);
+    std::uniform_real_distribution<float> vx_dist(-0.24f, 0.24f);
+    std::uniform_real_distribution<float> vy_dist(2.38f, 2.48f);
     NodeSource shot_source;
     if (terminal) {
         return;
@@ -103,10 +103,17 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
             untried_shots = std::make_unique<std::vector<ShotInfo>>(
                 generate_possible_shots_after(all_states, state_to_shot_table)
             );
-            for (int i = 0; i < 4; i++) {
+            int clustered_num = untried_shots->size();
+            for (int i = 0; i < clustered_num; i++) {
                 float vx = vx_dist(gen);
                 float vy = vy_dist(gen);
-                int rot = (vx > 0.0f) ? 0 : 1;
+                int rot = 0;
+                if (std::abs(vx) >= 0.05f) {
+                    rot = vx > 0 ? 0 : 1;
+                }
+                else {
+                    rot = vx > 0 ? 1 : 0;
+                }
                 ShotInfo random_shot = { vx, vy, rot };
                 untried_shots->push_back(random_shot);
             }
@@ -123,7 +130,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     if (NextIsOpponentTurn()) {
         // Pick one untried shot and create a new child node
         std::cout << "My Turn. Genrating Shot From Untried_Shots...\n";
-        if (untried_shots->size() > 4) {
+        if (untried_shots->size() > max_degree / 2) {
             shot_source = NodeSource::Random;
         }
         else {
@@ -192,7 +199,7 @@ void MCTS_Node::backpropagate(double w, int n) {
 // shot candidates for the next node
 std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
     const std::vector<dc::GameState> all_states,
-    const std::unordered_map<int, ShotInfo> state_to_shot_table) 
+    const std::unordered_map<int, ShotInfo> state_to_shot_table) const
 {
     std::vector<int> recommended_states;
     std::vector<ShotInfo> candidates;
@@ -201,7 +208,7 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
     recommended_states = algo.getRecommendedStates();
     for (int state_index : recommended_states) {
         auto it = state_to_shot_table.find(state_index);
-        if (it != state_to_shot_table.end() && candidates.size() < max_degree) {
+        if (it != state_to_shot_table.end() && candidates.size() < max_degree / 2) {
             candidates.push_back(it->second);
         }
     }
@@ -341,12 +348,12 @@ void MCTS::report_rollout_result() const {
     std::cout << "==============================\n";
 }
 
-void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_num) const {
+void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n) const {
     if (!root_) {
         std::cerr << "No root node to export.\n";
         return;
     }
-    std::string folder = "../../MCTS_Output_" + std::to_string(max_iteration) + "_Iterations" + "/";
+    std::string folder = "../MCTS_Output_" + std::to_string(max_iteration) + "_Iterations_" + std::to_string(grid_m) + "_" + std::to_string(grid_n) + "/";
     std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
     std::string new_filename = folder + filename + "_" + std::to_string(shot_num) + ".csv";
     std::ofstream file(new_filename);

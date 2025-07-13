@@ -30,8 +30,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 6; // rows
-const int GridSize_N = 6; // columns
+const int GridSize_M = 4; // rows
+const int GridSize_N = 4; // columns
 
 std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
@@ -352,9 +352,9 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     dc::GameState const& current_state = game_state;
     int shot_num = static_cast<int>(game_state.shot);
     MCTS mcts(current_state, grid_states, state_to_shot_table, simWrapper);
-    mcts.grow_tree(10, 3600.0);
+    mcts.grow_tree(100, 3600.0);
     //mcts.report_rollout_result();
-    mcts.export_rollout_result_to_csv("final_children", shot_num);
+    mcts.export_rollout_result_to_csv("root_children_score", shot_num, GridSize_M, GridSize_N);
     ShotInfo best = mcts.get_best_shot();
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;

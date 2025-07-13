@@ -13,8 +13,7 @@ namespace dc = digitalcurling3;
 class Analysis {
 public:
 Analysis(int grid_size_m, int grid_size_n);
-void LinkageMatrixToCSV(const LinkageMatrix& linkage) const;
-void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int shot_number);
+void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int shot_number) const;
 void OutputClusterGridToCSV(const std::vector<int>& state_index_to_cluster,
     int rows, int cols,
     const std::string& filename, const int shot_num);
