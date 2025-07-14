@@ -24,4 +24,9 @@ using LinkageRow = std::tuple<int, int, float, int>;
 // Number of samples in the new merged cluster
 using LinkageMatrix = std::vector<LinkageRow>;
 
+enum class NodeSource {
+    Clustered,
+    Random
+};
+
 #endif

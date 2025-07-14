@@ -38,6 +38,7 @@ std::vector<ShotInfo> shotData;
 std::unordered_map<int, ShotInfo> state_to_shot_table;
 std::vector<dc::GameState> grid_states;
 std::shared_ptr<SimulatorWrapper> simWrapper;
+std::shared_ptr<SimulatorWrapper> simWrapper_random;
 
 std::vector<Position> MakeGrid(const int m, const int n) {
     const float x_min = -HouseRadius;
@@ -319,6 +320,7 @@ void OnInit(
         state_to_shot_table[i] = shotinfo;
     }
     simWrapper = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
+    simWrapper_random = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
     std::cout << "CurlingAI Initialize Done.\n";
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
@@ -351,11 +353,16 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     // --- MCTS Search ---
     dc::GameState const& current_state = game_state;
     int shot_num = static_cast<int>(game_state.shot);
-    MCTS mcts(current_state, grid_states, state_to_shot_table, simWrapper);
-    mcts.grow_tree(100, 3600.0);
+    std::cout << "------Clustered Tree------" << '\n';
+    MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper);
+    mcts_clustered.grow_tree(100, 3600.0);
     //mcts.report_rollout_result();
-    mcts.export_rollout_result_to_csv("root_children_score", shot_num, GridSize_M, GridSize_N);
-    ShotInfo best = mcts.get_best_shot();
+    mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N);
+    ShotInfo best = mcts_clustered.get_best_shot();
+    std::cout << "------Random Tree------" << '\n';
+    MCTS mcts_random(current_state, NodeSource::Random, grid_states, state_to_shot_table, simWrapper_random);
+    mcts_random.grow_tree(100, 3600.0);
+    mcts_clustered.export_rollout_result_to_csv("root_children_score_random", shot_num, GridSize_M, GridSize_N);
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;
     final_shot.velocity.y = best.vy;

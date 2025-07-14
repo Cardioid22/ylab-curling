@@ -10,10 +10,10 @@
 
 namespace dc = digitalcurling3;
 
-enum class NodeSource {
-    Clustered,
-    Random
-};
+//enum class NodeSource {
+//    Clustered,
+//    Random
+//};
 
 
 class MCTS_Node {
@@ -38,6 +38,7 @@ public:
     MCTS_Node(
         MCTS_Node* parent,
         dc::GameState const& game_state,
+        NodeSource node_source,
         std::shared_ptr<SimulatorWrapper> shared_sim,
         std::optional<std::vector<ShotInfo>> shot_candidates = std::nullopt,
         std::optional<ShotInfo> selected_shot = std::nullopt
@@ -61,6 +62,7 @@ private:
 class MCTS {
 public:
 	MCTS(dc::GameState const& root_state, 
+        NodeSource node_source,
         std::vector<dc::GameState> states, 
         std::unordered_map<int, ShotInfo> state_to_shot_table,
         std::shared_ptr<SimulatorWrapper> simWrapper

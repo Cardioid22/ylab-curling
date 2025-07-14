@@ -10,6 +10,7 @@ namespace dc = digitalcurling3;
 MCTS_Node::MCTS_Node(
     MCTS_Node* parent,
     dc::GameState const& game_state,
+    NodeSource node_source,
     std::shared_ptr<SimulatorWrapper> shared_sim,
     std::optional<std::vector<ShotInfo>> shot_candidates,
     std::optional<ShotInfo> selected_shot
@@ -22,7 +23,8 @@ MCTS_Node::MCTS_Node(
     wins(0),
     score(0.0),
     degree(0),
-    label(0)
+    label(0),
+    source(node_source)
 {
     static int global_label = 0;
     label = global_label++; // for debugging
@@ -100,22 +102,26 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         std::cout << "MCTS_Node was not selected before.\n";
         if (NextIsOpponentTurn()) {
             std::cout << "Generating possible shots...\n";
-            untried_shots = std::make_unique<std::vector<ShotInfo>>(
-                generate_possible_shots_after(all_states, state_to_shot_table)
-            );
-            int clustered_num = untried_shots->size();
-            for (int i = 0; i < clustered_num; i++) {
-                float vx = vx_dist(gen);
-                float vy = vy_dist(gen);
-                int rot = 0;
-                if (std::abs(vx) >= 0.05f) {
-                    rot = vx > 0 ? 0 : 1;
+            if (source == NodeSource::Clustered) {
+                untried_shots = std::make_unique<std::vector<ShotInfo>>(
+                    generate_possible_shots_after(all_states, state_to_shot_table)
+                );
+            }
+            else {
+                untried_shots = std::make_unique<std::vector<ShotInfo>>();
+                for (int i = 0; i < max_degree; i++) {
+                    float vx = vx_dist(gen);
+                    float vy = vy_dist(gen);
+                    int rot = 0;
+                    if (std::abs(vx) >= 0.05f) {
+                        rot = vx > 0 ? 0 : 1;
+                    }
+                    else {
+                        rot = vx > 0 ? 1 : 0;
+                    }
+                    ShotInfo random_shot = { vx, vy, rot };
+                    untried_shots->push_back(random_shot);
                 }
-                else {
-                    rot = vx > 0 ? 1 : 0;
-                }
-                ShotInfo random_shot = { vx, vy, rot };
-                untried_shots->push_back(random_shot);
             }
             //untried_shots->push_back({ 0.1, 2.5, 0 });
             std::cout << "[After]Untried Shots Size: " << untried_shots->size() << "\n";
@@ -130,12 +136,13 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     if (NextIsOpponentTurn()) {
         // Pick one untried shot and create a new child node
         std::cout << "My Turn. Genrating Shot From Untried_Shots...\n";
-        if (untried_shots->size() > max_degree / 2) {
-            shot_source = NodeSource::Random;
-        }
-        else {
-            shot_source = NodeSource::Clustered;
-        }
+        //if (untried_shots->size() > max_degree / 2) {
+        //    shot_source = NodeSource::Random;
+        //}
+        //else {
+        //    shot_source = NodeSource::Clustered;
+        //}
+        shot_source = source;
         shot = untried_shots->back();
         untried_shots->pop_back();
         //std::cout << "Untried_Shots: " << untried_shots->size() << "\n";
@@ -160,6 +167,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     auto child_node = std::make_unique<MCTS_Node>(
         this,
         next_state,
+        shot_source,
         simulator,
         std::nullopt,  // child will generate their own if selected later
         shot
@@ -208,7 +216,7 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
     recommended_states = algo.getRecommendedStates();
     for (int state_index : recommended_states) {
         auto it = state_to_shot_table.find(state_index);
-        if (it != state_to_shot_table.end() && candidates.size() < max_degree / 2) {
+        if (it != state_to_shot_table.end() && candidates.size() < max_degree) {
             candidates.push_back(it->second);
         }
     }
@@ -236,7 +244,8 @@ void MCTS_Node::print_tree(int indent) const {
     }
 }
 
-MCTS::MCTS(dc::GameState const& root_state, 
+MCTS::MCTS(dc::GameState const& root_state,
+    NodeSource node_source,
     std::vector<dc::GameState> states, 
     std::unordered_map<int, ShotInfo> state_to_shot_table, 
     std::shared_ptr<SimulatorWrapper> simWrapper)
@@ -245,7 +254,7 @@ MCTS::MCTS(dc::GameState const& root_state,
     all_states_.resize(states.size());
     std::copy(states.begin(), states.end(), all_states_.begin());
     std::shared_ptr<SimulatorWrapper> shared_sim = simulator_;
-    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, shared_sim);
+    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim);
 }
 void MCTS::grow_tree(int max_iter, double max_limited_time) {
     using Clock = std::chrono::high_resolution_clock;
