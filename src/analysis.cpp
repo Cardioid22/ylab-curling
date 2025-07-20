@@ -34,6 +34,54 @@ void Analysis::SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& t
     std::cout << "Saved similarity table to: " << filename << "\n";
 }
 
+void Analysis::export_best_shot_comparison_to_csv(
+    const ShotInfo& best,
+    const ShotInfo& best_allgrid,
+    int best_state,
+    int best_allgrid_state,
+    int shot_num,
+    int iter,
+    const std::string& filename
+) {
+    // Create the directory if it doesn't exist
+    std::string folder = "../Iter_"+ std::to_string(iter) + "/MCTS_Output_BestShotComparison_" + std::to_string(GridSize_M * GridSize_N);
+    std::filesystem::create_directories(folder);
+    std::string new_filename = folder + "/" + filename + "_" + std::to_string(shot_num) + ".csv";
+    std::ofstream file(new_filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << new_filename << "\n";
+        return;
+    }
+
+    // Write header
+    file << "Type,Vx,Vy,Rot,StateID\n";
+
+    // Write MCTS best shot
+    file << "MCTS," << best.vx << "," << best.vy << "," << best.rot << "," << best_state << "\n";
+
+    // Write AllGrid best shot
+    file << "AllGrid," << best_allgrid.vx << "," << best_allgrid.vy << "," << best_allgrid.rot << "," << best_allgrid_state << "\n";
+
+    file.close();
+}
+
+void Analysis::cluster_id_to_state_csv(std::vector<std::vector<int>> cluster_id_to_state, int shot_num, int iter) const {
+    std::string folder = "../Iter_" + std::to_string(iter) + "/MCTS_Output_ClusteringId_" + std::to_string(cluster_id_to_state.size()) + "_Clusters_/";
+    std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
+    std::string new_filename = folder + "cluster_ids_" + std::to_string(shot_num) + ".csv";
+    std::ofstream file(new_filename);
+
+    file << "ClusterId,StateId\n";
+
+    for (int cid = 0; cid < cluster_id_to_state.size(); ++cid) {
+        for (int stateId : cluster_id_to_state[cid]) {
+            file << cid << "," << stateId << "\n";
+        }
+    }
+    file.close();
+}
+
 void Analysis::OutputClusterGridToCSV(const std::vector<int>& state_index_to_cluster,
     int rows, int cols,
     const std::string& filename, const int shot_num) {

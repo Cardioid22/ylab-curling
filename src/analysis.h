@@ -14,6 +14,16 @@ class Analysis {
 public:
 Analysis(int grid_size_m, int grid_size_n);
 void SaveSimilarityTableToCSV(const std::vector<std::vector<float>>& table, int shot_number) const;
+void export_best_shot_comparison_to_csv(
+    const ShotInfo& best,
+    const ShotInfo& best_allgrid,
+    int best_state,
+    int best_allgrid_state,
+    int shot_num,
+    int iter,
+    const std::string& filename
+);
+void cluster_id_to_state_csv(std::vector<std::vector<int>> cluster_id_to_state, int shot_num, int iter) const;
 void OutputClusterGridToCSV(const std::vector<int>& state_index_to_cluster,
     int rows, int cols,
     const std::string& filename, const int shot_num);
