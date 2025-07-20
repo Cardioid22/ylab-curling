@@ -1,5 +1,6 @@
 ﻿#include <iostream>
 #include <set>
+#include <fstream>
 #include "clustering.h"
 #include "structure.h"
 #include "analysis.h"
@@ -7,7 +8,7 @@
 
 namespace dc = digitalcurling3;
 Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states) 
-: n_desired_clusters(k_clusters)
+: n_desired_clusters(k_clusters), cluster_exists(false)
 {
     states.resize(all_states.size());
     std::copy(all_states.begin(), all_states.end(), states.begin());
@@ -194,6 +195,7 @@ LinkageMatrix Clustering::hierarchicalClustering(const std::vector<std::vector<f
         cluster_ids[i] = next_cluster_id++;
         cluster_ids.erase(cluster_ids.begin() + j);
     }
+    cluster_exists = true;
     return linkage;
 }
 
@@ -230,6 +232,9 @@ std::vector<std::vector<int>> Clustering::calculateMedioid(const std::vector<std
 }
 
 std::vector<std::set<int>> Clustering::getClusters() {
+    if (cluster_exists) {
+        return clusters;
+    }
     auto distance_table = MakeDistanceTable(states);
     linkage = hierarchicalClustering(distance_table, clusters, n_desired_clusters);
     recommend_states = calculateMedioid(distance_table, clusters);
@@ -244,21 +249,19 @@ std::vector<int> Clustering::getRecommendedStates() {
             recommend.push_back(*cluster.begin());
         }
     }
-    debug_clusters();
     return recommend;
 }
 
-void Clustering::debug_clusters() {
-    std::cout << "=== Debug Clusters ===\n";
-    std::cout << "Desired Cluster #: " << n_desired_clusters << "\n";
-    int id = 0;
-    for (auto const& cluster : clusters) {
-        std::cout << "Cluster # " << id++ << " (" << cluster.size() << " states):\n";
-        for (int label : cluster) {
-            std::cout << label << " ";
+std::vector<std::vector<int>> Clustering::get_clusters_id_table() {
+    int cluster_id = 0;
+    std::vector<std::vector<int>> cluster_id_to_state(clusters.size());
+    for (auto cluster : clusters) {
+        for (int state_id : cluster) {
+            cluster_id_to_state[cluster_id].push_back(state_id);
         }
-        std::cout << "\n";
+        cluster_id++;
     }
+    return cluster_id_to_state;
 }
 
 

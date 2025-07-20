@@ -17,6 +17,7 @@ public:
 
 	std::vector<std::set<int>> getClusters();
 	std::vector<int> getRecommendedStates();
+	std::vector<std::vector<int>> get_clusters_id_table();
 
 private:
 	const float HouseRadius_ = 1.829;
@@ -27,6 +28,7 @@ private:
 	const int GridSize_M_ = 4;
 	const int GridSize_N_ = 4;
 	int n_desired_clusters = 4;
+	bool cluster_exists = false;
 
 	std::vector<dc::GameState> states;
 	std::vector<std::set<int>> clusters;
@@ -40,7 +42,6 @@ private:
 	std::tuple<int, int, float> findClosestClusters(const std::vector<std::vector<float>>& dist, const std::vector<std::set<int>>& clusters);
     LinkageMatrix hierarchicalClustering(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters, int n_desired_clusters);
 	std::vector<std::vector<int>> calculateMedioid(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters);
-	void debug_clusters();
 };
 
 #endif
