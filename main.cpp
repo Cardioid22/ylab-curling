@@ -13,6 +13,7 @@
 #include "src/structure.h"
 #include "src/clustering.h"
 #include "src/simulator.h"
+#include "src/analysis.h"
 
 namespace dc = digitalcurling3;
 
@@ -38,7 +39,7 @@ std::vector<ShotInfo> shotData;
 std::unordered_map<int, ShotInfo> state_to_shot_table;
 std::vector<dc::GameState> grid_states;
 std::shared_ptr<SimulatorWrapper> simWrapper;
-std::shared_ptr<SimulatorWrapper> simWrapper_random;
+std::shared_ptr<SimulatorWrapper> simWrapper_allgrid;
 
 std::vector<Position> MakeGrid(const int m, const int n) {
     const float x_min = -HouseRadius;
@@ -185,38 +186,6 @@ dc::GameState run_single_simulation(dc::GameState const& state, const ShotInfo& 
     return new_state;
 }
 
-float evaluate(dc::GameState& state) {
-    dc::Team o_team = dc::GetOpponentTeam(g_team);
-    if (state.IsGameOver()) {
-        int my_team_score = state.GetTotalScore(g_team);
-        int op_team_score = state.GameState::GetTotalScore(o_team);
-        return my_team_score - op_team_score;
-    }
-    else return 0;
-}
-
-double run_simulations(dc::GameState const& state, const ShotInfo& shot) {
-    std::cout << "Multi Run Simulation Begin.\n";
-    dc::GameState sim_state = state;  // Copy state
-    for (int i = sim_state.shot; i < 15; ++i) {
-        g_simulator->Load(*g_simulator_storage);
-        auto& current_player = *g_players[sim_state.shot / 4];
-        if (!&current_player) {
-            std::cout << "Player is null.\n";
-        }
-        dc::Vector2 velocity(shot.vx, shot.vy);
-        auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-        dc::moves::Shot shot_move{ velocity, rot };
-        dc::Move move{ shot_move };
-        dc::ApplyMove(g_game_setting, *g_simulator, current_player, sim_state, move, std::chrono::milliseconds(0));
-        g_simulator->Save(*g_simulator_storage);
-
-        if (sim_state.IsGameOver()) break;
-    }
-    std::cout << "Multi Run Simulation Done.\n";
-    return evaluate(sim_state);  // You define this: e.g., 1.0 for win, 0.0 for loss
-}
-
 dc::moves::Shot test(dc::GameState const& game_state) {
     int shot_num = static_cast<int>(game_state.shot);
     dc::moves::Shot shot;
@@ -271,6 +240,16 @@ dc::moves::Shot test(dc::GameState const& game_state) {
     return shot;
 }
 
+int findStateFromShot(ShotInfo target) {
+    for (int i = 0; i < state_to_shot_table.size(); i++) {
+        ShotInfo shotinfo = state_to_shot_table[i];
+        if (abs(shotinfo.vx - target.vx) <= 1e-9 && abs(shotinfo.vy - target.vy) <= 1e-9) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 void OnInit(
     dc::Team team,
     dc::GameSetting const& game_setting,
@@ -289,7 +268,7 @@ void OnInit(
         g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
     }
     g_simulator_storage = g_simulator->CreateStorage();
-
+     
     // プレイヤーを生成する
     // 非対応の場合は NormalDistプレイヤーを使用する．csv
     assert(g_players.size() == player_factories.size());
@@ -303,7 +282,8 @@ void OnInit(
         }
 
     }
-    
+    simWrapper = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
+    simWrapper_allgrid = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
     std::cout << "CurlingAI Initialize Begin.\n";
     int S = GridSize_M * GridSize_N;
     grid.resize(S);
@@ -317,10 +297,10 @@ void OnInit(
             << "vy = " << shotinfo.vy << ", "
             << "rot = " << shotinfo.rot << "\n";
         shotData[i] = shotinfo;
+        simWrapper->initialShotData.push_back(shotinfo);
+        simWrapper_allgrid->initialShotData.push_back(shotinfo);
         state_to_shot_table[i] = shotinfo;
     }
-    simWrapper = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
-    simWrapper_random = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
     std::cout << "CurlingAI Initialize Done.\n";
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
@@ -341,33 +321,54 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     //    shot.rotation = dc::moves::Shot::Rotation::kCCW;
     //    return shot;
     //}
-
+    int iteration = 100;
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
         dc::GameState result_state = run_single_simulation(game_state, shot); // simulate one outcome
         grid_states[i] = result_state;
     }
-    std::cout << "CurlingAI grid_states Calculation Done.\n";
-
-    // --- MCTS Search ---
     dc::GameState const& current_state = game_state;
     int shot_num = static_cast<int>(game_state.shot);
+    std::cout << "CurlingAI grid_states Calculation Done.\n";
+    int S = GridSize_M * GridSize_N;
+    Clustering algo(static_cast<int>(std::log2(S)), grid_states);
+    Analysis an(GridSize_M, GridSize_N);
+    auto clusters = algo.getRecommendedStates(); // for debugging
+    auto cluster_id_to_state = algo.get_clusters_id_table(); // for debugging
+    an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, iteration); // for debugging
+
+    // --- MCTS Search ---
+
     std::cout << "------Clustered Tree------" << '\n';
     MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper);
-    mcts_clustered.grow_tree(100, 3600.0);
-    //mcts.report_rollout_result();
+    mcts_clustered.grow_tree(iteration, 3600.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N);
+
+    //std::cout << "------Random Tree------" << '\n';
+    //MCTS mcts_random(current_state, NodeSource::Random, grid_states, state_to_shot_table, simWrapper_random);
+    //mcts_random.grow_tree(10, 3600.0);
+    //mcts_random.export_rollout_result_to_csv("root_children_score_random", shot_num, GridSize_M, GridSize_N);
+
+    std::cout << "------AllGrid Tree------" << '\n';
+    MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid);
+    mcts_allgrid.grow_tree(iteration, 3600.0);
+    mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N);
     ShotInfo best = mcts_clustered.get_best_shot();
-    std::cout << "------Random Tree------" << '\n';
-    MCTS mcts_random(current_state, NodeSource::Random, grid_states, state_to_shot_table, simWrapper_random);
-    mcts_random.grow_tree(100, 3600.0);
-    mcts_clustered.export_rollout_result_to_csv("root_children_score_random", shot_num, GridSize_M, GridSize_N);
+    ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
+    mcts_clustered.report_rollout_result();
+    mcts_allgrid.report_rollout_result();
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;
     final_shot.velocity.y = best.vy;
     final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "\n";
+    int best_state = findStateFromShot(best);
+    int best_allgrid_state = findStateFromShot(best_allgrid);
+    an.export_best_shot_comparison_to_csv(best, best_allgrid, best_state, best_allgrid_state, shot_num, iteration, "best_shot_comparison");
+    //std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "," <<  best.rot << "\n";
+    //std::cout << "AllGrid Shot: " << best_allgrid.vx << ", " << best_allgrid.vy << best_allgrid.rot << "\n";
+    //std::cout << "Clustered Best Shot Place: " << best_state << "\n";
+    //std::cout << "AllGrid Best Shot Place: " << best_allgrid_state << "\n";
     //dc::moves::Shot shot;
     //shot.velocity.x = shotData[static_cast<int>(game_state.shot)].vx;
     //shot.velocity.y = shotData[static_cast<int>(game_state.shot)].vy;
