@@ -38,6 +38,9 @@ MCTS_Node::MCTS_Node(
     if (shot_candidates.has_value()) {
         untried_shots = std::make_unique<std::vector<ShotInfo>>(std::move(shot_candidates.value()));
     }
+    if (node_source == NodeSource::AllGrid) {
+        max_degree = 16;
+    }
 }
 
 bool MCTS_Node::is_fully_expanded() const{
@@ -107,7 +110,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
                     generate_possible_shots_after(all_states, state_to_shot_table)
                 );
             }
-            else {
+            else if(source == NodeSource::Random){
                 untried_shots = std::make_unique<std::vector<ShotInfo>>();
                 for (int i = 0; i < max_degree; i++) {
                     float vx = vx_dist(gen);
@@ -121,6 +124,13 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
                     }
                     ShotInfo random_shot = { vx, vy, rot };
                     untried_shots->push_back(random_shot);
+                }
+            }
+            else if (source == NodeSource::AllGrid) {
+                untried_shots = std::make_unique<std::vector<ShotInfo>>();
+                std::vector<ShotInfo> initialShots = simulator->initialShotData;
+                for (int i = 0; i < initialShots.size(); i++) {
+                    untried_shots->push_back(initialShots[i]);
                 }
             }
             //untried_shots->push_back({ 0.1, 2.5, 0 });
@@ -189,8 +199,11 @@ void MCTS_Node::rollout() {
     if (source == NodeSource::Clustered) {
         std::cout << "[Clustered] rollout score: " << game_score << "\n";
     }
-    else {
+    else if(source == NodeSource::Random){
         std::cout << "[Random] rollout score: " << game_score << "\n";
+    }
+    else if (source == NodeSource::AllGrid) {
+        std::cout << "[AllGrid] rollout score: " << game_score << "\n";
     }
     backpropagate(wins, 1); //if terminate is true, that node's visits will also +1 for now.
 }
@@ -254,7 +267,7 @@ MCTS::MCTS(dc::GameState const& root_state,
     all_states_.resize(states.size());
     std::copy(states.begin(), states.end(), all_states_.begin());
     std::shared_ptr<SimulatorWrapper> shared_sim = simulator_;
-    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim);
+    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim);    
 }
 void MCTS::grow_tree(int max_iter, double max_limited_time) {
     using Clock = std::chrono::high_resolution_clock;
@@ -291,7 +304,7 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
         std::cout << "Expand Node #" << node->label << "\n";
         node->expand(all_states_, state_to_shot_table_);
     }
-    best_child_ = root_->select_best_child(); // all root child has -inf for the shotinfo!!
+    best_child_ = root_->select_best_child();
     root_->print_tree();
     std::cout << "MCTS Iteration Done.\n";
 }
@@ -314,9 +327,9 @@ void MCTS::report_rollout_result() const {
 
     std::cout << "=== MCTS Rollout Result Summary ===\n";
 
-    int clustered_count = 0, random_count = 0;
-    float max_clustered_score = -1e9, max_random_score = -1e9;
-    float total_clustered_score = 0.0, total_random_score = 0.0;
+    int clustered_count = 0, random_count = 0, allgrid_count = 0;
+    float max_clustered_score = -1e9, max_random_score = -1e9, max_allgrid_score = -1e9;
+    float total_clustered_score = 0.0, total_random_score = 0.0, total_allgrid_score = 0.0;
 
     for (const auto& child : root_->children) {
         std::string label;
@@ -331,6 +344,12 @@ void MCTS::report_rollout_result() const {
             random_count++;
             total_random_score += child->score;
             max_random_score = std::max(max_random_score, child->score);
+        }
+        else if (child->source == NodeSource::AllGrid) {
+            label = "AllGrid";
+            allgrid_count++;
+            total_allgrid_score += child->score;
+            max_allgrid_score = std::max(max_allgrid_score, child->score);
         }
         else {
             label = "Unknown";
@@ -354,6 +373,10 @@ void MCTS::report_rollout_result() const {
         std::cout << "Random Avg Score: " << (total_random_score / random_count)
             << ", Max Score: " << max_random_score << "\n";
     }
+    if (allgrid_count > 0) {
+        std::cout << "AllGrid Avg Score: " << (total_allgrid_score / allgrid_count)
+            << ", Max Score: " << max_allgrid_score << "\n";
+    }
     std::cout << "==============================\n";
 }
 
@@ -373,7 +396,7 @@ void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_nu
     }
 
     // Write CSV header
-    file << "Type,Visits,Wins,Score\n";
+    file << "Type,Visits,Wins,Score,Vx,Vy,Rotation\n";
 
     for (const auto& child : root_->children) {
         std::string label;
@@ -383,14 +406,20 @@ void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_nu
         else if (child->source == NodeSource::Random) {
             label = "Random";
         }
+        else if (child->source == NodeSource::AllGrid) {
+            label = "AllGrid";
+        }
         else {
             label = "Unknown";
         }
-
+        ShotInfo selected_shot = child->selected_shot;
         file << label << ","
             << child->visits << ","
             << child->wins << ","
-            << child->score << "\n";
+            << child->score << "," 
+            << selected_shot.vx << ","
+            << selected_shot.vy << ","
+            << selected_shot.rot << "\n";
     }
 
     file.close();

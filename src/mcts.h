@@ -10,12 +10,6 @@
 
 namespace dc = digitalcurling3;
 
-//enum class NodeSource {
-//    Clustered,
-//    Random
-//};
-
-
 class MCTS_Node {
 
 public:
@@ -34,6 +28,7 @@ public:
     std::unique_ptr<std::vector<ShotInfo>> untried_shots;  // Make it optional/lazy
     std::shared_ptr<SimulatorWrapper> simulator;
     NodeSource source = NodeSource::Clustered;
+    std::vector<std::vector<int>> clusters_id_to_state;
 
     MCTS_Node(
         MCTS_Node* parent,
@@ -72,6 +67,7 @@ public:
 	ShotInfo get_best_shot();
     void report_rollout_result() const;
     void export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n) const;
+
 
 private:
 	std::unique_ptr<MCTS_Node> root_;
