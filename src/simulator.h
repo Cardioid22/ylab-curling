@@ -17,6 +17,7 @@ public:
     dc::GameSetting g_game_setting;
     std::unique_ptr<dc::ISimulatorStorage> g_simulator_storage_;
     std::array<std::unique_ptr<dc::IPlayer>, 4> g_players; // ゲームプレイヤー
+    std::vector<ShotInfo> initialShotData;
 
     dc::GameState run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot);
     double run_simulations(dc::GameState const& game_state, const ShotInfo& shot);  // return win/loss
@@ -25,8 +26,7 @@ public:
     ShotInfo FindShot(Position const& pos);
 private:
     std::unique_ptr<dc::ISimulator> g_simulator_;
-    void initialize(
-    );
+    void initialize();
 };
 
 #endif
