@@ -305,7 +305,7 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
         node->expand(all_states_, state_to_shot_table_);
     }
     best_child_ = root_->select_best_child();
-    root_->print_tree();
+    //root_->print_tree();
     std::cout << "MCTS Iteration Done.\n";
 }
 
@@ -380,12 +380,12 @@ void MCTS::report_rollout_result() const {
     std::cout << "==============================\n";
 }
 
-void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n) const {
+void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n, std::vector<ShotInfo> shotData) const {
     if (!root_) {
         std::cerr << "No root node to export.\n";
         return;
     }
-    std::string folder = "../MCTS_Output_" + std::to_string(max_iteration) + "_Iterations_" + std::to_string(grid_m) + "_" + std::to_string(grid_n) + "/";
+    std::string folder = "../Iter_" + std::to_string(max_iteration) + "/MCTS_Output_" + std::to_string(max_iteration) + "_Iterations_" + std::to_string(grid_m) + "_" + std::to_string(grid_n) + "/";
     std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
     std::string new_filename = folder + filename + "_" + std::to_string(shot_num) + ".csv";
     std::ofstream file(new_filename);
@@ -396,11 +396,11 @@ void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_nu
     }
 
     // Write CSV header
-    file << "Type,Visits,Wins,Score,Vx,Vy,Rotation\n";
+    file << "Type,Visits,Wins,Score,Vx,Vy,Rotation,StateId\n";
 
     for (const auto& child : root_->children) {
         std::string label;
-        if (child->source == NodeSource::Clustered) {
+        if (child->source == NodeSource::Clustered) { 
             label = "Clustered";
         }
         else if (child->source == NodeSource::Random) {
@@ -413,13 +413,21 @@ void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_nu
             label = "Unknown";
         }
         ShotInfo selected_shot = child->selected_shot;
+        int state_id = 0;
+        for (int id = 0; id < shotData.size(); id++) {
+            if (abs(shotData[id].vx - selected_shot.vx) <= 1e-9) {
+                state_id = id;
+            }
+        }
+
         file << label << ","
             << child->visits << ","
             << child->wins << ","
             << child->score << "," 
             << selected_shot.vx << ","
             << selected_shot.vy << ","
-            << selected_shot.rot << "\n";
+            << selected_shot.rot << ","
+            << state_id << "\n";
     }
 
     file.close();

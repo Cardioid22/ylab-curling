@@ -321,7 +321,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     //    shot.rotation = dc::moves::Shot::Rotation::kCCW;
     //    return shot;
     //}
-    int iteration = 100;
+    int iteration = 341;
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
@@ -343,7 +343,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     std::cout << "------Clustered Tree------" << '\n';
     MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper);
     mcts_clustered.grow_tree(iteration, 3600.0);
-    mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N);
+    mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);
 
     //std::cout << "------Random Tree------" << '\n';
     //MCTS mcts_random(current_state, NodeSource::Random, grid_states, state_to_shot_table, simWrapper_random);
@@ -353,11 +353,11 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     std::cout << "------AllGrid Tree------" << '\n';
     MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid);
     mcts_allgrid.grow_tree(iteration, 3600.0);
-    mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N);
+    mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
     ShotInfo best = mcts_clustered.get_best_shot();
     ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
-    mcts_clustered.report_rollout_result();
-    mcts_allgrid.report_rollout_result();
+    //mcts_clustered.report_rollout_result(); // output on terminal
+    //mcts_allgrid.report_rollout_result(); // output on terminal
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;
     final_shot.velocity.y = best.vy;

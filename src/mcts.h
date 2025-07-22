@@ -66,7 +66,7 @@ public:
 	void grow_tree(int max_iter, double max_limited_time);  // main loop
 	ShotInfo get_best_shot();
     void report_rollout_result() const;
-    void export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n) const;
+    void export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n, std::vector<ShotInfo> shotData) const;
 
 
 private:
