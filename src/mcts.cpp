@@ -99,6 +99,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     std::uniform_real_distribution<float> vy_dist(2.38f, 2.48f);
     NodeSource shot_source;
     if (terminal) {
+        rollout();
         return;
     }
     if (!selected) {
