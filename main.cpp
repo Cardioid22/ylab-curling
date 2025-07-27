@@ -31,8 +31,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 4; // rows
-const int GridSize_N = 4; // columns
+const int GridSize_M = 6; // rows
+const int GridSize_N = 6; // columns
 
 std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
@@ -321,7 +321,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     //    shot.rotation = dc::moves::Shot::Rotation::kCCW;
     //    return shot;
     //}
-    int iteration = 341;
+    int iteration = 259;
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";

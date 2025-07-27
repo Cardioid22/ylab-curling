@@ -42,8 +42,8 @@ float ComputeIntraClusterDistance(
     const std::vector<std::set<int>>& clsters);
 
 private:
-int GridSize_M = 4;
-int GridSize_N = 4;
+int GridSize_M = 6;
+int GridSize_N = 6;
 };
 
 #endif

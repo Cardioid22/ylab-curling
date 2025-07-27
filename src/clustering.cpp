@@ -77,7 +77,7 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
                 float dist_y = stones_a[index]->position.y - stones_b[index]->position.y;
                 distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
                 if ((IsInHouse(stones_a[index]) && !IsInHouse(stones_b[index])) || (!IsInHouse(stones_a[index]) && IsInHouse(stones_b[index]))) {
-                    distance += 5.0f;
+                    distance += 8.0f;
                 }
             }
             else if (stones_b[index]) { // ex: new shot
@@ -85,7 +85,7 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
                 float dist_y = stones_b[index]->position.y - HouseCenterY_;
                 distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
                 if (IsInHouse(stones_b[index])) {
-                    distance += 5.0f;
+                    distance += 8.0f;
                 }
             }
             else if (stones_a[index]) { // stone has taken away
@@ -93,7 +93,7 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
                 float dist_y = stones_a[index]->position.y - HouseCenterY_;
                 distance += std::sqrt((std::pow(dist_x, 2) + std::pow(dist_y, 2)));
                 if (IsInHouse(stones_a[index])) {
-                    distance += 5.0f;
+                    distance += 8.0f;
                 }
             }
             else {
@@ -109,7 +109,7 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
     sorted_stones_b = SortStones(all_stones_b);
     auto [team_a, index_a] = sorted_stones_a[0];
     auto [team_b, index_b] = sorted_stones_b[0];
-    if (team_a != team_b) distance += 10.0f;
+    if (team_a != team_b) distance += 12.0f;
 
     return distance;
 }

@@ -48,6 +48,8 @@ public:
     bool NextIsOpponentTurn() const;
     void print_tree(int indent = 0) const;
 private:
+    const int GridSize_M_ = 6;
+    const int GridSize_N_ = 6;  
     int max_degree = 8;
 
 	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) const;

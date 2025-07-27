@@ -39,7 +39,7 @@ MCTS_Node::MCTS_Node(
         untried_shots = std::make_unique<std::vector<ShotInfo>>(std::move(shot_candidates.value()));
     }
     if (node_source == NodeSource::AllGrid) {
-        max_degree = 16;
+        max_degree = GridSize_M_ * GridSize_N_;
     }
 }
 
