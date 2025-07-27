@@ -25,8 +25,8 @@ private:
 	const float AreaMaxY_ = 40.234;
 	const float HouseCenterX_ = 0;
 	const float HouseCenterY_ = 38.405;
-	const int GridSize_M_ = 6;
-	const int GridSize_N_ = 6;
+	const int GridSize_M_ = 4;
+	const int GridSize_N_ = 4;
 	int n_desired_clusters = 4;
 	bool cluster_exists = false;
 

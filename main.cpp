@@ -31,8 +31,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 6; // rows
-const int GridSize_N = 6; // columns
+const int GridSize_M = 4; // rows
+const int GridSize_N = 4; // columns
 
 std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
@@ -157,7 +157,7 @@ dc::Vector2 EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float t
 }
 
 ShotInfo FindShot(Position const& pos) {
-    std::cout << "Finding Shot...\n";
+    //std::cout << "Finding Shot...\n";
     dc::Vector2 target_position = { pos.x, pos.y };
     dc::Vector2 final_speed(0, 0);
     dc::moves::Shot::Rotation rotation = (pos.x > 0 ? dc::moves::Shot::Rotation::kCCW : dc::moves::Shot::Rotation::kCW);
@@ -321,7 +321,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     //    shot.rotation = dc::moves::Shot::Rotation::kCCW;
     //    return shot;
     //}
-    int iteration = 259;
+    int iteration = 85;
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
