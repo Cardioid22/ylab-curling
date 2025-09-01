@@ -31,8 +31,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 4; // rows
-const int GridSize_N = 4; // columns
+const int GridSize_M = 32; // rows
+const int GridSize_N = 32; // columns
 
 std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
@@ -250,6 +250,14 @@ int findStateFromShot(ShotInfo target) {
     return -1;
 }
 
+long long int calcIteration(long long int c, long long int d) {
+    long long int res = 0;
+    for (long long int i = 0; i <= d; i++) {
+        res += pow(c, i);
+    }
+    return res;
+}
+
 void OnInit(
     dc::Team team,
     dc::GameSetting const& game_setting,
@@ -321,7 +329,6 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     //    shot.rotation = dc::moves::Shot::Rotation::kCCW;
     //    return shot;
     //}
-    int iteration = 85;
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
@@ -331,18 +338,26 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     dc::GameState const& current_state = game_state;
     int shot_num = static_cast<int>(game_state.shot);
     std::cout << "CurlingAI grid_states Calculation Done.\n";
-    int S = GridSize_M * GridSize_N;
+    long long int S = GridSize_M * GridSize_N * 1LL;
     Clustering algo(static_cast<int>(std::log2(S)), grid_states);
     Analysis an(GridSize_M, GridSize_N);
     auto clusters = algo.getRecommendedStates(); // for debugging
     auto cluster_id_to_state = algo.get_clusters_id_table(); // for debugging
-    an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, iteration); // for debugging
 
     // --- MCTS Search ---
 
     std::cout << "------Clustered Tree------" << '\n';
+    long long int mcts_child_num = static_cast<long long int>(std::log2(S));
+    long long int search_depth = 3;
+    long long int mcts_iter = calcIteration(mcts_child_num, search_depth);
+    std::cout << search_depth << "\n";
+    std::cout << mcts_iter << "\n";
+    long long int cluster_child_num = S;
+    long long int cluster_iter = calcIteration(cluster_child_num, search_depth);
+    std::cout << cluster_iter << "\n";
+    an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, mcts_iter); // for debugging
     MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper);
-    mcts_clustered.grow_tree(iteration, 3600.0);
+    mcts_clustered.grow_tree(mcts_iter, 3600.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);
 
     //std::cout << "------Random Tree------" << '\n';
@@ -351,8 +366,9 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     //mcts_random.export_rollout_result_to_csv("root_children_score_random", shot_num, GridSize_M, GridSize_N);
 
     std::cout << "------AllGrid Tree------" << '\n';
+
     MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid);
-    mcts_allgrid.grow_tree(iteration, 3600.0);
+    mcts_allgrid.grow_tree(cluster_iter, 3600.0);
     mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
     ShotInfo best = mcts_clustered.get_best_shot();
     ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
@@ -364,7 +380,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
     int best_state = findStateFromShot(best);
     int best_allgrid_state = findStateFromShot(best_allgrid);
-    an.export_best_shot_comparison_to_csv(best, best_allgrid, best_state, best_allgrid_state, shot_num, iteration, "best_shot_comparison");
+    an.export_best_shot_comparison_to_csv(best, best_allgrid, best_state, best_allgrid_state, shot_num, mcts_iter, "best_shot_comparison");
     //std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "," <<  best.rot << "\n";
     //std::cout << "AllGrid Shot: " << best_allgrid.vx << ", " << best_allgrid.vy << best_allgrid.rot << "\n";
     //std::cout << "Clustered Best Shot Place: " << best_state << "\n";
