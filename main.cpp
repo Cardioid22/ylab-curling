@@ -31,8 +31,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 32; // rows
-const int GridSize_N = 32; // columns
+const int GridSize_M = 20; // rows
+const int GridSize_N = 20; // columns
 
 std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
@@ -348,7 +348,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
 
     std::cout << "------Clustered Tree------" << '\n';
     long long int mcts_child_num = static_cast<long long int>(std::log2(S));
-    long long int search_depth = 3;
+    long long int search_depth = 2;
     long long int mcts_iter = calcIteration(mcts_child_num, search_depth);
     std::cout << search_depth << "\n";
     std::cout << mcts_iter << "\n";
