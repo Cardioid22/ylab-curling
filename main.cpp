@@ -364,20 +364,20 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
 
     std::cout << "------AllGrid Tree------" << '\n';
 
-    //MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid);
-    //mcts_allgrid.grow_tree(cluster_iter, 3600.0);
-    //mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
+    MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid, GridSize_M, GridSize_N);
+    mcts_allgrid.grow_tree(cluster_iter, 3600.0);
+    mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
     ShotInfo best = mcts_clustered.get_best_shot();
-    //ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
+    ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
     ////mcts_clustered.report_rollout_result(); // output on terminal
     ////mcts_allgrid.report_rollout_result(); // output on terminal
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;
     final_shot.velocity.y = best.vy;
     final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    //int best_state = findStateFromShot(best);
-    //int best_allgrid_state = findStateFromShot(best_allgrid);
-    //an.export_best_shot_comparison_to_csv(best, best_allgrid, best_state, best_allgrid_state, shot_num, mcts_iter, "best_shot_comparison");
+    int best_state = findStateFromShot(best);
+    int best_allgrid_state = findStateFromShot(best_allgrid);
+    an.export_best_shot_comparison_to_csv(best, best_allgrid, best_state, best_allgrid_state, shot_num, mcts_iter, "best_shot_comparison");
     
     //std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "," <<  best.rot << "\n";
     //std::cout << "AllGrid Shot: " << best_allgrid.vx << ", " << best_allgrid.vy << best_allgrid.rot << "\n";
