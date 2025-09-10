@@ -298,9 +298,10 @@ void OnInit(
     shotData.resize(S);
     grid_states.resize(S);
     grid = MakeGrid(GridSize_M, GridSize_N);
+    std::ofstream outFile("shotInfo_" + std::to_string(GridSize_M * GridSize_N));
     for (int i = 0; i < S; ++i) {
         ShotInfo shotinfo = FindShot(grid[i]);
-        std::cout << "  ShotInfo for grid[" << i << "]: "
+        outFile << "  ShotInfo for grid[" << i << "]: "
             << "vx = " << shotinfo.vx << ", "
             << "vy = " << shotinfo.vy << ", "
             << "rot = " << shotinfo.rot << "\n";
@@ -309,6 +310,7 @@ void OnInit(
         simWrapper_allgrid->initialShotData.push_back(shotinfo);
         state_to_shot_table[i] = shotinfo;
     }
+    outFile.close();
     std::cout << "CurlingAI Initialize Done.\n";
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
@@ -339,7 +341,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     int shot_num = static_cast<int>(game_state.shot);
     std::cout << "CurlingAI grid_states Calculation Done.\n";
     long long int S = GridSize_M * GridSize_N * 1LL;
-    Clustering algo(static_cast<int>(std::log2(S)), grid_states);
+    Clustering algo(static_cast<int>(std::log2(S)), grid_states, GridSize_M, GridSize_N);
     Analysis an(GridSize_M, GridSize_N);
     auto clusters = algo.getRecommendedStates(); // for debugging
     auto cluster_id_to_state = algo.get_clusters_id_table(); // for debugging
@@ -356,31 +358,27 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     long long int cluster_iter = calcIteration(cluster_child_num, search_depth);
     std::cout << cluster_iter << "\n";
     an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, mcts_iter); // for debugging
-    MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper);
+    MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper, GridSize_M, GridSize_N);
     mcts_clustered.grow_tree(mcts_iter, 3600.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);
 
-    //std::cout << "------Random Tree------" << '\n';
-    //MCTS mcts_random(current_state, NodeSource::Random, grid_states, state_to_shot_table, simWrapper_random);
-    //mcts_random.grow_tree(10, 3600.0);
-    //mcts_random.export_rollout_result_to_csv("root_children_score_random", shot_num, GridSize_M, GridSize_N);
-
     std::cout << "------AllGrid Tree------" << '\n';
 
-    MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid);
-    mcts_allgrid.grow_tree(cluster_iter, 3600.0);
-    mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
+    //MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid);
+    //mcts_allgrid.grow_tree(cluster_iter, 3600.0);
+    //mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
     ShotInfo best = mcts_clustered.get_best_shot();
-    ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
-    //mcts_clustered.report_rollout_result(); // output on terminal
-    //mcts_allgrid.report_rollout_result(); // output on terminal
+    //ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
+    ////mcts_clustered.report_rollout_result(); // output on terminal
+    ////mcts_allgrid.report_rollout_result(); // output on terminal
     dc::moves::Shot final_shot;
     final_shot.velocity.x = best.vx;
     final_shot.velocity.y = best.vy;
     final_shot.rotation = best.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    int best_state = findStateFromShot(best);
-    int best_allgrid_state = findStateFromShot(best_allgrid);
-    an.export_best_shot_comparison_to_csv(best, best_allgrid, best_state, best_allgrid_state, shot_num, mcts_iter, "best_shot_comparison");
+    //int best_state = findStateFromShot(best);
+    //int best_allgrid_state = findStateFromShot(best_allgrid);
+    //an.export_best_shot_comparison_to_csv(best, best_allgrid, best_state, best_allgrid_state, shot_num, mcts_iter, "best_shot_comparison");
+    
     //std::cout << "MCTS Selected Shot: " << best.vx << ", " << best.vy << "," <<  best.rot << "\n";
     //std::cout << "AllGrid Shot: " << best_allgrid.vx << ", " << best_allgrid.vy << best_allgrid.rot << "\n";
     //std::cout << "Clustered Best Shot Place: " << best_state << "\n";
