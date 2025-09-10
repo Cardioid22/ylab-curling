@@ -13,7 +13,7 @@ namespace dc = digitalcurling3;
 
 class Clustering {
 public:
-	Clustering(int k_clusters, std::vector<dc::GameState> all_states);
+	Clustering(int k_clusters, std::vector<dc::GameState> all_states, int gridM, int gridN);
 
 	std::vector<std::set<int>> getClusters();
 	std::vector<int> getRecommendedStates();
@@ -25,9 +25,9 @@ private:
 	const float AreaMaxY_ = 40.234;
 	const float HouseCenterX_ = 0;
 	const float HouseCenterY_ = 38.405;
-	const int GridSize_M_ = 4;
-	const int GridSize_N_ = 4;
-	int n_desired_clusters = 4;
+	int GridSize_M_ = 10;
+	int GridSize_N_ = 10;
+	int n_desired_clusters = 6;
 	bool cluster_exists = false;
 
 	std::vector<dc::GameState> states;

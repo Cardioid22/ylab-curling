@@ -12,6 +12,8 @@ MCTS_Node::MCTS_Node(
     dc::GameState const& game_state,
     NodeSource node_source,
     std::shared_ptr<SimulatorWrapper> shared_sim,
+    int gridM,
+    int gridN,
     std::optional<std::vector<ShotInfo>> shot_candidates,
     std::optional<ShotInfo> selected_shot
 )
@@ -28,7 +30,8 @@ MCTS_Node::MCTS_Node(
 {
     static int global_label = 0;
     label = global_label++; // for debugging
-
+    GridSize_M_ = gridM;
+    GridSize_N_ = gridN;
     if (shared_sim) {
         simulator = shared_sim;
     }
@@ -40,6 +43,9 @@ MCTS_Node::MCTS_Node(
     }
     if (node_source == NodeSource::AllGrid) {
         max_degree = GridSize_M_ * GridSize_N_;
+    }
+    else {
+        max_degree = std::log2(GridSize_M_ * GridSize_N_);
     }
 }
 
@@ -180,6 +186,8 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         next_state,
         shot_source,
         simulator,
+        GridSize_M_,
+        GridSize_N_,
         std::nullopt,  // child will generate their own if selected later
         shot
     );
@@ -226,7 +234,7 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
     std::vector<int> recommended_states;
     std::vector<ShotInfo> candidates;
     int cluster_num = static_cast<int>(std::log2(all_states.size()));
-    Clustering algo(cluster_num, all_states);
+    Clustering algo(cluster_num, all_states, GridSize_M_, GridSize_N_);
     recommended_states = algo.getRecommendedStates();
     for (int state_index : recommended_states) {
         auto it = state_to_shot_table.find(state_index);
@@ -262,13 +270,15 @@ MCTS::MCTS(dc::GameState const& root_state,
     NodeSource node_source,
     std::vector<dc::GameState> states, 
     std::unordered_map<int, ShotInfo> state_to_shot_table, 
-    std::shared_ptr<SimulatorWrapper> simWrapper)
+    std::shared_ptr<SimulatorWrapper> simWrapper,
+    int gridM,
+    int gridN)
 : state_to_shot_table_(std::move(state_to_shot_table)), simulator_(std::move(simWrapper))
 {
     all_states_.resize(states.size());
     std::copy(states.begin(), states.end(), all_states_.begin());
     std::shared_ptr<SimulatorWrapper> shared_sim = simulator_;
-    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim);    
+    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim, gridM, gridN);    
 }
 void MCTS::grow_tree(int max_iter, double max_limited_time) {
     using Clock = std::chrono::high_resolution_clock;
@@ -398,7 +408,7 @@ void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_nu
 
     // Write CSV header
     file << "Type,Visits,Wins,Score,Vx,Vy,Rotation,StateId\n";
-
+    std::cout << root_->children.size() << "\n";
     for (const auto& child : root_->children) {
         std::string label;
         if (child->source == NodeSource::Clustered) { 
@@ -416,7 +426,7 @@ void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_nu
         ShotInfo selected_shot = child->selected_shot;
         int state_id = 0;
         for (int id = 0; id < shotData.size(); id++) {
-            if (abs(shotData[id].vx - selected_shot.vx) <= 1e-9) {
+            if (fabs(shotData[id].vx - selected_shot.vx) <= DBL_EPSILON) {
                 state_id = id;
             }
         }

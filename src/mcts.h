@@ -35,6 +35,8 @@ public:
         dc::GameState const& game_state,
         NodeSource node_source,
         std::shared_ptr<SimulatorWrapper> shared_sim,
+        int gridM,
+        int gridN,
         std::optional<std::vector<ShotInfo>> shot_candidates = std::nullopt,
         std::optional<ShotInfo> selected_shot = std::nullopt
     );
@@ -48,9 +50,9 @@ public:
     bool NextIsOpponentTurn() const;
     void print_tree(int indent = 0) const;
 private:
-    const int GridSize_M_ = 4;
-    const int GridSize_N_ = 4;  
-    int max_degree = 8;
+    int GridSize_M_ = 10;
+    int GridSize_N_ = 10;  
+    int max_degree = 6;
 
 	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) const;
 	dc::GameState getNextState(ShotInfo shotinfo) const;
@@ -62,7 +64,9 @@ public:
         NodeSource node_source,
         std::vector<dc::GameState> states, 
         std::unordered_map<int, ShotInfo> state_to_shot_table,
-        std::shared_ptr<SimulatorWrapper> simWrapper
+        std::shared_ptr<SimulatorWrapper> simWrapper,
+        int gridM,
+        int gridN
     );
 
 	void grow_tree(int max_iter, double max_limited_time);  // main loop

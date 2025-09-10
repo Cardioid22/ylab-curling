@@ -7,9 +7,12 @@
 #include "digitalcurling3/digitalcurling3.hpp"
 
 namespace dc = digitalcurling3;
-Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states) 
+Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states, int gridM, int gridN) 
 : n_desired_clusters(k_clusters), cluster_exists(false)
 {
+    GridSize_M_ = gridM;
+    GridSize_N_ = gridN;
+    n_desired_clusters = std::log2(gridM * gridN);
     states.resize(all_states.size());
     std::copy(all_states.begin(), all_states.end(), states.begin());
     clusters.resize(all_states.size());
