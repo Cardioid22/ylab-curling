@@ -4,7 +4,7 @@
 #include <random>
 #include "mcts.h"
 #include "digitalcurling3/digitalcurling3.hpp"
-
+#define DBL_EPSILON 2.2204460492503131e-016
 namespace dc = digitalcurling3;
 
 MCTS_Node::MCTS_Node(

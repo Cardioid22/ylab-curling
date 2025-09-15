@@ -14,6 +14,7 @@
 #include "src/clustering.h"
 #include "src/simulator.h"
 #include "src/analysis.h"
+#define DBL_EPSILON 2.2204460492503131e-016
 
 namespace dc = digitalcurling3;
 
@@ -243,7 +244,7 @@ dc::moves::Shot test(dc::GameState const& game_state) {
 int findStateFromShot(ShotInfo target) {
     for (int i = 0; i < state_to_shot_table.size(); i++) {
         ShotInfo shotinfo = state_to_shot_table[i];
-        if (abs(shotinfo.vx - target.vx) <= 1e-9 && abs(shotinfo.vy - target.vy) <= 1e-9) {
+        if (fabs(shotinfo.vx - target.vx) <= DBL_EPSILON) {
             return i;
         }
     }
@@ -357,7 +358,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     long long int cluster_child_num = S;
     long long int cluster_iter = calcIteration(cluster_child_num, search_depth);
     std::cout << cluster_iter << "\n";
-    an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, mcts_iter); // for debugging
+    //an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, mcts_iter); // for debugging
     MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper, GridSize_M, GridSize_N);
     mcts_clustered.grow_tree(mcts_iter, 3600.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);
