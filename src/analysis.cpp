@@ -44,9 +44,9 @@ void Analysis::export_best_shot_comparison_to_csv(
     const std::string& filename
 ) {
     // Create the directory if it doesn't exist
-    std::string folder = "../Iter_"+ std::to_string(iter) + "/MCTS_Output_BestShotComparison_" + std::to_string(GridSize_M * GridSize_N);
+    std::string folder = "../Grid_" + std::to_string(GridSize_M) + "x" + std::to_string(GridSize_N) + "/MCTS_Output_BestShotComparison_" + "/";
     std::filesystem::create_directories(folder);
-    std::string new_filename = folder + "/" + filename + "_" + std::to_string(shot_num) + ".csv";
+    std::string new_filename = folder + filename + "_" + std::to_string(shot_num) + ".csv";
     std::ofstream file(new_filename);
 
     if (!file.is_open()) {
@@ -67,7 +67,7 @@ void Analysis::export_best_shot_comparison_to_csv(
 }
 
 void Analysis::cluster_id_to_state_csv(std::vector<std::vector<int>> cluster_id_to_state, int shot_num, int iter) const {
-    std::string folder = "../Iter_" + std::to_string(iter) + "/MCTS_Output_ClusteringId_" + std::to_string(cluster_id_to_state.size()) + "_Clusters_/";
+    std::string folder = "../Grid_" + std::to_string(GridSize_M) + "x" + std::to_string(GridSize_N) + "/MCTS_Output_ClusteringId_" + std::to_string(cluster_id_to_state.size()) + "_Clusters" + "/";
     std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
     std::string new_filename = folder + "cluster_ids_" + std::to_string(shot_num) + ".csv";
     std::ofstream file(new_filename);

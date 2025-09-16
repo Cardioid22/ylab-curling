@@ -32,8 +32,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 20; // rows
-const int GridSize_N = 20; // columns
+const int GridSize_M = 10; // rows
+const int GridSize_N = 10; // columns
 
 std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
@@ -358,7 +358,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     long long int cluster_child_num = S;
     long long int cluster_iter = calcIteration(cluster_child_num, search_depth);
     std::cout << cluster_iter << "\n";
-    //an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, mcts_iter); // for debugging
+    an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, mcts_iter); // for debugging
     MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper, GridSize_M, GridSize_N);
     mcts_clustered.grow_tree(mcts_iter, 3600.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);

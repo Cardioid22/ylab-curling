@@ -396,7 +396,7 @@ void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_nu
         std::cerr << "No root node to export.\n";
         return;
     }
-    std::string folder = "../Iter_" + std::to_string(max_iteration) + "/MCTS_Output_" + std::to_string(max_iteration) + "_Iterations_" + std::to_string(grid_m) + "_" + std::to_string(grid_n) + "/";
+    std::string folder = "../Grid_" + std::to_string(grid_m) + "x" + std::to_string(grid_n) + "/Iter_" + std::to_string(max_iteration) + "/";
     std::filesystem::create_directories(folder); // Create the folder if it doesn't exist
     std::string new_filename = folder + filename + "_" + std::to_string(shot_num) + ".csv";
     std::ofstream file(new_filename);
