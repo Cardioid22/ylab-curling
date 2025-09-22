@@ -34,7 +34,7 @@ warnings.filterwarnings('ignore')
 class PredictiveAccuracyAnalyzer:
     """Analyze predictive accuracy of MCTS algorithms in curling AI."""
 
-    def __init__(self, base_path: str = "../remote_log"):
+    def __init__(self, base_path: str = "../../remote_log"):
         """
         Initialize the predictive accuracy analyzer.
 
@@ -527,7 +527,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Score variance over time
             for algo in consistency_data['algorithm'].unique():
-                algo_data = consistency_data[consistency_data['algorithm'] == algo]
+                algo_data = consistency_data[consistency_data['algorithm'] == algo].sort_values('shot_number')
                 axes[0,0].plot(algo_data['shot_number'], algo_data['score_variance'],
                               marker='o', label=algo, linewidth=2)
 
@@ -539,7 +539,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Prediction confidence over time
             for algo in consistency_data['algorithm'].unique():
-                algo_data = consistency_data[consistency_data['algorithm'] == algo]
+                algo_data = consistency_data[consistency_data['algorithm'] == algo].sort_values('shot_number')
                 axes[0,1].plot(algo_data['shot_number'], algo_data['prediction_confidence'],
                               marker='s', label=algo, linewidth=2)
 
@@ -551,7 +551,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Win rate predictions
             for algo in consistency_data['algorithm'].unique():
-                algo_data = consistency_data[consistency_data['algorithm'] == algo]
+                algo_data = consistency_data[consistency_data['algorithm'] == algo].sort_values('shot_number')
                 axes[1,0].plot(algo_data['shot_number'], algo_data['win_rate'],
                               marker='^', label=algo, linewidth=2)
 
@@ -563,7 +563,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Coefficient of variation (stability indicator)
             for algo in consistency_data['algorithm'].unique():
-                algo_data = consistency_data[consistency_data['algorithm'] == algo]
+                algo_data = consistency_data[consistency_data['algorithm'] == algo].sort_values('shot_number')
                 axes[1,1].plot(algo_data['shot_number'], algo_data['score_cv'],
                               marker='d', label=algo, linewidth=2)
 
@@ -585,7 +585,8 @@ class PredictiveAccuracyAnalyzer:
             fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 
             # Velocity difference over time
-            axes[0].plot(agreement_data['shot_number'], agreement_data['velocity_difference'],
+            agreement_data_sorted = agreement_data.sort_values('shot_number')
+            axes[0].plot(agreement_data_sorted['shot_number'], agreement_data_sorted['velocity_difference'],
                         marker='o', linewidth=2, color='red')
             axes[0].set_title('Velocity Difference Between Algorithms')
             axes[0].set_xlabel('Shot Number')
@@ -593,7 +594,7 @@ class PredictiveAccuracyAnalyzer:
             axes[0].grid(True, alpha=0.3)
 
             # Rotation agreement over time
-            axes[1].plot(agreement_data['shot_number'], agreement_data['rotation_agreement'],
+            axes[1].plot(agreement_data_sorted['shot_number'], agreement_data_sorted['rotation_agreement'],
                         marker='s', linewidth=2, color='blue')
             axes[1].set_title('Rotation Agreement Between Algorithms')
             axes[1].set_xlabel('Shot Number')
@@ -613,7 +614,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Average score trends
             for algo in temporal_data['algorithm'].unique():
-                algo_data = temporal_data[temporal_data['algorithm'] == algo]
+                algo_data = temporal_data[temporal_data['algorithm'] == algo].sort_values('shot_window_end')
                 axes[0,0].plot(algo_data['shot_window_end'], algo_data['avg_score'],
                               marker='o', label=algo, linewidth=2)
 
@@ -625,7 +626,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Score stability trends
             for algo in temporal_data['algorithm'].unique():
-                algo_data = temporal_data[temporal_data['algorithm'] == algo]
+                algo_data = temporal_data[temporal_data['algorithm'] == algo].sort_values('shot_window_end')
                 axes[0,1].plot(algo_data['shot_window_end'], algo_data['score_stability'],
                               marker='s', label=algo, linewidth=2)
 
@@ -655,7 +656,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Win rate trends
             for algo in temporal_data['algorithm'].unique():
-                algo_data = temporal_data[temporal_data['algorithm'] == algo]
+                algo_data = temporal_data[temporal_data['algorithm'] == algo].sort_values('shot_window_end')
                 axes[1,1].plot(algo_data['shot_window_end'], algo_data['win_rate'],
                               marker='^', label=algo, linewidth=2)
 
@@ -677,7 +678,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Prediction uncertainty over time
             for algo in error_data['algorithm'].unique():
-                algo_data = error_data[error_data['algorithm'] == algo]
+                algo_data = error_data[error_data['algorithm'] == algo].sort_values('shot_number')
                 axes[0,0].plot(algo_data['shot_number'], algo_data['prediction_uncertainty'],
                               marker='o', label=algo, linewidth=2)
 
@@ -689,7 +690,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Velocity diversity
             for algo in error_data['algorithm'].unique():
-                algo_data = error_data[error_data['algorithm'] == algo]
+                algo_data = error_data[error_data['algorithm'] == algo].sort_values('shot_number')
                 axes[0,1].plot(algo_data['shot_number'], algo_data['velocity_diversity'],
                               marker='s', label=algo, linewidth=2)
 
@@ -701,7 +702,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Rotation bias
             for algo in error_data['algorithm'].unique():
-                algo_data = error_data[error_data['algorithm'] == algo]
+                algo_data = error_data[error_data['algorithm'] == algo].sort_values('shot_number')
                 axes[1,0].plot(algo_data['shot_number'], algo_data['rotation_bias'],
                               marker='^', label=algo, linewidth=2)
 
@@ -713,7 +714,7 @@ class PredictiveAccuracyAnalyzer:
 
             # Low visit ratio
             for algo in error_data['algorithm'].unique():
-                algo_data = error_data[error_data['algorithm'] == algo]
+                algo_data = error_data[error_data['algorithm'] == algo].sort_values('shot_number')
                 axes[1,1].plot(algo_data['shot_number'], algo_data['low_visit_ratio'],
                               marker='d', label=algo, linewidth=2)
 
