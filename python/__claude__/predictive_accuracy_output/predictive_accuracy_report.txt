@@ -1,0 +1,200 @@
+================================================================================
+PREDICTIVE ACCURACY ANALYSIS REPORT
+================================================================================
+
+Total Experiments Analyzed: 38
+Analysis Output Directory: predictive_accuracy_output
+
+
+--- Grid_100x100 ---
+Average Velocity Difference: 0.1885
+Rotation Agreement Rate: 0.500
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.022, p=0.968
+  relative_confidence_vs_win_rate_confidence: r=0.552, p=0.256
+  visit_confidence_vs_win_rate_confidence: r=0.723, p=0.104
+High Uncertainty Threshold: 0.0139
+  AllGrid High Uncertainty Shots: 2
+
+--- Grid_20x20 ---
+Average Velocity Difference: 0.2181
+Rotation Agreement Rate: 0.500
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.058, p=0.831
+  relative_confidence_vs_win_rate_confidence: r=0.603, p=0.013
+  visit_confidence_vs_win_rate_confidence: r=0.195, p=0.468
+High Uncertainty Threshold: 0.0000
+  Clustered High Uncertainty Shots: 4
+
+--- Grid_25x25 ---
+Average Velocity Difference: 0.3350
+Rotation Agreement Rate: 0.250
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=-0.044, p=0.872
+  relative_confidence_vs_win_rate_confidence: r=0.273, p=0.306
+  visit_confidence_vs_win_rate_confidence: r=0.211, p=0.433
+High Uncertainty Threshold: 0.0001
+  Clustered High Uncertainty Shots: 4
+
+--- Grid_30x30 ---
+Average Velocity Difference: 0.2071
+Rotation Agreement Rate: 0.500
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=-0.104, p=0.701
+  relative_confidence_vs_win_rate_confidence: r=0.493, p=0.052
+  visit_confidence_vs_win_rate_confidence: r=0.200, p=0.458
+High Uncertainty Threshold: 0.0001
+  Clustered High Uncertainty Shots: 3
+  AllGrid High Uncertainty Shots: 1
+
+--- Grid_35x35 ---
+Average Velocity Difference: 0.1237
+Rotation Agreement Rate: 0.750
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=-0.226, p=0.401
+  relative_confidence_vs_win_rate_confidence: r=0.397, p=0.127
+  visit_confidence_vs_win_rate_confidence: r=0.538, p=0.031
+High Uncertainty Threshold: 0.0001
+  AllGrid High Uncertainty Shots: 4
+
+--- Grid_40x40 ---
+Average Velocity Difference: 0.2282
+Rotation Agreement Rate: 0.375
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.214, p=0.427
+  relative_confidence_vs_win_rate_confidence: r=0.358, p=0.173
+  visit_confidence_vs_win_rate_confidence: r=0.288, p=0.280
+High Uncertainty Threshold: 0.0001
+  AllGrid High Uncertainty Shots: 4
+
+--- Grid_50x50 ---
+Average Velocity Difference: 0.2142
+Rotation Agreement Rate: 0.500
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.026, p=0.925
+  relative_confidence_vs_win_rate_confidence: r=0.327, p=0.216
+  visit_confidence_vs_win_rate_confidence: r=0.303, p=0.254
+High Uncertainty Threshold: 0.0003
+  AllGrid High Uncertainty Shots: 4
+
+--- Grid_60x60 ---
+Average Velocity Difference: 0.2893
+Rotation Agreement Rate: 0.250
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=-0.155, p=0.565
+  relative_confidence_vs_win_rate_confidence: r=-0.362, p=0.168
+  visit_confidence_vs_win_rate_confidence: r=-0.062, p=0.818
+High Uncertainty Threshold: 0.0009
+  AllGrid High Uncertainty Shots: 4
+
+--- Grid_70x70 ---
+Average Velocity Difference: 0.2304
+Rotation Agreement Rate: 0.500
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=-0.404, p=0.120
+  relative_confidence_vs_win_rate_confidence: r=0.554, p=0.026
+  visit_confidence_vs_win_rate_confidence: r=-0.007, p=0.979
+High Uncertainty Threshold: 0.0012
+  AllGrid High Uncertainty Shots: 4
+
+--- Grid_80x80 ---
+Average Velocity Difference: 0.1466
+Rotation Agreement Rate: 0.750
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=-0.187, p=0.488
+  relative_confidence_vs_win_rate_confidence: r=0.414, p=0.111
+  visit_confidence_vs_win_rate_confidence: r=-0.322, p=0.224
+High Uncertainty Threshold: 0.0017
+  AllGrid High Uncertainty Shots: 4
+
+--- Iter_10101 ---
+
+--- Iter_34117525 ---
+
+--- Iter_43 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.373, p=0.363
+  relative_confidence_vs_win_rate_confidence: r=0.188, p=0.655
+  visit_confidence_vs_win_rate_confidence: r=0.341, p=0.408
+
+--- Iter_585 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.113, p=0.789
+  relative_confidence_vs_win_rate_confidence: r=0.526, p=0.181
+  visit_confidence_vs_win_rate_confidence: r=0.386, p=0.345
+
+--- Iter_100010001 ---
+
+--- Iter_183 ---
+
+--- MCTS_Output_BestShotComparison_ ---
+
+--- Iter_160401 ---
+
+--- Iter_73 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.384, p=0.347
+  relative_confidence_vs_win_rate_confidence: r=0.656, p=0.078
+  visit_confidence_vs_win_rate_confidence: r=0.585, p=0.128
+
+--- MCTS_Output_BestShotComparison ---
+
+--- Iter_391251 ---
+
+--- Iter_91 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.269, p=0.519
+  relative_confidence_vs_win_rate_confidence: r=0.243, p=0.562
+  visit_confidence_vs_win_rate_confidence: r=0.591, p=0.123
+
+--- Iter_810901 ---
+
+--- Iter_111 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.412, p=0.311
+  relative_confidence_vs_win_rate_confidence: r=0.752, p=0.031
+  visit_confidence_vs_win_rate_confidence: r=0.242, p=0.563
+
+--- Iter_1501851 ---
+
+--- Iter_2561601 ---
+
+--- Iter_133 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.067, p=0.875
+  relative_confidence_vs_win_rate_confidence: r=0.065, p=0.878
+  visit_confidence_vs_win_rate_confidence: r=0.246, p=0.557
+
+--- Iter_6252501 ---
+
+--- Iter_12963601 ---
+
+--- Iter_157 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.122, p=0.773
+  relative_confidence_vs_win_rate_confidence: r=-0.172, p=0.684
+  visit_confidence_vs_win_rate_confidence: r=0.183, p=0.664
+
+--- Iter_24014901 ---
+
+--- Iter_40966401 ---
+
+--- MCTS_Output_10101_Iterations_10_10 ---
+
+--- MCTS_Output_34117525_Iterations_18_18 ---
+
+--- MCTS_Output_43_Iterations_10_10 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.373, p=0.363
+  relative_confidence_vs_win_rate_confidence: r=0.188, p=0.655
+  visit_confidence_vs_win_rate_confidence: r=0.341, p=0.408
+
+--- MCTS_Output_BestShotComparison_100 ---
+
+--- MCTS_Output_585_Iterations_18_18 ---
+Confidence Measure Correlations:
+  relative_confidence_vs_visit_confidence: r=0.113, p=0.789
+  relative_confidence_vs_win_rate_confidence: r=0.526, p=0.181
+  visit_confidence_vs_win_rate_confidence: r=0.386, p=0.345
+
+--- MCTS_Output_BestShotComparison_324 ---

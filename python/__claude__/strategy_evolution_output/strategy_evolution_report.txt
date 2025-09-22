@@ -1,0 +1,134 @@
+================================================================================
+STRATEGY EVOLUTION ANALYSIS REPORT
+================================================================================
+
+Total Experiments Analyzed: 35
+Analysis Output Directory: strategy_evolution_output
+
+
+--- Iter_10101 ---
+Data: 0 clustered, 800 allgrid samples
+
+--- Iter_34117525 ---
+Data: 0 clustered, 2592 allgrid samples
+
+--- Iter_43 ---
+Data: 48 clustered, 0 allgrid samples
+Critical Turns Identified: 1
+Average Velocity Divergence at Critical Turns: 0.3698
+Clustered Strategy Persistence: 0.333
+
+--- Iter_585 ---
+Data: 64 clustered, 0 allgrid samples
+Critical Turns Identified: 2
+Average Velocity Divergence at Critical Turns: 0.3267
+Clustered Strategy Persistence: 0.333
+
+--- Iter_100010001 ---
+Data: 0 clustered, 50585 allgrid samples
+
+--- Iter_183 ---
+Data: 6 clustered, 0 allgrid samples
+Clustered Strategy Persistence: 0.333
+
+--- MCTS_Output_BestShotComparison_ ---
+Data: 0 clustered, 0 allgrid samples
+Critical Turns Identified: 2
+Average Velocity Divergence at Critical Turns: 0.3584
+
+--- MCTS_Output_ClusteringId_13_Clusters ---
+Data: 0 clustered, 0 allgrid samples
+
+--- Iter_160401 ---
+Data: 0 clustered, 3200 allgrid samples
+
+--- Iter_73 ---
+Data: 64 clustered, 0 allgrid samples
+Clustered Strategy Persistence: 0.333
+
+--- MCTS_Output_BestShotComparison ---
+Data: 0 clustered, 0 allgrid samples
+Critical Turns Identified: 3
+Average Velocity Divergence at Critical Turns: 0.3673
+
+--- MCTS_Output_ClusteringId_8_Clusters ---
+Data: 0 clustered, 0 allgrid samples
+
+--- Iter_391251 ---
+Data: 0 clustered, 5000 allgrid samples
+
+--- Iter_91 ---
+Data: 72 clustered, 0 allgrid samples
+Clustered Strategy Persistence: 0.333
+
+--- MCTS_Output_ClusteringId_9_Clusters ---
+Data: 0 clustered, 0 allgrid samples
+
+--- Iter_810901 ---
+Data: 0 clustered, 7200 allgrid samples
+
+--- Iter_111 ---
+Data: 80 clustered, 0 allgrid samples
+Clustered Strategy Persistence: 0.333
+
+--- Iter_1501851 ---
+Data: 0 clustered, 9800 allgrid samples
+
+--- MCTS_Output_ClusteringId_10_Clusters ---
+Data: 0 clustered, 0 allgrid samples
+
+--- Iter_2561601 ---
+Data: 0 clustered, 12800 allgrid samples
+
+--- Iter_133 ---
+Data: 88 clustered, 0 allgrid samples
+Clustered Strategy Persistence: 0.333
+
+--- Iter_6252501 ---
+Data: 0 clustered, 20000 allgrid samples
+
+--- MCTS_Output_ClusteringId_11_Clusters ---
+Data: 0 clustered, 0 allgrid samples
+
+--- Iter_12963601 ---
+Data: 0 clustered, 28800 allgrid samples
+
+--- Iter_157 ---
+Data: 96 clustered, 0 allgrid samples
+Clustered Strategy Persistence: 0.333
+
+--- Iter_24014901 ---
+Data: 0 clustered, 39200 allgrid samples
+
+--- MCTS_Output_ClusteringId_12_Clusters ---
+Data: 0 clustered, 0 allgrid samples
+
+--- Iter_40966401 ---
+Data: 0 clustered, 50732 allgrid samples
+
+--- MCTS_Output_10101_Iterations_10_10 ---
+Data: 0 clustered, 800 allgrid samples
+
+--- MCTS_Output_34117525_Iterations_18_18 ---
+Data: 0 clustered, 2592 allgrid samples
+
+--- MCTS_Output_43_Iterations_10_10 ---
+Data: 48 clustered, 0 allgrid samples
+Clustered Strategy Persistence: 0.333
+
+--- MCTS_Output_BestShotComparison_100 ---
+Data: 0 clustered, 0 allgrid samples
+Critical Turns Identified: 1
+Average Velocity Divergence at Critical Turns: 0.3698
+
+--- MCTS_Output_585_Iterations_18_18 ---
+Data: 64 clustered, 0 allgrid samples
+Clustered Strategy Persistence: 0.333
+
+--- MCTS_Output_BestShotComparison_324 ---
+Data: 0 clustered, 0 allgrid samples
+Critical Turns Identified: 2
+Average Velocity Divergence at Critical Turns: 0.3267
+
+--- MCTS_Output_ClusteringId_8_Clusters_ ---
+Data: 0 clustered, 0 allgrid samples

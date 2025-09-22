@@ -1,0 +1,77 @@
+================================================================================
+COMPREHENSIVE MCTS ANALYSIS REPORT
+================================================================================
+
+Total Experiments Analyzed: 10
+Analysis Output Directory: mcts_analysis_output
+
+
+--- 100x100_unknown ---
+Data Samples: Clustered=6, AllGrid=50585
+Win Rates: AllGrid=0.419 Clustered=0.667 
+Efficiency: Clustered=1.8406, AllGrid=0.0005, Ratio=3511.68
+Rotation Agreement Rate: 0.500
+Avg Velocity Distance: 0.1885 Å} 0.1325
+
+--- 20x20_unknown ---
+Data Samples: Clustered=64, AllGrid=3200
+Win Rates: AllGrid=0.183 Clustered=0.604 
+Efficiency: Clustered=0.0211, AllGrid=0.0001, Ratio=182.06
+Rotation Agreement Rate: 0.500
+Avg Velocity Distance: 0.2181 Å} 0.1558
+
+--- 25x25_unknown ---
+Data Samples: Clustered=72, AllGrid=5000
+Win Rates: AllGrid=0.157 Clustered=0.694 
+Efficiency: Clustered=0.0178, AllGrid=0.0001, Ratio=124.18
+Rotation Agreement Rate: 0.250
+Avg Velocity Distance: 0.3350 Å} 0.1878
+
+--- 30x30_unknown ---
+Data Samples: Clustered=72, AllGrid=7200
+Win Rates: AllGrid=0.041 Clustered=0.412 
+Efficiency: Clustered=0.0146, AllGrid=0.0001, Ratio=99.58
+Rotation Agreement Rate: 0.500
+Avg Velocity Distance: 0.2071 Å} 0.1344
+
+--- 35x35_unknown ---
+Data Samples: Clustered=80, AllGrid=9800
+Win Rates: AllGrid=0.017 Clustered=0.439 
+Efficiency: Clustered=0.0118, AllGrid=0.0002, Ratio=76.14
+Rotation Agreement Rate: 0.750
+Avg Velocity Distance: 0.1237 Å} 0.1120
+
+--- 40x40_unknown ---
+Data Samples: Clustered=80, AllGrid=12800
+Win Rates: AllGrid=0.030 Clustered=0.672 
+Efficiency: Clustered=0.0142, AllGrid=0.0002, Ratio=69.03
+Rotation Agreement Rate: 0.375
+Avg Velocity Distance: 0.2282 Å} 0.1636
+
+--- 50x50_unknown ---
+Data Samples: Clustered=88, AllGrid=20000
+Win Rates: AllGrid=0.030 Clustered=0.530 
+Efficiency: Clustered=0.0105, AllGrid=0.0002, Ratio=45.15
+Rotation Agreement Rate: 0.500
+Avg Velocity Distance: 0.2142 Å} 0.1498
+
+--- 60x60_unknown ---
+Data Samples: Clustered=88, AllGrid=28800
+Win Rates: AllGrid=0.074 Clustered=0.683 
+Efficiency: Clustered=0.0118, AllGrid=0.0003, Ratio=38.24
+Rotation Agreement Rate: 0.250
+Avg Velocity Distance: 0.2893 Å} 0.1458
+
+--- 70x70_unknown ---
+Data Samples: Clustered=96, AllGrid=39200
+Win Rates: AllGrid=0.063 Clustered=0.573 
+Efficiency: Clustered=0.0091, AllGrid=0.0003, Ratio=35.40
+Rotation Agreement Rate: 0.500
+Avg Velocity Distance: 0.2304 Å} 0.1857
+
+--- 80x80_unknown ---
+Data Samples: Clustered=96, AllGrid=50732
+Win Rates: AllGrid=0.141 Clustered=0.595 
+Efficiency: Clustered=0.0093, AllGrid=0.0004, Ratio=22.89
+Rotation Agreement Rate: 0.750
+Avg Velocity Distance: 0.1466 Å} 0.1341

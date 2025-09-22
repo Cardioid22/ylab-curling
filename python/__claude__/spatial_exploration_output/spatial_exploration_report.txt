@@ -1,0 +1,221 @@
+================================================================================
+SPATIAL EXPLORATION ANALYSIS REPORT
+================================================================================
+
+Total Experiments Analyzed: 29
+Analysis Output Directory: spatial_exploration_output
+
+
+--- Grid_20x20 ---
+Total Shots Analyzed: 3264
+Clustered Spatial Metrics:
+  Coverage Area: 0.194
+  Exploration Density: 3.182259
+  Centroid: (0.027, 37.655)
+  Avg Distance to House: 0.756
+AllGrid Spatial Metrics:
+  Coverage Area: 0.245
+  Exploration Density: 159.112945
+  Centroid: (0.000, 37.475)
+  Avg Distance to House: 0.935
+Clustered Hotspots: 10 identified
+AllGrid Hotspots: 2 identified
+Zone Preferences:
+  Clustered: House=100.0%, Guard Zone=25.0%
+  AllGrid: House=100.0%, Guard Zone=52.5%
+
+--- Grid_25x25 ---
+Total Shots Analyzed: 5072
+Clustered Spatial Metrics:
+  Coverage Area: 0.203
+  Exploration Density: 3.580041
+  Centroid: (-0.047, 37.628)
+  Avg Distance to House: 0.783
+AllGrid Spatial Metrics:
+  Coverage Area: 0.246
+  Exploration Density: 248.613977
+  Centroid: (-0.003, 37.476)
+  Avg Distance to House: 0.935
+Clustered Hotspots: 6 identified
+AllGrid Hotspots: 2 identified
+Zone Preferences:
+  Clustered: House=100.0%, Guard Zone=23.6%
+  AllGrid: House=100.0%, Guard Zone=52.5%
+
+--- Grid_30x30 ---
+Total Shots Analyzed: 7272
+Clustered Spatial Metrics:
+  Coverage Area: 0.208
+  Exploration Density: 3.580041
+  Centroid: (0.010, 37.641)
+  Avg Distance to House: 0.769
+AllGrid Spatial Metrics:
+  Coverage Area: 0.246
+  Exploration Density: 358.004127
+  Centroid: (0.000, 37.476)
+  Avg Distance to House: 0.934
+Clustered Hotspots: 6 identified
+AllGrid Hotspots: 2 identified
+Zone Preferences:
+  Clustered: House=100.0%, Guard Zone=25.0%
+  AllGrid: House=100.0%, Guard Zone=52.4%
+
+--- Grid_35x35 ---
+Total Shots Analyzed: 9880
+Clustered Spatial Metrics:
+  Coverage Area: 0.216
+  Exploration Density: 3.977824
+  Centroid: (-0.019, 37.705)
+  Avg Distance to House: 0.706
+AllGrid Spatial Metrics:
+  Coverage Area: 0.246
+  Exploration Density: 487.283395
+  Centroid: (-0.002, 37.476)
+  Avg Distance to House: 0.934
+Clustered Hotspots: 6 identified
+AllGrid Hotspots: 2 identified
+Zone Preferences:
+  Clustered: House=100.0%, Guard Zone=16.2%
+  AllGrid: House=100.0%, Guard Zone=52.2%
+
+--- Grid_40x40 ---
+Total Shots Analyzed: 12880
+Clustered Spatial Metrics:
+  Coverage Area: 0.200
+  Exploration Density: 3.977824
+  Centroid: (0.015, 37.676)
+  Avg Distance to House: 0.735
+AllGrid Spatial Metrics:
+  Coverage Area: 0.246
+  Exploration Density: 636.451781
+  Centroid: (0.000, 37.476)
+  Avg Distance to House: 0.934
+Clustered Hotspots: 8 identified
+AllGrid Hotspots: 2 identified
+Zone Preferences:
+  Clustered: House=100.0%, Guard Zone=23.8%
+  AllGrid: House=100.0%, Guard Zone=52.2%
+
+--- Grid_50x50 ---
+Total Shots Analyzed: 20088
+Clustered Spatial Metrics:
+  Coverage Area: 0.193
+  Exploration Density: 4.375606
+  Centroid: (-0.007, 37.725)
+  Avg Distance to House: 0.685
+AllGrid Spatial Metrics:
+  Coverage Area: 0.246
+  Exploration Density: 994.455908
+  Centroid: (0.000, 37.477)
+  Avg Distance to House: 0.934
+Clustered Hotspots: 6 identified
+AllGrid Hotspots: 2 identified
+Zone Preferences:
+  Clustered: House=100.0%, Guard Zone=17.0%
+  AllGrid: House=100.0%, Guard Zone=52.3%
+
+--- Grid_60x60 ---
+Total Shots Analyzed: 28888
+Clustered Spatial Metrics:
+  Coverage Area: 0.226
+  Exploration Density: 4.375606
+  Centroid: (-0.014, 37.721)
+  Avg Distance to House: 0.692
+AllGrid Spatial Metrics:
+  Coverage Area: 0.246
+  Exploration Density: 1432.016508
+  Centroid: (0.000, 37.477)
+  Avg Distance to House: 0.934
+Clustered Hotspots: 5 identified
+AllGrid Hotspots: 2 identified
+Zone Preferences:
+  Clustered: House=100.0%, Guard Zone=15.9%
+  AllGrid: House=100.0%, Guard Zone=52.2%
+
+--- Iter_10101 ---
+Total Shots Analyzed: 800
+AllGrid Hotspots: 20 identified
+
+--- Iter_34117525 ---
+Total Shots Analyzed: 2592
+AllGrid Hotspots: 2 identified
+
+--- Iter_43 ---
+Total Shots Analyzed: 48
+Clustered Hotspots: 7 identified
+
+--- Iter_585 ---
+Total Shots Analyzed: 64
+Clustered Hotspots: 7 identified
+
+--- Iter_183 ---
+Total Shots Analyzed: 6
+Clustered Hotspots: 0 identified
+
+--- Iter_160401 ---
+Total Shots Analyzed: 3200
+AllGrid Hotspots: 2 identified
+
+--- Iter_73 ---
+Total Shots Analyzed: 64
+Clustered Hotspots: 10 identified
+
+--- Iter_391251 ---
+Total Shots Analyzed: 5000
+AllGrid Hotspots: 2 identified
+
+--- Iter_91 ---
+Total Shots Analyzed: 72
+Clustered Hotspots: 6 identified
+
+--- Iter_810901 ---
+Total Shots Analyzed: 7200
+AllGrid Hotspots: 2 identified
+
+--- Iter_111 ---
+Total Shots Analyzed: 80
+Clustered Hotspots: 8 identified
+
+--- Iter_1501851 ---
+Total Shots Analyzed: 9800
+AllGrid Hotspots: 2 identified
+
+--- Iter_2561601 ---
+Total Shots Analyzed: 12800
+AllGrid Hotspots: 2 identified
+
+--- Iter_133 ---
+Total Shots Analyzed: 88
+Clustered Hotspots: 5 identified
+
+--- Iter_6252501 ---
+Total Shots Analyzed: 20000
+AllGrid Hotspots: 2 identified
+
+--- Iter_12963601 ---
+Total Shots Analyzed: 28800
+AllGrid Hotspots: 2 identified
+
+--- Iter_157 ---
+Total Shots Analyzed: 96
+Clustered Hotspots: 7 identified
+
+--- Iter_24014901 ---
+Total Shots Analyzed: 39200
+AllGrid Hotspots: 2 identified
+
+--- MCTS_Output_10101_Iterations_10_10 ---
+Total Shots Analyzed: 800
+AllGrid Hotspots: 20 identified
+
+--- MCTS_Output_34117525_Iterations_18_18 ---
+Total Shots Analyzed: 2592
+AllGrid Hotspots: 2 identified
+
+--- MCTS_Output_43_Iterations_10_10 ---
+Total Shots Analyzed: 48
+Clustered Hotspots: 7 identified
+
+--- MCTS_Output_585_Iterations_18_18 ---
+Total Shots Analyzed: 64
+Clustered Hotspots: 7 identified
