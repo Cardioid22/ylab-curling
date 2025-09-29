@@ -14,6 +14,7 @@
 #include "src/clustering.h"
 #include "src/simulator.h"
 #include "src/analysis.h"
+#include "experiments/experiment_runner.h"
 #define DBL_EPSILON 2.2204460492503131e-016
 
 namespace dc = digitalcurling3;
@@ -360,13 +361,13 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     std::cout << cluster_iter << "\n";
     an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, mcts_iter); // for debugging
     MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper, GridSize_M, GridSize_N);
-    mcts_clustered.grow_tree(mcts_iter, 3600.0);
+    mcts_clustered.grow_tree(mcts_iter, 86400.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);
 
     std::cout << "------AllGrid Tree------" << '\n';
 
     MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid, GridSize_M, GridSize_N);
-    mcts_allgrid.grow_tree(cluster_iter, 3600.0);
+    mcts_allgrid.grow_tree(cluster_iter, 86400.0);
     mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
     ShotInfo best = mcts_clustered.get_best_shot();
     ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
@@ -428,6 +429,24 @@ void OnGameOver(dc::GameState const& game_state)
 
 
 
+// 実験実行用の関数
+void runEfficiencyExperiment() {
+    std::cout << "\n=== Starting Clustering Efficiency Experiment ===" << std::endl;
+
+    // 実験用の設定
+    ExperimentConfig config;
+    config.max_iterations = 50;          // 実験用に短縮
+    config.max_time = 3600;               // 3分制限
+    config.trials_per_state = 10;          // 実験用に縮小
+    config.ground_truth_iterations = 500; // 正解手決定用
+
+    // ExperimentRunnerを初期化
+    ExperimentRunner runner(grid_states, state_to_shot_table, GridSize_M, GridSize_N);
+
+    // 実験実行
+    runner.runEfficiencyExperiment(config);
+}
+
 int main(int argc, char const * argv[])
 {
     using boost::asio::ip::tcp;
@@ -439,8 +458,50 @@ int main(int argc, char const * argv[])
     constexpr int kSupportedProtocolVersionMajor = 1;
 
     try {
+        // 実験モードのチェック
+        if (argc == 2 && std::string(argv[1]) == "--experiment") {
+            std::cout << "Running in experiment mode..." << std::endl;
+            // 初期化を簡略化して実験実行
+            g_team = dc::Team::k0;
+            g_game_setting.max_end = 1;
+            g_game_setting.five_rock_rule = true;
+            g_game_setting.thinking_time[0] = std::chrono::seconds(86400);
+            g_game_setting.thinking_time[1] = std::chrono::seconds(86400);
+
+            // 基本的な初期化（OnInit関数の代わり）
+            g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+            g_simulator_storage = g_simulator->CreateStorage();
+
+            for (size_t i = 0; i < g_players.size(); ++i) {
+                g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+            }
+
+            simWrapper = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
+            simWrapper_allgrid = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
+
+            // グリッドとショット情報の初期化
+            int S = GridSize_M * GridSize_N;
+            grid.resize(S);
+            shotData.resize(S);
+            grid_states.resize(S);
+            grid = MakeGrid(GridSize_M, GridSize_N);
+
+            for (int i = 0; i < S; ++i) {
+                ShotInfo shotinfo = FindShot(grid[i]);
+                shotData[i] = shotinfo;
+                simWrapper->initialShotData.push_back(shotinfo);
+                simWrapper_allgrid->initialShotData.push_back(shotinfo);
+                state_to_shot_table[i] = shotinfo;
+            }
+
+            // 実験実行
+            runEfficiencyExperiment();
+            return 0;
+        }
+
         if (argc != 3) {
             std::cerr << "Usage: command <host> <port>" << std::endl;
+            std::cerr << "       command --experiment  (for efficiency experiment)" << std::endl;
             return 1;
         }
 
