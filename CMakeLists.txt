@@ -48,16 +48,8 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     src/analysis.cpp
     src/analysis.h
     # 実験用ファイル
-    experiments/ground_truth_finder.h
-    experiments/ground_truth_finder.cpp
-    experiments/mcts_with_tracking.h
-    experiments/mcts_with_tracking.cpp
-    experiments/efficiency_experiment.h
-    experiments/efficiency_experiment.cpp
-    experiments/statistical_analysis.h
-    experiments/statistical_analysis.cpp
-    experiments/experiment_runner.h
-    experiments/experiment_runner.cpp
+    experiments/simple_experiment.h
+    experiments/simple_experiment.cpp
     # example.cpp
 
 )

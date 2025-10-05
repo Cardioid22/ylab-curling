@@ -14,7 +14,7 @@
 #include "src/clustering.h"
 #include "src/simulator.h"
 #include "src/analysis.h"
-#include "experiments/experiment_runner.h"
+#include "experiments/simple_experiment.h"
 #define DBL_EPSILON 2.2204460492503131e-016
 
 namespace dc = digitalcurling3;
@@ -430,21 +430,30 @@ void OnGameOver(dc::GameState const& game_state)
 
 
 // 実験実行用の関数
-void runEfficiencyExperiment() {
-    std::cout << "\n=== Starting Clustering Efficiency Experiment ===" << std::endl;
+void runSimpleExperiment() {
+    std::cout << "\n=== Starting Simple Clustering vs AllGrid Experiment ===" << std::endl;
 
-    // 実験用の設定
-    ExperimentConfig config;
-    config.max_iterations = 50;          // 実験用に短縮
-    config.max_time = 3600;               // 3分制限
-    config.trials_per_state = 10;          // 実験用に縮小
-    config.ground_truth_iterations = 500; // 正解手決定用
+    // シンプル実験の初期化
+    SimpleExperiment experiment(grid_states, state_to_shot_table, GridSize_M, GridSize_N);
 
-    // ExperimentRunnerを初期化
-    ExperimentRunner runner(grid_states, state_to_shot_table, GridSize_M, GridSize_N);
+    // 実験パラメータ
+    int num_test_states = 3;      // テストする盤面の数
+    int max_iterations = 500;    // 各手法の最大探索数
 
-    // 実験実行
-    runner.runEfficiencyExperiment(config);
+    std::cout << "Test states: " << num_test_states << std::endl;
+    std::cout << "Max iterations per test: " << max_iterations << std::endl;
+
+    // バッチ実験の実行
+    auto results = experiment.runBatchExperiment(num_test_states, max_iterations);
+
+    // 結果をCSVに保存
+    std::string output_file = "experiment_results.csv";
+    experiment.saveResults(results, output_file);
+
+    std::cout << "\nExperiment completed!" << std::endl;
+    std::cout << "Results saved to: " << output_file << std::endl;
+    std::cout << "\nTo analyze results, run:" << std::endl;
+    std::cout << "  python analyze_simple_results.py " << output_file << std::endl;
 }
 
 int main(int argc, char const * argv[])
@@ -495,7 +504,7 @@ int main(int argc, char const * argv[])
             }
 
             // 実験実行
-            runEfficiencyExperiment();
+            runSimpleExperiment();
             return 0;
         }
 
