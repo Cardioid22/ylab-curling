@@ -438,7 +438,7 @@ void runSimpleExperiment() {
 
     // 実験パラメータ
     int num_test_states = 3;      // テストする盤面の数
-    int max_iterations = 500;    // 各手法の最大探索数
+    int max_iterations = 10000;    // 各手法の最大探索数
 
     std::cout << "Test states: " << num_test_states << std::endl;
     std::cout << "Max iterations per test: " << max_iterations << std::endl;

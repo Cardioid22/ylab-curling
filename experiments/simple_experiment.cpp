@@ -19,7 +19,7 @@ SimpleExperiment::SimpleExperiment(
 ShotInfo SimpleExperiment::findIdealShot(
     const dc::GameState& state,
     int max_iterations) {
-
+   
     std::cout << "=== Finding Ideal Shot ===" << std::endl;
     std::cout << "State: end=" << state.end << ", shot=" << state.shot << std::endl;
     std::cout << "Running benchmark MCTS with " << max_iterations << " iterations..." << std::endl;
@@ -34,7 +34,7 @@ ShotInfo SimpleExperiment::findIdealShot(
 
     MCTS benchmark_mcts(state, NodeSource::AllGrid, grid_states_,
                        state_to_shot_table_, simWrapper, GridSize_M_, GridSize_N_);
-
+    // 100000 iterations
     benchmark_mcts.grow_tree(max_iterations, 3600.0);
 
     ShotInfo ideal = benchmark_mcts.get_best_shot();
@@ -82,9 +82,9 @@ ExperimentResult SimpleExperiment::runSingleComparison(
     auto sim_clustered = std::make_shared<SimulatorWrapper>(team, game_setting);
     MCTS mcts_clustered(state, NodeSource::Clustered, grid_states_,
                        state_to_shot_table_, sim_clustered, GridSize_M_, GridSize_N_);
-
-    for (int iter = 1; iter <= max_iterations; ++iter) {
-        mcts_clustered.grow_tree(1, 0.1);  // 1 iteration at a time
+    int repeat = 3;
+    for (int iter = 1; iter <= repeat; ++iter) {
+        mcts_clustered.grow_tree(max_iterations, 3600); 
 
         ShotInfo current_best = mcts_clustered.get_best_shot();
 
@@ -96,7 +96,7 @@ ExperimentResult SimpleExperiment::runSingleComparison(
         }
 
         if (iter % 500 == 0) {
-            std::cout << "Iteration " << iter << "/" << max_iterations
+            std::cout << "Iteration " << iter << "/" << repeat
                       << " (best: vx=" << current_best.vx << ")" << std::endl;
         }
     }
@@ -111,8 +111,8 @@ ExperimentResult SimpleExperiment::runSingleComparison(
     MCTS mcts_allgrid(state, NodeSource::AllGrid, grid_states_,
                      state_to_shot_table_, sim_allgrid, GridSize_M_, GridSize_N_);
 
-    for (int iter = 1; iter <= max_iterations; ++iter) {
-        mcts_allgrid.grow_tree(1, 0.1);  // 1 iteration at a time
+    for (int iter = 1; iter <= repeat; ++iter) {
+        mcts_allgrid.grow_tree(max_iterations, 3600);  // 1 iteration at a time
 
         ShotInfo current_best = mcts_allgrid.get_best_shot();
 
@@ -124,7 +124,7 @@ ExperimentResult SimpleExperiment::runSingleComparison(
         }
 
         if (iter % 500 == 0) {
-            std::cout << "Iteration " << iter << "/" << max_iterations
+            std::cout << "Iteration " << iter << "/" << repeat
                       << " (best: vx=" << current_best.vx << ")" << std::endl;
         }
     }
@@ -243,7 +243,7 @@ std::vector<ExperimentResult> SimpleExperiment::runBatchExperiment(
                   << " ********" << std::endl;
 
         // Find ideal shot
-        ShotInfo ideal = findIdealShot(test_states[i], 10000);
+        ShotInfo ideal = findIdealShot(test_states[i], 100000);
 
         // Run comparison experiment
         ExperimentResult result = runSingleComparison(test_states[i], ideal, max_iterations);
