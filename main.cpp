@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include <set>
+#include <filesystem>
 #include "src/mcts.h"
 #include "src/structure.h"
 #include "src/clustering.h"
@@ -33,8 +34,8 @@ const auto AreaMaxX = 2.375;
 const auto AreaMaxY = 40.234;
 const auto HouseCenterX = 0;
 const auto HouseCenterY = 38.405;
-const int GridSize_M = 10; // rows
-const int GridSize_N = 10; // columns
+const int GridSize_M = 4; // rows
+const int GridSize_N = 4; // columns
 
 std::vector<Position> grid;
 std::vector<ShotInfo> shotData;
@@ -438,7 +439,7 @@ void runSimpleExperiment() {
 
     // 実験パラメータ
     int num_test_states = 3;      // テストする盤面の数
-    int max_iterations = 10000;    // 各手法の最大探索数
+    int max_iterations = 1000000;    // 各手法の最大探索数
 
     std::cout << "Test states: " << num_test_states << std::endl;
     std::cout << "Max iterations per test: " << max_iterations << std::endl;
@@ -446,8 +447,20 @@ void runSimpleExperiment() {
     // バッチ実験の実行
     auto results = experiment.runBatchExperiment(num_test_states, max_iterations);
 
+    // グリッド数とパラメータに基づいたフォルダ名を生成
+    int grid_size = GridSize_M * GridSize_N;
+    std::string folder_name = "experiments/Grid" + std::to_string(grid_size) +
+                              "_States" + std::to_string(num_test_states) +
+                              "_MaxIter" + std::to_string(max_iterations);
+
+    // フォルダが存在しない場合は作成 (analysis.cppと同じ方法)
+    std::filesystem::create_directories(folder_name);
+
+    // ファイル名にもパラメータ情報を含める
+    std::string output_file = folder_name + "/experiment_results_grid" +
+                              std::to_string(grid_size) + ".csv";
+
     // 結果をCSVに保存
-    std::string output_file = "experiment_results.csv";
     experiment.saveResults(results, output_file);
 
     std::cout << "\nExperiment completed!" << std::endl;
