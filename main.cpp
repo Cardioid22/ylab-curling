@@ -652,8 +652,17 @@ int main(int argc, char const * argv[])
             // 結果保存用ディレクトリ作成
             std::filesystem::create_directories("experiments/agreement_results");
 
-            // 結果をCSVに出力
-            std::string filename = "experiments/agreement_results/clustered_vs_allgrid.csv";
+            // タイムスタンプ付きファイル名を生成
+            auto now = std::chrono::system_clock::now();
+            auto time_t_now = std::chrono::system_clock::to_time_t(now);
+            std::tm tm_now;
+            localtime_s(&tm_now, &time_t_now);
+
+            std::ostringstream timestamp_stream;
+            timestamp_stream << std::put_time(&tm_now, "%Y%m%d_%H%M%S");
+            std::string timestamp = timestamp_stream.str();
+
+            std::string filename = "experiments/agreement_results/clustered_vs_allgrid_" + timestamp + ".csv";
             experiment.exportResultsToCSV(filename);
 
             std::cout << "\n========================================\n";
