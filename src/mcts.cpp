@@ -234,7 +234,7 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
     std::vector<int> recommended_states;
     std::vector<ShotInfo> candidates;
     int cluster_num = static_cast<int>(std::log2(all_states.size()));
-    Clustering algo(cluster_num, all_states, GridSize_M_, GridSize_N_);
+    Clustering algo(cluster_num, all_states, GridSize_M_, GridSize_N_, simulator->g_team);
     recommended_states = algo.getRecommendedStates();
     for (int state_index : recommended_states) {
         auto it = state_to_shot_table.find(state_index);

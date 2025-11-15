@@ -7,8 +7,8 @@
 #include "digitalcurling3/digitalcurling3.hpp"
 
 namespace dc = digitalcurling3;
-Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states, int gridM, int gridN) 
-: n_desired_clusters(k_clusters), cluster_exists(false)
+Clustering::Clustering(int k_clusters, std::vector<dc::GameState> all_states, int gridM, int gridN, dc::Team team)
+: n_desired_clusters(k_clusters), cluster_exists(false), g_team(team)
 {
     GridSize_M_ = gridM;
     GridSize_N_ = gridN;
@@ -115,6 +115,76 @@ float Clustering::dist(dc::GameState const& a, dc::GameState const& b) const {
     if (team_a != team_b) distance += 12.0f;
 
     return distance;
+}
+
+float Clustering::EvaluateScoreBoard(dc::GameState const& state) {
+    // カーリングの局面評価関数
+    // 高いスコア = 自チームにとって有利な局面
+
+    float score = 0.0f;
+
+    // チーム情報の取得
+    dc::Team my_team = g_team;
+    dc::Team opponent_team = dc::GetOpponentTeam(g_team);
+    
+    // ハウス内のストーン数をカウント
+    int my_stones_in_house = 0;
+    int opponent_stones_in_house = 0;
+
+    // 中心に最も近いストーンの距離とチームを記録
+    float closest_distance = std::numeric_limits<float>::max();
+    int closest_team = -1;
+
+    // 各ストーンの評価
+    for (int team = 0; team < 2; ++team) {
+        for (int index = 0; index < 8; ++index) {
+            const auto& stone = state.stones[team][index];
+
+            if (!stone) continue;  // ストーンが存在しない場合はスキップ
+
+            float x = stone->position.x;
+            float y = stone->position.y;
+            float dist_to_center = std::sqrt(std::pow(x, 2) + std::pow(y - HouseCenterY_, 2));
+
+            // ハウス内判定
+            if (IsInHouse(stone)) {
+                if (team == static_cast<int>(my_team)) {
+                    my_stones_in_house++;
+
+                    // ハウス内のストーンは距離に応じて加点
+                    // 中心に近いほど高得点（最大5点、最小1点）
+                    float position_score = std::max(1.0f, 5.0f - dist_to_center);
+                    score += position_score;
+                } 
+                else {
+                    opponent_stones_in_house++;
+
+                    // 相手のストーンは減点
+                    float position_score = std::max(1.0f, 5.0f - dist_to_center);
+                    score -= position_score;
+                }
+
+                // 最も中心に近いストーンを記録
+                if (dist_to_center < closest_distance) {
+                    closest_distance = dist_to_center;
+                    closest_team = team;
+                }
+            }
+        }
+    }
+
+    // ハウス内のストーン数の差によるボーナス
+    int stone_difference = my_stones_in_house - opponent_stones_in_house;
+    score += stone_difference * 3.0f;  // ストーン数の差に重み付け
+
+    // No.1ストーン（最も中心に近いストーン）のボーナス
+    if (closest_team == static_cast<int>(my_team)) {
+        score += 10.0f;  // 自チームがNo.1なら大きなボーナス
+    } else if (closest_team == static_cast<int>(opponent_team)) {
+        score -= 10.0f;  // 相手チームがNo.1なら大きなペナルティ
+    }
+
+    return score;
 }
 
 std::vector<std::vector<float>> Clustering::MakeDistanceTable(std::vector<dc::GameState> const& states) {
@@ -234,6 +304,7 @@ std::vector<std::vector<int>> Clustering::calculateMedioid(const std::vector<std
     return medoids;
 }
 
+// main function
 std::vector<std::set<int>> Clustering::getClusters() {
     if (cluster_exists) {
         return clusters;

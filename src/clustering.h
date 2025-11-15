@@ -13,7 +13,7 @@ namespace dc = digitalcurling3;
 
 class Clustering {
 public:
-	Clustering(int k_clusters, std::vector<dc::GameState> all_states, int gridM, int gridN);
+	Clustering(int k_clusters, std::vector<dc::GameState> all_states, int gridM, int gridN, dc::Team team);
 
 	std::vector<std::set<int>> getClusters();
 	std::vector<int> getRecommendedStates();
@@ -29,6 +29,7 @@ private:
 	int GridSize_N_ = 10;
 	int n_desired_clusters = 6;
 	bool cluster_exists = false;
+	dc::Team g_team;
 
 	std::vector<dc::GameState> states;
 	std::vector<std::set<int>> clusters;
@@ -42,6 +43,7 @@ private:
 	std::tuple<int, int, float> findClosestClusters(const std::vector<std::vector<float>>& dist, const std::vector<std::set<int>>& clusters);
     LinkageMatrix hierarchicalClustering(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters, int n_desired_clusters);
 	std::vector<std::vector<int>> calculateMedioid(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters);
+	float Clustering::EvaluateScoreBoard(dc::GameState const& state);
 };
 
 #endif

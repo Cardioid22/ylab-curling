@@ -2,6 +2,8 @@
 #include "digitalcurling3/digitalcurling3.hpp"
 #include "structure.h"
 #include <iostream>
+#include <random>
+#include <limits>
 
 namespace dc = digitalcurling3;
 
@@ -184,4 +186,85 @@ ShotInfo SimulatorWrapper::FindShot(Position const& pos) {
     shot.vy = final_speed.y;
     shot.rot = rotation == dc::moves::Shot::Rotation::kCW ? 1 : 0;
     return shot;
+}
+
+// Grid Random Rollout: Uses pre-calculated grid shots randomly until game over
+double SimulatorWrapper::run_grid_rollout(dc::GameState const& state) {
+    if (initialShotData.empty()) {
+        std::cerr << "Error: initialShotData is empty. Must initialize grid shots first.\n";
+        return 0.0;
+    }
+
+    dc::GameState sim_state = state;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> grid_dist(0, initialShotData.size() - 1);
+
+    while (!sim_state.IsGameOver()) {
+        // Randomly select from pre-calculated 16 grid shots
+        int random_index = grid_dist(gen);
+        ShotInfo shot = initialShotData[random_index];
+
+        sim_state = run_single_simulation(sim_state, shot);
+    }
+
+    return evaluate(sim_state);
+}
+
+// Helper: Select best shot based on evaluation function
+ShotInfo SimulatorWrapper::select_best_shot_by_evaluation(
+    const dc::GameState& state,
+    const std::vector<ShotInfo>& candidates
+) {
+    double best_score = -std::numeric_limits<double>::infinity();
+    ShotInfo best_shot;
+
+    for (const auto& shot : candidates) {
+        // Simulate each candidate shot
+        dc::GameState next_state = run_single_simulation(state, shot);
+
+        // Score using evaluation function (same as clustering.cpp)
+        double score = evaluate(next_state);
+
+        if (score > best_score) {
+            best_score = score;
+            best_shot = shot;
+        }
+    }
+
+    return best_shot;
+}
+
+// ε-greedy Rollout: Mix of evaluation-based (exploitation) and random (exploration)
+double SimulatorWrapper::run_greedy_rollout(
+    dc::GameState const& state,
+    double epsilon
+) {
+    if (initialShotData.empty()) {
+        std::cerr << "Error: initialShotData is empty. Must initialize grid shots first.\n";
+        return 0.0;
+    }
+
+    dc::GameState sim_state = state;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> rand_prob(0.0, 1.0);
+    std::uniform_int_distribution<int> grid_dist(0, initialShotData.size() - 1);
+
+    while (!sim_state.IsGameOver()) {
+        ShotInfo shot;
+
+        if (rand_prob(gen) < epsilon) {
+            // ε% probability: Random exploration
+            int random_index = grid_dist(gen);
+            shot = initialShotData[random_index];
+        } else {
+            // (1-ε)% probability: Exploitation using evaluation function
+            shot = select_best_shot_by_evaluation(sim_state, initialShotData);
+        }
+
+        sim_state = run_single_simulation(sim_state, shot);
+    }
+
+    return evaluate(sim_state);
 }
