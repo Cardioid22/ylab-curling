@@ -1,0 +1,4 @@
+End,Shot,Ideal_vx,Ideal_vy,Ideal_rot,Clustered_Iterations,Clustered_Found,AllGrid_Iterations,AllGrid_Found,Iteration_Ratio
+1,0,-0.230039,2.429459,1,-1,0,-1,0,-1.000000
+1,2,-0.208113,2.436268,1,-1,0,-1,0,-1.000000
+1,4,0.032842,2.460770,0,-1,0,-1,0,-1.000000

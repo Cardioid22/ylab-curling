@@ -30,11 +30,10 @@ ShotInfo SimpleExperiment::findIdealShot(
     game_setting.max_end = 1;
     game_setting.five_rock_rule = true;
 
-    auto simWrapper = std::make_shared<SimulatorWrapper>(team, game_setting);
+    auto simWrapper = std::make_shared<SimulatorWrapper>(team, game_setting);   
 
     MCTS benchmark_mcts(state, NodeSource::AllGrid, grid_states_,
                        state_to_shot_table_, simWrapper, GridSize_M_, GridSize_N_);
-    // 100000 iterations
     benchmark_mcts.grow_tree(max_iterations, 3600.0);
 
     ShotInfo ideal = benchmark_mcts.get_best_shot();
