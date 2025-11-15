@@ -16,6 +16,8 @@
 #include "src/simulator.h"
 #include "src/analysis.h"
 #include "experiments/simple_experiment.h"
+#include "experiments/clustering_validation.h"
+#include "experiments/agreement_experiment.h"
 #define DBL_EPSILON 2.2204460492503131e-016
 
 namespace dc = digitalcurling3;
@@ -344,7 +346,7 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     int shot_num = static_cast<int>(game_state.shot);
     std::cout << "CurlingAI grid_states Calculation Done.\n";
     long long int S = GridSize_M * GridSize_N * 1LL;
-    Clustering algo(static_cast<int>(std::log2(S)), grid_states, GridSize_M, GridSize_N);
+    Clustering algo(static_cast<int>(std::log2(S)), grid_states, GridSize_M, GridSize_N, g_team);
     Analysis an(GridSize_M, GridSize_N);
     auto clusters = algo.getRecommendedStates(); // for debugging
     auto cluster_id_to_state = algo.get_clusters_id_table(); // for debugging
@@ -469,6 +471,55 @@ void runSimpleExperiment() {
     std::cout << "  python analyze_simple_results.py " << output_file << std::endl;
 }
 
+// クラスタリング検証実験を実行する関数
+void runClusteringValidation() {
+    std::cout << "\n=== Starting Clustering Validation Experiment ===" << std::endl;
+
+    // ClusteringValidation インスタンス作成
+    ClusteringValidation validation(dc::Team::k0);
+
+    // テスト用石配置を生成（各パターン3バリエーション）
+    auto test_states = validation.generateTestStates(3);
+
+    std::cout << "\nGenerated " << test_states.size() << " test stone distributions" << std::endl;
+    std::cout << "Pattern types:" << std::endl;
+    std::cout << "  - Basic: CenterGuard, DoubleGuard, CornerGuards" << std::endl;
+    std::cout << "  - House: SingleDraw, DoubleDraw, TripleDraw, HouseCorners" << std::endl;
+    std::cout << "  - Mixed: GuardAndDraw, Split, Crowded, Scattered" << std::endl;
+    std::cout << "  - Tactical: FreezeAttempt, Takeout, Promotion, Corner" << std::endl;
+    std::cout << "  - Other: Symmetric, Asymmetric, Random" << std::endl;
+
+    // 目標クラスタ数を計算（log2(状態数)）
+    int target_clusters = static_cast<int>(std::log2(test_states.size()));
+    if (target_clusters < 3) target_clusters = 3;  // 最低3クラスタ
+
+    std::cout << "\nTarget clusters: " << target_clusters << std::endl;
+
+    // 両方のクラスタリング手法で実行
+    auto result = validation.runComparison(test_states, target_clusters);
+
+    // 結果を出力
+    std::string output_dir = "experiments/clustering_validation_results";
+    validation.exportResults(result, test_states, output_dir);
+
+    // サマリー表示
+    std::cout << "\n=== Validation Summary ===" << std::endl;
+    std::cout << "Test states: " << test_states.size() << std::endl;
+    std::cout << "\nClustering V1 (Hierarchical):" << std::endl;
+    std::cout << "  - Clusters: " << result.v1_clusters.size() << std::endl;
+    std::cout << "  - Time: " << result.v1_time_ms << " ms" << std::endl;
+    std::cout << "\nClustering V2 (Feature-based):" << std::endl;
+    std::cout << "  - Clusters: " << result.v2_clusters.size() << std::endl;
+    std::cout << "  - Quality Score: " << result.v2_quality_score << std::endl;
+    std::cout << "  - Time: " << result.v2_time_ms << " ms" << std::endl;
+    std::cout << "\nSpeedup: " << (result.v1_time_ms / result.v2_time_ms) << "x" << std::endl;
+
+    std::cout << "\n=== Results saved to: " << output_dir << " ===" << std::endl;
+    std::cout << "\nTo visualize the stone distributions, run:" << std::endl;
+    std::cout << "  python python/visualize_clustering_validation.py" << std::endl;
+    std::cout << "\n=== Clustering Validation Completed! ===" << std::endl;
+}
+
 int main(int argc, char const * argv[])
 {
     using boost::asio::ip::tcp;
@@ -521,9 +572,103 @@ int main(int argc, char const * argv[])
             return 0;
         }
 
+        // クラスタリング検証実験モード
+        if (argc == 2 && std::string(argv[1]) == "--validate-clustering") {
+            std::cout << "Running clustering validation mode..." << std::endl;
+            runClusteringValidation();
+            return 0;
+        }
+
+        // Agreement Experiment モード (Clustered vs AllGrid MCTS)
+        if (argc == 2 && std::string(argv[1]) == "--agreement-experiment") {
+            std::cout << "Running Agreement Experiment mode..." << std::endl;
+
+            // 初期化
+            g_team = dc::Team::k0;
+            g_game_setting.max_end = 1;
+            g_game_setting.five_rock_rule = true;
+            g_game_setting.thinking_time[0] = std::chrono::seconds(86400);
+            g_game_setting.thinking_time[1] = std::chrono::seconds(86400);
+
+            g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+            g_simulator_storage = g_simulator->CreateStorage();
+
+            for (size_t i = 0; i < g_players.size(); ++i) {
+                g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+            }
+
+            simWrapper = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
+            simWrapper_allgrid = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
+
+            // グリッドとショット情報の初期化
+            int S = GridSize_M * GridSize_N;
+            grid.resize(S);
+            shotData.resize(S);
+            grid_states.resize(S);
+            grid = MakeGrid(GridSize_M, GridSize_N);
+
+            std::cout << "Initializing " << S << " grid shots..." << std::endl;
+            for (int i = 0; i < S; ++i) {
+                ShotInfo shotinfo = FindShot(grid[i]);
+                shotData[i] = shotinfo;
+                simWrapper->initialShotData.push_back(shotinfo);
+                simWrapper_allgrid->initialShotData.push_back(shotinfo);
+                state_to_shot_table[i] = shotinfo;
+            }
+            std::cout << "Grid initialization complete.\n" << std::endl;
+
+            // 初期状態からグリッド状態を生成 (use proper constructor to initialize scores vector)
+            dc::GameState initial_state(g_game_setting);
+
+            std::cout << "Simulating " << S << " grid states from initial state..." << std::endl;
+            std::cout << "  Initial state - shot: " << static_cast<int>(initial_state.shot) << ", end: " << static_cast<int>(initial_state.end) << std::endl;
+            for (int i = 0; i < S; ++i) {
+                std::cout << "  Simulating grid #" << i << "..." << std::flush;
+                try {
+                    grid_states[i] = simWrapper->run_single_simulation(initial_state, shotData[i]);
+                    std::cout << " done" << std::endl;
+                } catch (const std::exception& e) {
+                    std::cout << " ERROR: " << e.what() << std::endl;
+                    throw;
+                }
+            }
+            std::cout << "Grid states simulation complete.\n" << std::endl;
+
+            // Agreement Experiment作成
+            AgreementExperiment experiment(
+                g_team,
+                g_game_setting,
+                GridSize_M,
+                GridSize_N,
+                grid_states,
+                state_to_shot_table,
+                simWrapper,
+                simWrapper_allgrid
+            );
+
+            // 実験実行（各パターンタイプにつき1つのバリエーション）
+            experiment.runExperiment(1);
+
+            // 結果保存用ディレクトリ作成
+            std::filesystem::create_directories("experiments/agreement_results");
+
+            // 結果をCSVに出力
+            std::string filename = "experiments/agreement_results/clustered_vs_allgrid.csv";
+            experiment.exportResultsToCSV(filename);
+
+            std::cout << "\n========================================\n";
+            std::cout << "Agreement Experiment Complete!\n";
+            std::cout << "Results saved to: " << filename << "\n";
+            std::cout << "========================================\n";
+
+            return 0;
+        }
+
         if (argc != 3) {
             std::cerr << "Usage: command <host> <port>" << std::endl;
-            std::cerr << "       command --experiment  (for efficiency experiment)" << std::endl;
+            std::cerr << "       command --experiment              (for efficiency experiment)" << std::endl;
+            std::cerr << "       command --validate-clustering     (for clustering validation)" << std::endl;
+            std::cerr << "       command --agreement-experiment    (for Clustered vs AllGrid comparison)" << std::endl;
             return 1;
         }
 

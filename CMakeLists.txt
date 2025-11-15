@@ -43,6 +43,8 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     src/structure.h
     src/clustering.cpp
     src/clustering.h
+    src/clustering-v2.cpp
+    src/clustering-v2.h
     src/simulator.h
     src/simulator.cpp
     src/analysis.cpp
@@ -50,6 +52,10 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     # 実験用ファイル
     experiments/simple_experiment.h
     experiments/simple_experiment.cpp
+    experiments/clustering_validation.h
+    experiments/clustering_validation.cpp
+    experiments/agreement_experiment.h
+    experiments/agreement_experiment.cpp
     # example.cpp
 
 )
