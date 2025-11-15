@@ -531,8 +531,24 @@ int main(int argc, char const * argv[])
     constexpr int kSupportedProtocolVersionMajor = 1;
 
     try {
-        // 実験モードのチェック
-        if (argc == 2 && std::string(argv[1]) == "--experiment") {
+        // 実験モードのチェック（引数に--experimentが含まれているかチェック）
+        bool experiment_mode = false;
+        bool validate_clustering_mode = false;
+        bool agreement_experiment_mode = false;
+
+        for (int i = 1; i < argc; ++i) {
+            if (std::string(argv[i]) == "--experiment") {
+                experiment_mode = true;
+            }
+            if (std::string(argv[i]) == "--validate-clustering") {
+                validate_clustering_mode = true;
+            }
+            if (std::string(argv[i]) == "--agreement-experiment") {
+                agreement_experiment_mode = true;
+            }
+        }
+
+        if (experiment_mode) {
             std::cout << "Running in experiment mode..." << std::endl;
             // 初期化を簡略化して実験実行
             g_team = dc::Team::k0;
@@ -573,14 +589,14 @@ int main(int argc, char const * argv[])
         }
 
         // クラスタリング検証実験モード
-        if (argc == 2 && std::string(argv[1]) == "--validate-clustering") {
+        if (validate_clustering_mode) {
             std::cout << "Running clustering validation mode..." << std::endl;
             runClusteringValidation();
             return 0;
         }
 
         // Agreement Experiment モード (Clustered vs AllGrid MCTS)
-        if (argc == 2 && std::string(argv[1]) == "--agreement-experiment") {
+        if (agreement_experiment_mode) {
             std::cout << "Running Agreement Experiment mode..." << std::endl;
 
             // 初期化
