@@ -60,6 +60,9 @@ public:
     // Export results to CSV
     void exportResultsToCSV(const std::string& filename);
 
+    // Export summary to separate file
+    void exportSummaryToFile(const std::string& filename);
+
 private:
     dc::Team team_;
     dc::GameSetting game_setting_;

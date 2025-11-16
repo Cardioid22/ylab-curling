@@ -20,6 +20,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# MSVCでUTF-8を使用する設定
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 # DigitalCurling3ライブラリを読み込みます
 add_subdirectory(extern/DigitalCurling3)
 

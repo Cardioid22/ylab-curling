@@ -681,12 +681,17 @@ int main(int argc, char const * argv[])
             timestamp_stream << std::put_time(&tm_now, "%Y%m%d_%H%M%S");
             std::string timestamp = timestamp_stream.str();
 
-            std::string filename = "experiments/agreement_results/clustered_vs_allgrid_" + timestamp + ".csv";
-            experiment.exportResultsToCSV(filename);
+            std::string csv_filename = "experiments/agreement_results/clustered_vs_allgrid_" + timestamp + ".csv";
+            std::string summary_filename = "experiments/agreement_results/summary_" + timestamp + ".txt";
+
+            experiment.exportResultsToCSV(csv_filename);
+            experiment.exportSummaryToFile(summary_filename);
 
             std::cout << "\n========================================\n";
             std::cout << "Agreement Experiment Complete!\n";
-            std::cout << "Results saved to: " << filename << "\n";
+            std::cout << "Results saved to:\n";
+            std::cout << "  CSV: " << csv_filename << "\n";
+            std::cout << "  Summary: " << summary_filename << "\n";
             std::cout << "========================================\n";
 
             return 0;

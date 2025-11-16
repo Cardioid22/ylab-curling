@@ -4,7 +4,7 @@
 
 #include "digitalcurling3/digitalcurling3.hpp"
 #include "structure.h"
-#include "clustering.h"
+#include "clustering-v2.h"
 #include "simulator.h"
 #include <fstream>
 
@@ -46,7 +46,7 @@ public:
 	void expand(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table);
 	void rollout();
 	double calculate_winrate() const;
-	void backpropagate(double w, int n);
+	void backpropagate(int w, int n);
     bool NextIsOpponentTurn() const;
     void print_tree(int indent = 0) const;
 private:
@@ -71,6 +71,7 @@ public:
 
 	void grow_tree(int max_iter, double max_limited_time);  // main loop
 	ShotInfo get_best_shot();
+	double get_best_shot_winrate();
     void report_rollout_result() const;
     void export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n, std::vector<ShotInfo> shotData) const;
 

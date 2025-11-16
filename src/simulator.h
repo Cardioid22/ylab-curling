@@ -16,7 +16,7 @@ public:
     dc::Team g_team;
     dc::GameSetting g_game_setting;
     std::unique_ptr<dc::ISimulatorStorage> g_simulator_storage_;
-    std::array<std::unique_ptr<dc::IPlayer>, 4> g_players; // �Q�[���v���C���[
+    std::array<std::unique_ptr<dc::IPlayer>, 4> g_players;
     std::vector<ShotInfo> initialShotData;
 
     dc::GameState run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot);

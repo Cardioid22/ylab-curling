@@ -60,6 +60,8 @@ std::vector<int> AgreementExperiment::generateClusteredIterationCounts(int depth
     counts.push_back(clustered_full);
     // Larger conuts
     counts.push_back(clustered_full * 2);
+    counts.push_back(clustered_full * 5);
+    counts.push_back(clustered_full * 10);
 
     return counts;
 }
@@ -85,19 +87,40 @@ MCTSRunResult AgreementExperiment::runAllGridMCTS(const dc::GameState& state, in
 
     // Get best shot
     ShotInfo best_shot = mcts.get_best_shot();
+    double win_rate = mcts.get_best_shot_winrate();
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
 
-    // Find which grid ID this shot corresponds to
+    // Debug: Print best shot details
+    std::cout << "  [DEBUG] Best shot: vx=" << best_shot.vx
+              << ", vy=" << best_shot.vy
+              << ", rot=" << best_shot.rot << "\n";
+
+    // Find which grid ID this shot corresponds to (closest match)
     int selected_grid_id = -1;
+    double min_diff = 1e9;
+
     for (const auto& [grid_id, shot] : state_to_shot_table_) {
-        if (std::abs(shot.vx - best_shot.vx) < 0.001 &&
-            std::abs(shot.vy - best_shot.vy) < 0.001 &&
-            shot.rot == best_shot.rot) {
+        double diff_vx = std::abs(shot.vx - best_shot.vx);
+        double diff_vy = std::abs(shot.vy - best_shot.vy);
+        double total_diff = diff_vx + diff_vy;
+
+        if (total_diff < min_diff) {
+            min_diff = total_diff;
             selected_grid_id = grid_id;
-            break;
         }
+    }
+
+    if (selected_grid_id != -1) {
+        const ShotInfo& closest_shot = state_to_shot_table_.at(selected_grid_id);
+        std::cout << "  [DEBUG] Closest grid: " << selected_grid_id
+                  << " (diff: " << std::fixed << std::setprecision(4) << min_diff << ")\n";
+        std::cout << "  [DEBUG] Closest shot: vx=" << closest_shot.vx
+                  << ", vy=" << closest_shot.vy
+                  << ", rot=" << closest_shot.rot << "\n";
+    } else {
+        std::cout << "  [ERROR] No grid found in state_to_shot_table!" << "\n";
     }
 
     // Export MCTS details
@@ -105,13 +128,14 @@ MCTSRunResult AgreementExperiment::runAllGridMCTS(const dc::GameState& state, in
 
     MCTSRunResult result;
     result.selected_grid_id = selected_grid_id;
-    result.win_rate = 0.0;  // Will be calculated from MCTS tree
+    result.win_rate = win_rate;
     result.iterations = iterations;
     result.elapsed_time_sec = elapsed.count();
     result.node_source = NodeSource::AllGrid;
 
     std::cout << "  [AllGrid MCTS] Selected grid ID: " << selected_grid_id
-              << " (time: " << std::fixed << std::setprecision(2)
+              << " (win rate: " << std::fixed << std::setprecision(3) << win_rate
+              << ", time: " << std::setprecision(2)
               << elapsed.count() << "s)\n";
 
     return result;
@@ -138,30 +162,52 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
 
     // Get best shot
     ShotInfo best_shot = mcts.get_best_shot();
+    double win_rate = mcts.get_best_shot_winrate();
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
 
-    // Find which grid ID this shot corresponds to
+    // Debug: Print best shot details
+    std::cout << "    [DEBUG] Best shot: vx=" << best_shot.vx
+              << ", vy=" << best_shot.vy
+              << ", rot=" << best_shot.rot << "\n";
+
+    // Find which grid ID this shot corresponds to (closest match)
     int selected_grid_id = -1;
+    double min_diff = 1e9;
+
     for (const auto& [grid_id, shot] : state_to_shot_table_) {
-        if (std::abs(shot.vx - best_shot.vx) < 0.001 &&
-            std::abs(shot.vy - best_shot.vy) < 0.001 &&
-            shot.rot == best_shot.rot) {
+        double diff_vx = std::abs(shot.vx - best_shot.vx);
+        double diff_vy = std::abs(shot.vy - best_shot.vy);
+        double total_diff = diff_vx + diff_vy;
+
+        if (total_diff < min_diff) {
+            min_diff = total_diff;
             selected_grid_id = grid_id;
-            break;
         }
+    }
+
+    if (selected_grid_id != -1) {
+        const ShotInfo& closest_shot = state_to_shot_table_.at(selected_grid_id);
+        std::cout << "    [DEBUG] Closest grid: " << selected_grid_id
+                  << " (diff: " << std::fixed << std::setprecision(4) << min_diff << ")\n";
+        std::cout << "    [DEBUG] Closest shot: vx=" << closest_shot.vx
+                  << ", vy=" << closest_shot.vy
+                  << ", rot=" << closest_shot.rot << "\n";
+    } else {
+        std::cout << "    [ERROR] No grid found in state_to_shot_table!" << "\n";
     }
 
     MCTSRunResult result;
     result.selected_grid_id = selected_grid_id;
-    result.win_rate = 0.0;  // Will be calculated from MCTS tree
+    result.win_rate = win_rate;
     result.iterations = iterations;
     result.elapsed_time_sec = elapsed.count();
     result.node_source = NodeSource::Clustered;
 
     std::cout << "    [Clustered MCTS] Selected grid ID: " << selected_grid_id
-              << " (" << std::fixed << std::setprecision(2)
+              << " (win rate: " << std::fixed << std::setprecision(3) << win_rate
+              << ", time: " << std::setprecision(2)
               << elapsed.count() << "s)\n";
 
     return result;
@@ -283,6 +329,79 @@ void AgreementExperiment::printSummary() {
     }
 
     std::cout << "=========================================\n";
+}
+
+void AgreementExperiment::exportSummaryToFile(const std::string& filename) {
+    std::ofstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << "\n";
+        return;
+    }
+
+    // Write summary header
+    file << "=========================================\n";
+    file << "FINAL SUMMARY\n";
+    file << "=========================================\n";
+    file << "Grid size: " << grid_m_ << "x" << grid_n_ << "\n";
+    file << "Total tests: " << results_.size() << "\n";
+    file << "\n";
+
+    // Calculate and write average agreement rate for each iteration count
+    if (!results_.empty() && !results_[0].clustered_iterations_tested.empty()) {
+        file << "Average Agreement Rate by Iteration Count:\n";
+        file << "-------------------------------------------\n";
+
+        for (size_t i = 0; i < results_[0].clustered_iterations_tested.size(); ++i) {
+            int iterations = results_[0].clustered_iterations_tested[i];
+            double total_agreement = 0.0;
+            int total_tests = 0;
+
+            for (const auto& result : results_) {
+                if (i < result.agreement_flags.size()) {
+                    total_tests++;
+                    if (result.agreement_flags[i]) {
+                        total_agreement += 1.0;
+                    }
+                }
+            }
+
+            double avg_agreement = total_tests > 0 ? (total_agreement / total_tests) * 100.0 : 0.0;
+
+            file << "  Iterations: " << std::setw(6) << iterations
+                 << " | Agreement: " << std::fixed << std::setprecision(1)
+                 << std::setw(5) << avg_agreement << "%"
+                 << " (" << static_cast<int>(total_agreement) << "/" << total_tests << ")\n";
+        }
+    }
+
+    file << "=========================================\n";
+    file << "\n";
+
+    // Write detailed breakdown by test case
+    file << "Detailed Breakdown by Test Case:\n";
+    file << "-------------------------------------------\n";
+
+    for (const auto& result : results_) {
+        file << "\nTest " << result.test_id << ": " << result.test_description << "\n";
+        file << "  AllGrid (Ground Truth): Grid " << result.allgrid_result.selected_grid_id
+             << " (WinRate: " << std::fixed << std::setprecision(3) << result.allgrid_result.win_rate
+             << ", Time: " << std::setprecision(2) << result.allgrid_result.elapsed_time_sec << "s)\n";
+
+        for (size_t i = 0; i < result.clustered_results.size(); ++i) {
+            const auto& clustered_res = result.clustered_results[i];
+            bool agrees = i < result.agreement_flags.size() ? result.agreement_flags[i] : false;
+
+            file << "  Clustered (Iter " << std::setw(6) << clustered_res.iterations << "): Grid "
+                 << std::setw(2) << clustered_res.selected_grid_id
+                 << " (WinRate: " << std::fixed << std::setprecision(3) << clustered_res.win_rate
+                 << ", Time: " << std::setprecision(2) << clustered_res.elapsed_time_sec << "s)"
+                 << " | Agreement: " << (agrees ? "YES" : "NO") << "\n";
+        }
+    }
+
+    file.close();
+    std::cout << "\nSummary exported to: " << filename << "\n";
 }
 
 void AgreementExperiment::exportResultsToCSV(const std::string& filename) {

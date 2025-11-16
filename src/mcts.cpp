@@ -219,7 +219,7 @@ void MCTS_Node::rollout() {
 double MCTS_Node::calculate_winrate() const {
     return visits == 0 ? 0.0 : static_cast<double>(wins) / visits;
 }
-void MCTS_Node::backpropagate(double w, int n) {
+void MCTS_Node::backpropagate(int w, int n) {
     wins += w;
     visits += n;
     if (parent) {
@@ -234,7 +234,7 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
     std::vector<int> recommended_states;
     std::vector<ShotInfo> candidates;
     int cluster_num = static_cast<int>(std::log2(all_states.size()));
-    Clustering algo(cluster_num, all_states, GridSize_M_, GridSize_N_, simulator->g_team);
+    ClusteringV2 algo(cluster_num, all_states, GridSize_M_, GridSize_N_, simulator->g_team);
     recommended_states = algo.getRecommendedStates();
     for (int state_index : recommended_states) {
         auto it = state_to_shot_table.find(state_index);
@@ -322,12 +322,24 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
 
 ShotInfo MCTS::get_best_shot() {
     if (!best_child_) {
-        std::cerr << "No children found after tree search. Returning default shot." << "\n";
+        std::cerr << "[ERROR] No children found after tree search. Returning default shot." << "\n";
+        std::cerr << "[DEBUG] Root has " << root_->children.size() << " children" << "\n";
         return ShotInfo{ 0.0f, 0.0f, 0 };
     }
     else {
+        std::cout << "[DEBUG] get_best_shot() returning: vx=" << best_child_->selected_shot.vx
+                  << ", vy=" << best_child_->selected_shot.vy
+                  << ", rot=" << best_child_->selected_shot.rot << "\n";
         return best_child_->selected_shot;
     }
+}
+
+double MCTS::get_best_shot_winrate() {
+    if (!best_child_) {
+        std::cerr << "No best child found. Returning 0.0 win rate." << "\n";
+        return 0.0;
+    }
+    return best_child_->calculate_winrate();
 }
 
 void MCTS::report_rollout_result() const {
