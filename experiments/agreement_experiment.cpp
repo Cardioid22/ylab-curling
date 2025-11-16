@@ -44,34 +44,22 @@ int AgreementExperiment::calculateFullExplorationIterations(int max_depth) {
     return total;
 }
 
-std::vector<int> AgreementExperiment::generateClusteredIterationCounts() {
+std::vector<int> AgreementExperiment::generateClusteredIterationCounts(int depth) {
     // Clustered MCTS has log2(16) = 4, so search tree is smaller
     // Full exploration to depth 3: 1 + 4 + 16 + 64 = 85
-    int clustered_full = calculateFullExplorationIterations(3);
+    int clustered_full = calculateFullExplorationIterations(depth);
 
     // Range of iteration counts to test
     std::vector<int> counts;
 
     // Start with small iteration counts
-    counts.push_back(10);
-    counts.push_back(50);
-    counts.push_back(100);
-    counts.push_back(500);
-    counts.push_back(1000);
-
+    counts.push_back(clustered_full / 10);
+    counts.push_back(clustered_full / 5);
+    counts.push_back(clustered_full / 2);
     // Full exploration
-    counts.push_back(clustered_full * 2);
     counts.push_back(clustered_full);
-    if (clustered_full > 5000 && clustered_full <= 10000) {
-        counts.push_back(50000);
-    }
-    else if (clustered_full > 100000) {
-        counts.push_back(500000);
-    }
-    else if (clustered_full > 500000) {
-        counts.push_back(1000000);
-    }
-    else {}
+    // Larger conuts
+    counts.push_back(clustered_full * 2);
 
     return counts;
 }
@@ -191,9 +179,11 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state) 
     result.test_description = test_state.description;
     result.shot_number = test_state.state.shot;
 
+    int test_depth = 3;
+
     // Step 1: Run AllGrid MCTS with full exploration
     std::cout << "\n[Step 1] Running AllGrid MCTS (Ground Truth)\n";
-	int allgrid_iterations = calculateFullExplorationIterations(3); //3-depth full exploration
+	int allgrid_iterations = calculateFullExplorationIterations(test_depth); // X-depth full exploration
     result.allgrid_result = runAllGridMCTS(test_state.state, allgrid_iterations);
 
     std::cout << "\n[Ground Truth] AllGrid selected: Grid ID "
@@ -201,7 +191,7 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state) 
 
     // Step 2: Run Clustered MCTS with various iteration counts
     std::cout << "\n[Step 2] Running Clustered MCTS with various iterations\n";
-    result.clustered_iterations_tested = generateClusteredIterationCounts();
+    result.clustered_iterations_tested = generateClusteredIterationCounts(test_depth);
 
     for (int iterations : result.clustered_iterations_tested) {
         MCTSRunResult clustered_res = runClusteredMCTS(test_state.state, iterations);

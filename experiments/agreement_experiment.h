@@ -86,7 +86,7 @@ private:
     AgreementResult runSingleTest(const TestState& test_state);
 
     // Generate Clustered MCTS iteration counts to test
-    std::vector<int> generateClusteredIterationCounts();
+    std::vector<int> generateClusteredIterationCounts(int dephth);
 
     // Calculate agreement rate
     double calculateAgreementRate(const std::vector<bool>& agreement_flags);
