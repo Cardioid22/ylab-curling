@@ -43,7 +43,7 @@ private:
 	std::tuple<int, int, float> findClosestClusters(const std::vector<std::vector<float>>& dist, const std::vector<std::set<int>>& clusters);
     LinkageMatrix hierarchicalClustering(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters, int n_desired_clusters);
 	std::vector<std::vector<int>> calculateMedioid(const std::vector<std::vector<float>>& dist, std::vector<std::set<int>>& clusters);
-	float Clustering::EvaluateScoreBoard(dc::GameState const& state);
+	float EvaluateScoreBoard(dc::GameState const& state);
 };
 
 #endif

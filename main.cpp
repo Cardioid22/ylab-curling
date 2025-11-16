@@ -672,8 +672,11 @@ int main(int argc, char const * argv[])
             auto now = std::chrono::system_clock::now();
             auto time_t_now = std::chrono::system_clock::to_time_t(now);
             std::tm tm_now;
+            #ifdef _WIN32
             localtime_s(&tm_now, &time_t_now);
-
+            #else
+            localtime_r(&time_t_now, &tm_now);
+            #endif
             std::ostringstream timestamp_stream;
             timestamp_stream << std::put_time(&tm_now, "%Y%m%d_%H%M%S");
             std::string timestamp = timestamp_stream.str();

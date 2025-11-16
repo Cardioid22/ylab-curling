@@ -60,12 +60,18 @@ std::vector<int> AgreementExperiment::generateClusteredIterationCounts() {
     counts.push_back(1000);
 
     // Full exploration
-    counts.push_back(clustered_full);
-
-    // Additional higher counts
     counts.push_back(clustered_full * 2);
-    counts.push_back(clustered_full * 5);
-    counts.push_back(clustered_full * 10);
+    counts.push_back(clustered_full);
+    if (clustered_full > 5000 && clustered_full <= 10000) {
+        counts.push_back(50000);
+    }
+    else if (clustered_full > 100000) {
+        counts.push_back(500000);
+    }
+    else if (clustered_full > 500000) {
+        counts.push_back(1000000);
+    }
+    else {}
 
     return counts;
 }
@@ -187,7 +193,7 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state) 
 
     // Step 1: Run AllGrid MCTS with full exploration
     std::cout << "\n[Step 1] Running AllGrid MCTS (Ground Truth)\n";
-    int allgrid_iterations = calculateFullExplorationIterations(3);
+	int allgrid_iterations = calculateFullExplorationIterations(3); //3-depth full exploration
     result.allgrid_result = runAllGridMCTS(test_state.state, allgrid_iterations);
 
     std::cout << "\n[Ground Truth] AllGrid selected: Grid ID "
