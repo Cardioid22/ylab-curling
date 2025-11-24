@@ -18,6 +18,7 @@
 #include "experiments/simple_experiment.h"
 #include "experiments/clustering_validation.h"
 #include "experiments/agreement_experiment.h"
+#include "experiments/simulation_reliability.h"
 #define DBL_EPSILON 2.2204460492503131e-016
 
 namespace dc = digitalcurling3;
@@ -520,6 +521,118 @@ void runClusteringValidation() {
     std::cout << "\n=== Clustering Validation Completed! ===" << std::endl;
 }
 
+// シミュレーション信頼度実験を実行する関数
+void runSimulationReliability() {
+    std::cout << "\n=== Starting Simulation Reliability Experiment ===" << std::endl;
+
+    // 基本的な初期化
+    g_team = dc::Team::k0;
+    g_game_setting.max_end = 1;
+    g_game_setting.five_rock_rule = true;
+    g_game_setting.thinking_time[0] = std::chrono::seconds(86400);
+    g_game_setting.thinking_time[1] = std::chrono::seconds(86400);
+
+    g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+    g_simulator_storage = g_simulator->CreateStorage();
+
+    for (size_t i = 0; i < g_players.size(); ++i) {
+        g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+    }
+
+    // SimulatorWrapper作成
+    auto sim_wrapper = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
+
+    // グリッドとショット情報の初期化
+    int S = GridSize_M * GridSize_N;
+    grid.resize(S);
+    shotData.resize(S);
+    grid = MakeGrid(GridSize_M, GridSize_N);
+
+    std::cout << "Initializing " << S << " grid shots..." << std::endl;
+    for (int i = 0; i < S; ++i) {
+        ShotInfo shotinfo = FindShot(grid[i]);
+        shotData[i] = shotinfo;
+        sim_wrapper->initialShotData.push_back(shotinfo);
+    }
+    std::cout << "Grid initialization complete.\n" << std::endl;
+
+    // 実験パラメータ
+    int num_patterns_per_type = 1;     // 各パターンタイプにつき1バリエーション
+    int leaves_per_test_case = 5;      // 各テストケースから5つのリーフをサンプリング
+    int simulations_per_leaf = 10;    // 各リーフで100回シミュレーション
+    int mcts_iterations = GridSize_M * GridSize_N + 1;          // MCTSツリー構築時の反復回数(深さ1までの子を全て出す)
+
+    std::cout << "\n--- Experiment Parameters ---" << std::endl;
+    std::cout << "Patterns per type: " << num_patterns_per_type << std::endl;
+    std::cout << "Leaves per test case: " << leaves_per_test_case << std::endl;
+    std::cout << "Simulations per leaf: " << simulations_per_leaf << std::endl;
+    std::cout << "MCTS iterations: " << mcts_iterations << std::endl;
+    std::cout << "Grid size: " << GridSize_M << "x" << GridSize_N << "\n" << std::endl;
+
+    // SimulationReliabilityExperiment作成
+    SimulationReliabilityExperiment experiment(
+        g_team,
+        sim_wrapper,
+        GridSize_M,
+        GridSize_N
+    );
+
+    // 実験実行
+    auto result = experiment.runExperiment(
+        num_patterns_per_type,
+        leaves_per_test_case,
+        simulations_per_leaf,
+        mcts_iterations
+    );
+
+    // タイムスタンプ付き出力ディレクトリを作成
+    auto now = std::chrono::system_clock::now();
+    auto time_t_now = std::chrono::system_clock::to_time_t(now);
+    std::tm tm_now;
+    #ifdef _WIN32
+    localtime_s(&tm_now, &time_t_now);
+    #else
+    localtime_r(&time_t_now, &tm_now);
+    #endif
+    std::ostringstream timestamp_stream;
+    timestamp_stream << std::put_time(&tm_now, "%Y%m%d_%H%M%S");
+    std::string timestamp = timestamp_stream.str();
+
+    std::string output_dir = "experiments/simulation_reliability_results_" + timestamp;
+
+    // 結果をエクスポート
+    experiment.exportResults(result, output_dir);
+
+    // サマリー表示
+    std::cout << "\n=== Simulation Reliability Summary ===" << std::endl;
+    std::cout << "Total test cases: " << result.num_test_cases << std::endl;
+    std::cout << "Total leaves sampled: " << result.sampled_leaves.size() << std::endl;
+    std::cout << "Total simulations: " << (result.sampled_leaves.size() * result.simulations_per_leaf) << std::endl;
+
+    if (!result.variance_data.empty()) {
+        float avg_score_var = 0.0f;
+        float avg_pos_var = 0.0f;
+        for (const auto& v : result.variance_data) {
+            avg_score_var += v.score_variance;
+            avg_pos_var += v.position_variance;
+        }
+        avg_score_var /= result.variance_data.size();
+        avg_pos_var /= result.variance_data.size();
+
+        std::cout << "\nAverage score variance: " << avg_score_var << std::endl;
+        std::cout << "Average position variance: " << avg_pos_var << std::endl;
+    }
+
+    std::cout << "\n=== Results saved to: " << output_dir << " ===" << std::endl;
+    std::cout << "\nGenerated files:" << std::endl;
+    std::cout << "  - leaf_states.csv" << std::endl;
+    std::cout << "  - simulation_variance.csv" << std::endl;
+    std::cout << "  - result_stone_positions.csv" << std::endl;
+    std::cout << "  - simulation_scores.csv" << std::endl;
+    std::cout << "  - summary.csv" << std::endl;
+    std::cout << "\n=== Simulation Reliability Experiment Completed! ===" << std::endl;
+}
+
 int main(int argc, char const * argv[])
 {
     using boost::asio::ip::tcp;
@@ -535,6 +648,7 @@ int main(int argc, char const * argv[])
         bool experiment_mode = false;
         bool validate_clustering_mode = false;
         bool agreement_experiment_mode = false;
+        bool simulation_reliability_mode = false;
 
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "--experiment") {
@@ -545,6 +659,9 @@ int main(int argc, char const * argv[])
             }
             if (std::string(argv[i]) == "--agreement-experiment") {
                 agreement_experiment_mode = true;
+            }
+            if (std::string(argv[i]) == "--simulation-reliability") {
+                simulation_reliability_mode = true;
             }
         }
 
@@ -697,11 +814,19 @@ int main(int argc, char const * argv[])
             return 0;
         }
 
+        // Simulation Reliability モード
+        if (simulation_reliability_mode) {
+            std::cout << "Running Simulation Reliability mode..." << std::endl;
+            runSimulationReliability();
+            return 0;
+        }
+
         if (argc != 3) {
             std::cerr << "Usage: command <host> <port>" << std::endl;
-            std::cerr << "       command --experiment              (for efficiency experiment)" << std::endl;
-            std::cerr << "       command --validate-clustering     (for clustering validation)" << std::endl;
-            std::cerr << "       command --agreement-experiment    (for Clustered vs AllGrid comparison)" << std::endl;
+            std::cerr << "       command --experiment                (for efficiency experiment)" << std::endl;
+            std::cerr << "       command --validate-clustering       (for clustering validation)" << std::endl;
+            std::cerr << "       command --agreement-experiment      (for Clustered vs AllGrid comparison)" << std::endl;
+            std::cerr << "       command --simulation-reliability    (for simulation reliability measurement)" << std::endl;
             return 1;
         }
 
