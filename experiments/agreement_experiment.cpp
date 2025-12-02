@@ -1,4 +1,5 @@
 #include "agreement_experiment.h"
+#include "../src/clustering-v2.h"
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -146,6 +147,11 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
+    // Get cluster information before running MCTS
+    int cluster_num = static_cast<int>(std::log2(grid_states_.size()));
+    ClusteringV2 clustering(cluster_num, grid_states_, grid_m_, grid_n_, team_);
+    std::vector<std::vector<int>> cluster_table = clustering.getClusterIdTable();
+
     // Create MCTS with Clustered node source
     MCTS mcts(
         state,
@@ -204,6 +210,7 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     result.iterations = iterations;
     result.elapsed_time_sec = elapsed.count();
     result.node_source = NodeSource::Clustered;
+    result.cluster_table = cluster_table;  // Store cluster information
 
     std::cout << "    [Clustered MCTS] Selected grid ID: " << selected_grid_id
               << " (win rate: " << std::fixed << std::setprecision(3) << win_rate
@@ -243,24 +250,74 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state) 
         MCTSRunResult clustered_res = runClusteredMCTS(test_state.state, iterations);
         result.clustered_results.push_back(clustered_res);
 
-        // Check agreement
+        // Check exact agreement
         bool agrees = (clustered_res.selected_grid_id == result.allgrid_result.selected_grid_id);
         result.agreement_flags.push_back(agrees);
 
+        // Check cluster-based agreement
+        bool cluster_agrees = checkClusterMembership(
+            result.allgrid_result.selected_grid_id,
+            clustered_res.selected_grid_id,
+            clustered_res.cluster_table
+        );
+        result.cluster_agreement_flags.push_back(cluster_agrees);
+
         std::cout << "      Iterations: " << std::setw(6) << iterations
                   << " | Selected: Grid " << std::setw(2) << clustered_res.selected_grid_id
-                  << " | Agreement: " << (agrees ? "YES" : "NO") << "\n";
+                  << " | Exact: " << (agrees ? "YES" : "NO")
+                  << " | Cluster: " << (cluster_agrees ? "YES" : "NO") << "\n";
     }
 
-    // Calculate overall agreement rate
+    // Calculate overall agreement rates
     result.overall_agreement_rate = calculateAgreementRate(result.agreement_flags);
+    result.overall_cluster_agreement_rate = calculateAgreementRate(result.cluster_agreement_flags);
 
-    std::cout << "\n[Summary] Agreement Rate: "
+    std::cout << "\n[Summary] Exact Agreement Rate: "
               << std::fixed << std::setprecision(1)
               << result.overall_agreement_rate << "%\n";
+    std::cout << "[Summary] Cluster Agreement Rate: "
+              << std::fixed << std::setprecision(1)
+              << result.overall_cluster_agreement_rate << "%\n";
     std::cout << "===========================================\n";
 
     return result;
+}
+
+bool AgreementExperiment::checkClusterMembership(
+    int allgrid_grid_id,
+    int clustered_grid_id,
+    const std::vector<std::vector<int>>& cluster_table) {
+
+    // Find which cluster contains the clustered_grid_id
+    int clustered_cluster_id = -1;
+    for (size_t cluster_id = 0; cluster_id < cluster_table.size(); ++cluster_id) {
+        for (int state_id : cluster_table[cluster_id]) {
+            if (state_id == clustered_grid_id) {
+                clustered_cluster_id = cluster_id;
+                break;
+            }
+        }
+        if (clustered_cluster_id != -1) break;
+    }
+
+    // If we couldn't find the cluster, return false
+    if (clustered_cluster_id == -1) {
+        std::cerr << "      [WARNING] Could not find cluster for grid ID "
+                  << clustered_grid_id << "\n";
+        return false;
+    }
+
+    // Check if allgrid_grid_id is in the same cluster
+    const auto& cluster = cluster_table[clustered_cluster_id];
+    bool found = std::find(cluster.begin(), cluster.end(), allgrid_grid_id) != cluster.end();
+
+    if (found) {
+        std::cout << "      [DEBUG] Grid " << allgrid_grid_id
+                  << " found in cluster " << clustered_cluster_id
+                  << " (size: " << cluster.size() << ")\n";
+    }
+
+    return found;
 }
 
 double AgreementExperiment::calculateAgreementRate(const std::vector<bool>& agreement_flags) {
@@ -305,26 +362,34 @@ void AgreementExperiment::printSummary() {
     std::cout << "=========================================\n";
     std::cout << "Total tests: " << results_.size() << "\n";
 
-    // Calculate average agreement rate for each iteration count
+    // Calculate average agreement rates for each iteration count
     if (!results_.empty() && !results_[0].clustered_iterations_tested.empty()) {
         std::cout << "\nAverage Agreement Rate by Iteration Count:\n";
         std::cout << "-------------------------------------------\n";
+        std::cout << "Iterations |  Exact  | Cluster\n";
+        std::cout << "-----------+---------+--------\n";
 
         for (size_t i = 0; i < results_[0].clustered_iterations_tested.size(); ++i) {
             int iterations = results_[0].clustered_iterations_tested[i];
-            double total_agreement = 0.0;
+            double total_exact_agreement = 0.0;
+            double total_cluster_agreement = 0.0;
 
             for (const auto& result : results_) {
                 if (i < result.agreement_flags.size() && result.agreement_flags[i]) {
-                    total_agreement += 1.0;
+                    total_exact_agreement += 1.0;
+                }
+                if (i < result.cluster_agreement_flags.size() && result.cluster_agreement_flags[i]) {
+                    total_cluster_agreement += 1.0;
                 }
             }
 
-            double avg_agreement = (total_agreement / results_.size()) * 100.0;
+            double avg_exact_agreement = (total_exact_agreement / results_.size()) * 100.0;
+            double avg_cluster_agreement = (total_cluster_agreement / results_.size()) * 100.0;
 
-            std::cout << "  Iterations: " << std::setw(6) << iterations
-                      << " | Agreement: " << std::fixed << std::setprecision(1)
-                      << std::setw(5) << avg_agreement << "%\n";
+            std::cout << std::setw(10) << iterations << " | "
+                      << std::fixed << std::setprecision(1)
+                      << std::setw(6) << avg_exact_agreement << "% | "
+                      << std::setw(6) << avg_cluster_agreement << "%\n";
         }
     }
 
@@ -347,31 +412,39 @@ void AgreementExperiment::exportSummaryToFile(const std::string& filename) {
     file << "Total tests: " << results_.size() << "\n";
     file << "\n";
 
-    // Calculate and write average agreement rate for each iteration count
+    // Calculate and write average agreement rates for each iteration count
     if (!results_.empty() && !results_[0].clustered_iterations_tested.empty()) {
         file << "Average Agreement Rate by Iteration Count:\n";
         file << "-------------------------------------------\n";
+        file << "Iterations |  Exact Agreement  | Cluster Agreement\n";
+        file << "-----------+-------------------+------------------\n";
 
         for (size_t i = 0; i < results_[0].clustered_iterations_tested.size(); ++i) {
             int iterations = results_[0].clustered_iterations_tested[i];
-            double total_agreement = 0.0;
+            double total_exact_agreement = 0.0;
+            double total_cluster_agreement = 0.0;
             int total_tests = 0;
 
             for (const auto& result : results_) {
                 if (i < result.agreement_flags.size()) {
                     total_tests++;
                     if (result.agreement_flags[i]) {
-                        total_agreement += 1.0;
+                        total_exact_agreement += 1.0;
+                    }
+                    if (i < result.cluster_agreement_flags.size() && result.cluster_agreement_flags[i]) {
+                        total_cluster_agreement += 1.0;
                     }
                 }
             }
 
-            double avg_agreement = total_tests > 0 ? (total_agreement / total_tests) * 100.0 : 0.0;
+            double avg_exact = total_tests > 0 ? (total_exact_agreement / total_tests) * 100.0 : 0.0;
+            double avg_cluster = total_tests > 0 ? (total_cluster_agreement / total_tests) * 100.0 : 0.0;
 
-            file << "  Iterations: " << std::setw(6) << iterations
-                 << " | Agreement: " << std::fixed << std::setprecision(1)
-                 << std::setw(5) << avg_agreement << "%"
-                 << " (" << static_cast<int>(total_agreement) << "/" << total_tests << ")\n";
+            file << std::setw(10) << iterations << " | "
+                 << std::fixed << std::setprecision(1) << std::setw(6) << avg_exact << "% "
+                 << "(" << static_cast<int>(total_exact_agreement) << "/" << total_tests << ") | "
+                 << std::setw(6) << avg_cluster << "% "
+                 << "(" << static_cast<int>(total_cluster_agreement) << "/" << total_tests << ")\n";
         }
     }
 
@@ -390,13 +463,15 @@ void AgreementExperiment::exportSummaryToFile(const std::string& filename) {
 
         for (size_t i = 0; i < result.clustered_results.size(); ++i) {
             const auto& clustered_res = result.clustered_results[i];
-            bool agrees = i < result.agreement_flags.size() ? result.agreement_flags[i] : false;
+            bool exact_agrees = i < result.agreement_flags.size() ? result.agreement_flags[i] : false;
+            bool cluster_agrees = i < result.cluster_agreement_flags.size() ? result.cluster_agreement_flags[i] : false;
 
             file << "  Clustered (Iter " << std::setw(6) << clustered_res.iterations << "): Grid "
                  << std::setw(2) << clustered_res.selected_grid_id
                  << " (WinRate: " << std::fixed << std::setprecision(3) << clustered_res.win_rate
                  << ", Time: " << std::setprecision(2) << clustered_res.elapsed_time_sec << "s)"
-                 << " | Agreement: " << (agrees ? "YES" : "NO") << "\n";
+                 << " | Exact: " << (exact_agrees ? "YES" : "NO")
+                 << " | Cluster: " << (cluster_agrees ? "YES" : "NO") << "\n";
         }
     }
 
@@ -412,8 +487,8 @@ void AgreementExperiment::exportResultsToCSV(const std::string& filename) {
         return;
     }
 
-    // Header
-    file << "TestID,Description,Shot,Method,Iterations,SelectedGridID,WinRate,ElapsedTime,Agreement\n";
+    // Header - added ClusterAgreement column
+    file << "TestID,Description,Shot,Method,Iterations,SelectedGridID,WinRate,ElapsedTime,ExactAgreement,ClusterAgreement\n";
 
     for (const auto& result : results_) {
         // AllGrid result
@@ -425,12 +500,13 @@ void AgreementExperiment::exportResultsToCSV(const std::string& filename) {
              << result.allgrid_result.selected_grid_id << ","
              << std::fixed << std::setprecision(6) << result.allgrid_result.win_rate << ","
              << result.allgrid_result.elapsed_time_sec << ","
-             << "N/A\n";
+             << "N/A,N/A\n";
 
         // Clustered results
         for (size_t i = 0; i < result.clustered_results.size(); ++i) {
             const auto& clustered_res = result.clustered_results[i];
-            bool agrees = result.agreement_flags[i];
+            bool exact_agrees = result.agreement_flags[i];
+            bool cluster_agrees = result.cluster_agreement_flags[i];
 
             file << result.test_id << ","
                  << result.test_description << ","
@@ -440,7 +516,8 @@ void AgreementExperiment::exportResultsToCSV(const std::string& filename) {
                  << clustered_res.selected_grid_id << ","
                  << std::fixed << std::setprecision(6) << clustered_res.win_rate << ","
                  << clustered_res.elapsed_time_sec << ","
-                 << (agrees ? "YES" : "NO") << "\n";
+                 << (exact_agrees ? "YES" : "NO") << ","
+                 << (cluster_agrees ? "YES" : "NO") << "\n";
         }
     }
 

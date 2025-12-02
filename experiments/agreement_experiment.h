@@ -20,6 +20,7 @@ struct MCTSRunResult {
     int iterations;            // Number of iterations performed
     double elapsed_time_sec;   // Time taken
     NodeSource node_source;    // Clustered or AllGrid
+    std::vector<std::vector<int>> cluster_table;  // Cluster ID -> State IDs mapping (only for Clustered)
 };
 
 // Result comparing Clustered vs AllGrid MCTS
@@ -36,8 +37,10 @@ struct AgreementResult {
     std::vector<int> clustered_iterations_tested;  // Iteration counts tested
 
     // Agreement analysis
-    std::vector<bool> agreement_flags;  // Does clustered match allgrid?
-    double overall_agreement_rate;      // Percentage of agreement
+    std::vector<bool> agreement_flags;           // Does clustered match allgrid? (exact match)
+    std::vector<bool> cluster_agreement_flags;   // Is allgrid's shot in clustered's cluster?
+    double overall_agreement_rate;               // Percentage of exact agreement
+    double overall_cluster_agreement_rate;       // Percentage of cluster-based agreement
 };
 
 // Main experiment class for comparing Clustered vs AllGrid MCTS
@@ -93,6 +96,13 @@ private:
 
     // Calculate agreement rate
     double calculateAgreementRate(const std::vector<bool>& agreement_flags);
+
+    // Check if allgrid's selected shot is in the same cluster as clustered's selected shot
+    bool checkClusterMembership(
+        int allgrid_grid_id,
+        int clustered_grid_id,
+        const std::vector<std::vector<int>>& cluster_table
+    );
 
     // Print summary to console
     void printSummary();
