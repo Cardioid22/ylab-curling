@@ -558,8 +558,8 @@ void runSimulationReliability() {
 
     // 実験パラメータ
     int num_patterns_per_type = 1;     // 各パターンタイプにつき1バリエーション
-    int leaves_per_test_case = 5;      // 各テストケースから5つのリーフをサンプリング
-    int simulations_per_leaf = 10;    // 各リーフで100回シミュレーション
+    int leaves_per_test_case = 3;      // 各テストケースから5つのリーフをサンプリング
+    int simulations_per_leaf = 1    ;     // 各リーフにおけるシミュレーション数
     int mcts_iterations = GridSize_M * GridSize_N + 1;          // MCTSツリー構築時の反復回数(深さ1までの子を全て出す)
 
     std::cout << "\n--- Experiment Parameters ---" << std::endl;
@@ -598,7 +598,8 @@ void runSimulationReliability() {
     timestamp_stream << std::put_time(&tm_now, "%Y%m%d_%H%M%S");
     std::string timestamp = timestamp_stream.str();
 
-    std::string output_dir = "experiments/simulation_reliability_results_" + timestamp;
+    std::string output_dir = "experiments/simulation_reliability_results_grid_" + std::to_string(GridSize_M * GridSize_N)
+         + "_simIter_" + std::to_string(simulations_per_leaf);
 
     // 結果をエクスポート
     experiment.exportResults(result, output_dir);
@@ -779,27 +780,21 @@ int main(int argc, char const * argv[])
                 simWrapper_allgrid
             );
 
-            // 実験実行（各パターンタイプにつき1つのバリエーション）
-            experiment.runExperiment(1);
+            // 実験パラメータ
+            int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション
+            int test_depth = 1;          // MCTS探索深さ
+
+            // 実験実行
+            experiment.runExperiment(num_test_patterns, test_depth);
 
             // 結果保存用ディレクトリ作成
             std::filesystem::create_directories("experiments/agreement_results");
 
-            // タイムスタンプ付きファイル名を生成
-            auto now = std::chrono::system_clock::now();
-            auto time_t_now = std::chrono::system_clock::to_time_t(now);
-            std::tm tm_now;
-            #ifdef _WIN32
-            localtime_s(&tm_now, &time_t_now);
-            #else
-            localtime_r(&time_t_now, &tm_now);
-            #endif
-            std::ostringstream timestamp_stream;
-            timestamp_stream << std::put_time(&tm_now, "%Y%m%d_%H%M%S");
-            std::string timestamp = timestamp_stream.str();
-
-            std::string csv_filename = "experiments/agreement_results/clustered_vs_allgrid_" + timestamp + ".csv";
-            std::string summary_filename = "experiments/agreement_results/summary_" + timestamp + ".txt";
+            // ファイル名を生成（グリッド数、深さ、クラスタ数を含む）
+            std::string csv_filename = "experiments/agreement_results/" +
+                experiment.generateFilename("clustered_vs_allgrid", ".csv", test_depth);
+            std::string summary_filename = "experiments/agreement_results/" +
+                experiment.generateFilename("summary", ".txt", test_depth);
 
             experiment.exportResultsToCSV(csv_filename);
             experiment.exportSummaryToFile(summary_filename);

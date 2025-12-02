@@ -84,6 +84,50 @@ double SimulatorWrapper::run_simulations(dc::GameState const& state, const ShotI
     return evaluate(sim_state);
 }
 
+// for simulation reliablity test
+dc::GameState SimulatorWrapper::run_full_simulations(dc::GameState const& state, const ShotInfo& shot) {
+    dc::GameState sim_state = state;  // Copy state
+    int shot_counter = 0;  // Track which shot we're on
+
+    for (int i = sim_state.shot; i < 16; ++i) {
+        g_simulator_->Load(*g_simulator_storage_);
+        auto& current_player = *g_players[sim_state.shot / 4];
+        if (!&current_player) {
+            std::cout << "Player is null.\n";
+        }
+
+        // Use the provided shot for the first shot, random shots for the rest
+        ShotInfo current_shot;
+        if (shot_counter == 0) {
+            current_shot = shot;  // Use provided shot for first shot
+        } else {
+            // Random shot selection from initialShotData
+            if (!initialShotData.empty()) {
+                int random_idx = rand() % initialShotData.size();
+                current_shot = initialShotData[random_idx];
+            } else {
+                current_shot = shot;  // Fallback to provided shot
+            }
+        }
+
+        dc::Vector2 velocity(current_shot.vx, current_shot.vy);
+        auto rot = current_shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+        dc::moves::Shot shot_move{ velocity, rot };
+        dc::Move move{ shot_move };
+        dc::ApplyMove(g_game_setting, *g_simulator_, current_player, sim_state, move, std::chrono::milliseconds(0));
+        g_simulator_->Save(*g_simulator_storage_);
+
+        shot_counter++;
+
+        if (sim_state.IsGameOver()) {
+            std::cout << "Game is Over!!\n";
+            break;
+        }
+    }
+    return sim_state;
+    //return evaluate(sim_state);
+}
+
 dc::Vector2 SimulatorWrapper::EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation)
 {
     assert(target_speed >= 0.f);

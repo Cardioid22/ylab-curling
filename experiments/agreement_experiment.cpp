@@ -2,9 +2,11 @@
 #include "../src/clustering-v2.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <chrono>
 #include <iomanip>
 #include <cmath>
+#include <algorithm>
 
 AgreementExperiment::AgreementExperiment(
     dc::Team team,
@@ -59,10 +61,10 @@ std::vector<int> AgreementExperiment::generateClusteredIterationCounts(int depth
     counts.push_back(clustered_full / 2);
     // Full exploration
     counts.push_back(clustered_full);
-    // Larger conuts
-    counts.push_back(clustered_full * 2);
-    counts.push_back(clustered_full * 5);
-    counts.push_back(clustered_full * 10);
+    
+    //counts.push_back(clustered_full * 2);
+    //counts.push_back(clustered_full * 5);
+    //counts.push_back(clustered_full * 10);
 
     return counts;
 }
@@ -220,19 +222,18 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     return result;
 }
 
-AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state) {
+AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, int test_depth) {
     std::cout << "\n===========================================\n";
     std::cout << "Test ID: " << test_state.test_id << "\n";
     std::cout << "Description: " << test_state.description << "\n";
     std::cout << "Shot: " << test_state.state.shot << "\n";
+    std::cout << "Test Depth: " << test_depth << "\n";
     std::cout << "===========================================\n";
 
     AgreementResult result;
     result.test_id = test_state.test_id;
     result.test_description = test_state.description;
     result.shot_number = test_state.state.shot;
-
-    int test_depth = 3;
 
     // Step 1: Run AllGrid MCTS with full exploration
     std::cout << "\n[Step 1] Running AllGrid MCTS (Ground Truth)\n";
@@ -331,11 +332,13 @@ double AgreementExperiment::calculateAgreementRate(const std::vector<bool>& agre
     return (static_cast<double>(agreements) / agreement_flags.size()) * 100.0;
 }
 
-void AgreementExperiment::runExperiment(int num_test_patterns_per_type) {
+void AgreementExperiment::runExperiment(int num_test_patterns_per_type, int test_depth) {
     std::cout << "\n=========================================\n";
     std::cout << "AGREEMENT EXPERIMENT: Clustered vs AllGrid\n";
     std::cout << "=========================================\n";
-    std::cout << "Grid size: " << grid_m_ << "x" << grid_n_ << "\n";
+    std::cout << "Grid size: " << grid_m_ << "x" << grid_n_ << " (total: " << (grid_m_ * grid_n_) << ")\n";
+    std::cout << "Test depth: " << test_depth << "\n";
+    std::cout << "Number of clusters: " << static_cast<int>(std::log2(grid_m_ * grid_n_)) << "\n";
     std::cout << "Test patterns per type: " << num_test_patterns_per_type << "\n";
     std::cout << "=========================================\n\n";
 
@@ -347,7 +350,7 @@ void AgreementExperiment::runExperiment(int num_test_patterns_per_type) {
 
     // Run experiment for each test state
     for (const auto& test_state : test_states) {
-        AgreementResult result = runSingleTest(test_state);
+        AgreementResult result = runSingleTest(test_state, test_depth);
         results_.push_back(result);
     }
 
@@ -477,6 +480,21 @@ void AgreementExperiment::exportSummaryToFile(const std::string& filename) {
 
     file.close();
     std::cout << "\nSummary exported to: " << filename << "\n";
+}
+
+std::string AgreementExperiment::generateFilename(const std::string& prefix, const std::string& extension, int depth) const {
+    int total_grids = grid_m_ * grid_n_;
+    int num_clusters = static_cast<int>(std::log2(total_grids));
+
+    std::ostringstream filename;
+    filename << prefix
+             << "_Grid" << total_grids
+             << "_" << grid_m_ << "x" << grid_n_
+             << "_Depth" << depth
+             << "_Clusters" << num_clusters
+             << extension;
+
+    return filename.str();
 }
 
 void AgreementExperiment::exportResultsToCSV(const std::string& filename) {

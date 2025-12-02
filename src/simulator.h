@@ -21,6 +21,7 @@ public:
 
     dc::GameState run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot);
     double run_simulations(dc::GameState const& game_state, const ShotInfo& shot);  // return win/loss (deprecated - use rollout methods)
+    dc::GameState run_full_simulations(dc::GameState const& state, const ShotInfo& shot);
 
     // Rollout policies for ground truth oracle
     double run_grid_rollout(dc::GameState const& state);  // Grid random rollout

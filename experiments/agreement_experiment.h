@@ -58,13 +58,16 @@ public:
     );
 
     // Run the complete experiment
-    void runExperiment(int num_test_patterns_per_type = 1);
+    void runExperiment(int num_test_patterns_per_type = 1, int test_depth = 1);
 
     // Export results to CSV
     void exportResultsToCSV(const std::string& filename);
 
     // Export summary to separate file
     void exportSummaryToFile(const std::string& filename);
+
+    // Generate filename with grid size, depth, and cluster info
+    std::string generateFilename(const std::string& prefix, const std::string& extension, int depth) const;
 
 private:
     dc::Team team_;
@@ -89,7 +92,7 @@ private:
     MCTSRunResult runClusteredMCTS(const dc::GameState& state, int iterations);
 
     // Run experiment for a single test state
-    AgreementResult runSingleTest(const TestState& test_state);
+    AgreementResult runSingleTest(const TestState& test_state, int test_depth);
 
     // Generate Clustered MCTS iteration counts to test
     std::vector<int> generateClusteredIterationCounts(int dephth);
