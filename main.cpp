@@ -638,7 +638,7 @@ void runSimulationReliability() {
     std::cout << "\n=== Simulation Reliability Experiment Completed! ===" << std::endl;
 }
 
-int main(int argc, char const * argv[])
+int main(int argc, char const* argv[])
 {
     using boost::asio::ip::tcp;
     using nlohmann::json;
@@ -654,6 +654,7 @@ int main(int argc, char const * argv[])
         bool validate_clustering_mode = false;
         bool agreement_experiment_mode = false;
         bool simulation_reliability_mode = false;
+        int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "--experiment") {
@@ -668,9 +669,14 @@ int main(int argc, char const * argv[])
             if (std::string(argv[i]) == "--simulation-reliability") {
                 simulation_reliability_mode = true;
             }
+            if (std::string(argv[i]) == "--cn" && i + 1 < argc) {
+                cluster_num_arg = std::atoi(argv[i + 1]);
+                i++;  // Skip next argument since it's the cluster number
+            }
         }
 
         if (experiment_mode) {
+
             std::cout << "Running in experiment mode..." << std::endl;
             // 初期化を簡略化して実験実行
             g_team = dc::Team::k0;
@@ -775,7 +781,14 @@ int main(int argc, char const * argv[])
             // 実験パラメータ
             int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション
             int test_depth = 1;          // MCTS探索深さ
-            int cluster_num_for_exp = 4;         // クラスタ数（変更可能）
+
+            // クラスタ数の決定（コマンドライン引数 > デフォルト値）
+            int cluster_num_for_exp = (cluster_num_arg > 0) ? cluster_num_arg : 4;
+
+            std::cout << "[Experiment Parameters]" << std::endl;
+            std::cout << "  Cluster num: " << cluster_num_for_exp << std::endl;
+            std::cout << "  Test depth: " << test_depth << std::endl;
+            std::cout << "  Test patterns per type: " << num_test_patterns << std::endl;
 
             // Agreement Experiment作成
             AgreementExperiment experiment(
@@ -824,10 +837,12 @@ int main(int argc, char const * argv[])
 
         if (argc != 3) {
             std::cerr << "Usage: command <host> <port>" << std::endl;
-            std::cerr << "       command --experiment                (for efficiency experiment)" << std::endl;
-            std::cerr << "       command --validate-clustering       (for clustering validation)" << std::endl;
-            std::cerr << "       command --agreement-experiment      (for Clustered vs AllGrid comparison)" << std::endl;
-            std::cerr << "       command --simulation-reliability    (for simulation reliability measurement)" << std::endl;
+            std::cerr << "       command --experiment                                (for efficiency experiment)" << std::endl;
+            std::cerr << "       command --validate-clustering                       (for clustering validation)" << std::endl;
+            std::cerr << "       command --agreement-experiment [--cluster-num N]    (for Clustered vs AllGrid comparison)" << std::endl;
+            std::cerr << "       command --simulation-reliability                    (for simulation reliability measurement)" << std::endl;
+            std::cerr << "\nOptions:" << std::endl;
+            std::cerr << "  --cluster-num N    Specify number of clusters for agreement experiment (default: 4)" << std::endl;
             return 1;
         }
 

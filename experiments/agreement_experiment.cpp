@@ -156,6 +156,7 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     // Get cluster information before running MCTS
     ClusteringV2 clustering(cluster_num_, grid_states_, grid_m_, grid_n_, team_);
     std::vector<std::vector<int>> cluster_table = clustering.getClusterIdTable();
+    float silhouette_score = clustering.evaluateClusteringQuality();
 
     // Create MCTS with Clustered node source
     MCTS mcts(
@@ -217,11 +218,12 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     result.elapsed_time_sec = elapsed.count();
     result.node_source = NodeSource::Clustered;
     result.cluster_table = cluster_table;  // Store cluster information
+    result.silhouette_score = silhouette_score;  // Store silhouette score
 
     std::cout << "    [Clustered MCTS] Selected grid ID: " << selected_grid_id
               << " (win rate: " << std::fixed << std::setprecision(3) << win_rate
               << ", time: " << std::setprecision(2)
-              << elapsed.count() << "s)\n";
+              << elapsed.count() << "s, silhouette: " << std::setprecision(4) << silhouette_score << ")\n";
 
     return result;
 }
@@ -369,6 +371,27 @@ void AgreementExperiment::printSummary() {
     std::cout << "=========================================\n";
     std::cout << "Total tests: " << results_.size() << "\n";
 
+    // Calculate average silhouette score across all tests
+    if (!results_.empty()) {
+        double total_silhouette = 0.0;
+        int silhouette_count = 0;
+
+        for (const auto& result : results_) {
+            for (const auto& clustered_res : result.clustered_results) {
+                if (clustered_res.silhouette_score >= 0.0f) {
+                    total_silhouette += clustered_res.silhouette_score;
+                    silhouette_count++;
+                }
+            }
+        }
+
+        if (silhouette_count > 0) {
+            double avg_silhouette = total_silhouette / silhouette_count;
+            std::cout << "Average Silhouette Score: " << std::fixed << std::setprecision(4)
+                      << avg_silhouette << " (across " << silhouette_count << " clustered runs)\n";
+        }
+    }
+
     // Calculate average agreement rates for each iteration count
     if (!results_.empty() && !results_[0].clustered_iterations_tested.empty()) {
         std::cout << "\nAverage Agreement Rate by Iteration Count:\n";
@@ -417,6 +440,27 @@ void AgreementExperiment::exportSummaryToFile(const std::string& filename) {
     file << "=========================================\n";
     file << "Grid size: " << grid_m_ << "x" << grid_n_ << "\n";
     file << "Total tests: " << results_.size() << "\n";
+
+    // Calculate average silhouette score
+    if (!results_.empty()) {
+        double total_silhouette = 0.0;
+        int silhouette_count = 0;
+
+        for (const auto& result : results_) {
+            for (const auto& clustered_res : result.clustered_results) {
+                if (clustered_res.silhouette_score >= 0.0f) {
+                    total_silhouette += clustered_res.silhouette_score;
+                    silhouette_count++;
+                }
+            }
+        }
+
+        if (silhouette_count > 0) {
+            double avg_silhouette = total_silhouette / silhouette_count;
+            file << "Average Silhouette Score: " << std::fixed << std::setprecision(4)
+                 << avg_silhouette << " (across " << silhouette_count << " clustered runs)\n";
+        }
+    }
     file << "\n";
 
     // Calculate and write average agreement rates for each iteration count
@@ -495,6 +539,7 @@ std::string AgreementExperiment::generateFilename(const std::string& prefix, con
              << "_" << grid_m_ << "x" << grid_n_
              << "_Depth" << depth
              << "_Clusters" << cluster_num_
+             << "_Tests" << results_.size()
              << extension;
 
     return filename.str();
@@ -508,8 +553,8 @@ void AgreementExperiment::exportResultsToCSV(const std::string& filename) {
         return;
     }
 
-    // Header - added ClusterAgreement column
-    file << "TestID,Description,Shot,Method,Iterations,SelectedGridID,WinRate,ElapsedTime,ExactAgreement,ClusterAgreement\n";
+    // Header - added ClusterAgreement and SilhouetteScore columns
+    file << "TestID,Description,Shot,Method,Iterations,SelectedGridID,WinRate,ElapsedTime,ExactAgreement,ClusterAgreement,SilhouetteScore\n";
 
     for (const auto& result : results_) {
         // AllGrid result
@@ -521,7 +566,7 @@ void AgreementExperiment::exportResultsToCSV(const std::string& filename) {
              << result.allgrid_result.selected_grid_id << ","
              << std::fixed << std::setprecision(6) << result.allgrid_result.win_rate << ","
              << result.allgrid_result.elapsed_time_sec << ","
-             << "N/A,N/A\n";
+             << "N/A,N/A,N/A\n";
 
         // Clustered results
         for (size_t i = 0; i < result.clustered_results.size(); ++i) {
@@ -538,7 +583,8 @@ void AgreementExperiment::exportResultsToCSV(const std::string& filename) {
                  << std::fixed << std::setprecision(6) << clustered_res.win_rate << ","
                  << clustered_res.elapsed_time_sec << ","
                  << (exact_agrees ? "YES" : "NO") << ","
-                 << (cluster_agrees ? "YES" : "NO") << "\n";
+                 << (cluster_agrees ? "YES" : "NO") << ","
+                 << std::setprecision(4) << clustered_res.silhouette_score << "\n";
         }
     }
 

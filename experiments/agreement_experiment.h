@@ -21,6 +21,7 @@ struct MCTSRunResult {
     double elapsed_time_sec;   // Time taken
     NodeSource node_source;    // Clustered or AllGrid
     std::vector<std::vector<int>> cluster_table;  // Cluster ID -> State IDs mapping (only for Clustered)
+    float silhouette_score = -1.0f;  // Silhouette score for clustering quality (only for Clustered)
 };
 
 // Result comparing Clustered vs AllGrid MCTS
@@ -67,7 +68,7 @@ public:
     // Export summary to separate file
     void exportSummaryToFile(const std::string& filename);
 
-    // Generate filename with grid size, depth, and cluster info
+    // Generate filename with grid size, depth, cluster info, and test case count
     std::string generateFilename(const std::string& prefix, const std::string& extension, int depth) const;
 
 private:
