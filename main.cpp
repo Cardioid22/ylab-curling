@@ -364,13 +364,17 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     long long int cluster_iter = calcIteration(cluster_child_num, search_depth);
     std::cout << cluster_iter << "\n";
     an.cluster_id_to_state_csv(cluster_id_to_state, shot_num, mcts_iter); // for debugging
-    MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper, GridSize_M, GridSize_N);
+
+    // Calculate cluster_num for MCTS (use log2(S) + 1 as default)
+    int cluster_num_for_game = static_cast<int>(std::log2(S)) + 1;
+
+    MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper, GridSize_M, GridSize_N, cluster_num_for_game);
     mcts_clustered.grow_tree(mcts_iter, 86400.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);
 
     std::cout << "------AllGrid Tree------" << '\n';
 
-    MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid, GridSize_M, GridSize_N);
+    MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid, GridSize_M, GridSize_N, cluster_num_for_game);
     mcts_allgrid.grow_tree(cluster_iter, 86400.0);
     mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
     ShotInfo best = mcts_clustered.get_best_shot();
@@ -768,6 +772,11 @@ int main(int argc, char const * argv[])
             }
             std::cout << "Grid states simulation complete.\n" << std::endl;
 
+            // 実験パラメータ
+            int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション
+            int test_depth = 1;          // MCTS探索深さ
+            int cluster_num_for_exp = 4;         // クラスタ数（変更可能）
+
             // Agreement Experiment作成
             AgreementExperiment experiment(
                 g_team,
@@ -777,12 +786,9 @@ int main(int argc, char const * argv[])
                 grid_states,
                 state_to_shot_table,
                 simWrapper,
-                simWrapper_allgrid
+                simWrapper_allgrid,
+                cluster_num_for_exp
             );
-
-            // 実験パラメータ
-            int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション
-            int test_depth = 1;          // MCTS探索深さ
 
             // 実験実行
             experiment.runExperiment(num_test_patterns, test_depth);

@@ -54,7 +54,8 @@ public:
         std::vector<dc::GameState> grid_states,
         std::unordered_map<int, ShotInfo> state_to_shot_table,
         std::shared_ptr<SimulatorWrapper> simulator_clustered,
-        std::shared_ptr<SimulatorWrapper> simulator_allgrid
+        std::shared_ptr<SimulatorWrapper> simulator_allgrid,
+        int cluster_num  // Number of clusters for Clustered MCTS
     );
 
     // Run the complete experiment
@@ -78,6 +79,7 @@ private:
     std::unordered_map<int, ShotInfo> state_to_shot_table_;
     std::shared_ptr<SimulatorWrapper> simulator_clustered_;
     std::shared_ptr<SimulatorWrapper> simulator_allgrid_;
+    int cluster_num_;  // Number of clusters for Clustered MCTS
 
     std::vector<AgreementResult> results_;
 

@@ -1,4 +1,4 @@
-#include "agreement_experiment.h"
+#include "../experiments/agreement_experiment.h"
 #include "../src/clustering-v2.h"
 #include <iostream>
 #include <fstream>
@@ -16,7 +16,8 @@ AgreementExperiment::AgreementExperiment(
     std::vector<dc::GameState> grid_states,
     std::unordered_map<int, ShotInfo> state_to_shot_table,
     std::shared_ptr<SimulatorWrapper> simulator_clustered,
-    std::shared_ptr<SimulatorWrapper> simulator_allgrid
+    std::shared_ptr<SimulatorWrapper> simulator_allgrid,
+    int cluster_num
 ) : team_(team),
     game_setting_(game_setting),
     grid_m_(grid_m),
@@ -24,11 +25,13 @@ AgreementExperiment::AgreementExperiment(
     grid_states_(grid_states),
     state_to_shot_table_(state_to_shot_table),
     simulator_clustered_(simulator_clustered),
-    simulator_allgrid_(simulator_allgrid)
+    simulator_allgrid_(simulator_allgrid),
+    cluster_num_(cluster_num)
 {
     std::cout << "[AgreementExperiment] Initialized with "
               << grid_m_ << "x" << grid_n_ << " grid ("
               << (grid_m_ * grid_n_) << " total positions)\n";
+    std::cout << "[AgreementExperiment] Using " << cluster_num_ << " clusters\n";
 }
 
 int AgreementExperiment::calculateFullExplorationIterations(int max_depth) {
@@ -82,7 +85,8 @@ MCTSRunResult AgreementExperiment::runAllGridMCTS(const dc::GameState& state, in
         state_to_shot_table_,
         simulator_allgrid_,
         grid_m_,
-        grid_n_
+        grid_n_,
+        cluster_num_  // Pass cluster_num (not used for AllGrid, but required)
     );
 
     // Run MCTS
@@ -150,8 +154,7 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Get cluster information before running MCTS
-    int cluster_num = static_cast<int>(std::log2(grid_states_.size()));
-    ClusteringV2 clustering(cluster_num, grid_states_, grid_m_, grid_n_, team_);
+    ClusteringV2 clustering(cluster_num_, grid_states_, grid_m_, grid_n_, team_);
     std::vector<std::vector<int>> cluster_table = clustering.getClusterIdTable();
 
     // Create MCTS with Clustered node source
@@ -162,7 +165,8 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
         state_to_shot_table_,
         simulator_clustered_,
         grid_m_,
-        grid_n_
+        grid_n_,
+        cluster_num_  // Pass configurable cluster_num
     );
 
     // Run MCTS
@@ -338,7 +342,7 @@ void AgreementExperiment::runExperiment(int num_test_patterns_per_type, int test
     std::cout << "=========================================\n";
     std::cout << "Grid size: " << grid_m_ << "x" << grid_n_ << " (total: " << (grid_m_ * grid_n_) << ")\n";
     std::cout << "Test depth: " << test_depth << "\n";
-    std::cout << "Number of clusters: " << static_cast<int>(std::log2(grid_m_ * grid_n_)) << "\n";
+    std::cout << "Number of clusters: " << cluster_num_ << "\n";
     std::cout << "Test patterns per type: " << num_test_patterns_per_type << "\n";
     std::cout << "=========================================\n\n";
 
@@ -484,14 +488,13 @@ void AgreementExperiment::exportSummaryToFile(const std::string& filename) {
 
 std::string AgreementExperiment::generateFilename(const std::string& prefix, const std::string& extension, int depth) const {
     int total_grids = grid_m_ * grid_n_;
-    int num_clusters = static_cast<int>(std::log2(total_grids));
 
     std::ostringstream filename;
     filename << prefix
              << "_Grid" << total_grids
              << "_" << grid_m_ << "x" << grid_n_
              << "_Depth" << depth
-             << "_Clusters" << num_clusters
+             << "_Clusters" << cluster_num_
              << extension;
 
     return filename.str();

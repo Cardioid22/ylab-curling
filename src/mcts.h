@@ -37,6 +37,7 @@ public:
         std::shared_ptr<SimulatorWrapper> shared_sim,
         int gridM,
         int gridN,
+        int cluster_num,
         std::optional<std::vector<ShotInfo>> shot_candidates = std::nullopt,
         std::optional<ShotInfo> selected_shot = std::nullopt
     );
@@ -51,8 +52,9 @@ public:
     void print_tree(int indent = 0) const;
 private:
     int GridSize_M_ = 10;
-    int GridSize_N_ = 10;  
+    int GridSize_N_ = 10;
     int max_degree = 6;
+    int cluster_num_ = 4;  // Number of clusters for Clustered MCTS
 
 	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) const;
 	dc::GameState getNextState(ShotInfo shotinfo) const;
@@ -60,13 +62,14 @@ private:
 
 class MCTS {
 public:
-	MCTS(dc::GameState const& root_state, 
+	MCTS(dc::GameState const& root_state,
         NodeSource node_source,
-        std::vector<dc::GameState> states, 
+        std::vector<dc::GameState> states,
         std::unordered_map<int, ShotInfo> state_to_shot_table,
         std::shared_ptr<SimulatorWrapper> simWrapper,
         int gridM,
-        int gridN
+        int gridN,
+        int cluster_num = 4
     );
 
 	void grow_tree(int max_iter, double max_limited_time);  // main loop
@@ -88,6 +91,8 @@ private:
 
     int random_rollouts = 0;
     double random_total_score = 0.0;
+
+    int cluster_num_ = 4;  // Number of clusters for Clustered MCTS
 
 };
 
