@@ -655,6 +655,7 @@ int main(int argc, char const* argv[])
         bool agreement_experiment_mode = false;
         bool simulation_reliability_mode = false;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
+		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
 
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "--experiment") {
@@ -672,6 +673,10 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--cn" && i + 1 < argc) {
                 cluster_num_arg = std::atoi(argv[i + 1]);
                 i++;  // Skip next argument since it's the cluster number
+            }
+            if (std::string(argv[i]) == "--d" && i + 1 < argc) {
+                depth_arg = std::atoi(argv[i + 1]);
+                i++;  // Skip next argument since it's the depth number
             }
         }
 
@@ -779,15 +784,16 @@ int main(int argc, char const* argv[])
             std::cout << "Grid states simulation complete.\n" << std::endl;
 
             // 実験パラメータ
-            int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション
-            int test_depth = 1;          // MCTS探索深さ
+            int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション          
 
             // クラスタ数の決定（コマンドライン引数 > デフォルト値）
             int cluster_num_for_exp = (cluster_num_arg > 0) ? cluster_num_arg : 4;
+            // MCTS探索深さ
+            int test_depth_for_exp = (depth_arg > 0) ? depth_arg : 1;
 
             std::cout << "[Experiment Parameters]" << std::endl;
             std::cout << "  Cluster num: " << cluster_num_for_exp << std::endl;
-            std::cout << "  Test depth: " << test_depth << std::endl;
+            std::cout << "  Test depth: " << test_depth_for_exp << std::endl;
             std::cout << "  Test patterns per type: " << num_test_patterns << std::endl;
 
             // Agreement Experiment作成
@@ -804,16 +810,16 @@ int main(int argc, char const* argv[])
             );
 
             // 実験実行
-            experiment.runExperiment(num_test_patterns, test_depth);
+            experiment.runExperiment(num_test_patterns, test_depth_for_exp);
 
             // 結果保存用ディレクトリ作成
             std::filesystem::create_directories("experiments/agreement_results");
 
             // ファイル名を生成（グリッド数、深さ、クラスタ数を含む）
             std::string csv_filename = "experiments/agreement_results/" +
-                experiment.generateFilename("clustered_vs_allgrid", ".csv", test_depth);
+                experiment.generateFilename("clustered_vs_allgrid", ".csv", test_depth_for_exp);
             std::string summary_filename = "experiments/agreement_results/" +
-                experiment.generateFilename("summary", ".txt", test_depth);
+                experiment.generateFilename("summary", ".txt", test_depth_for_exp);
 
             experiment.exportResultsToCSV(csv_filename);
             experiment.exportSummaryToFile(summary_filename);
