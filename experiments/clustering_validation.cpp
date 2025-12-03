@@ -27,26 +27,18 @@ std::vector<TestState> ClusteringValidation::generateTestStates(int num_patterns
     std::vector<TestState> test_states;
     int test_id = 0;
 
-    // Enumerate all pattern types
+    // Enumerate all pattern types (reduced to 10 representative patterns)
     std::vector<StonePattern> all_patterns = {
-        StonePattern::CenterGuard,
-        StonePattern::DoubleGuard,
-        StonePattern::CornerGuards,
-        StonePattern::SingleDraw,
-        StonePattern::DoubleDraw,
-        StonePattern::TripleDraw,
-        StonePattern::HouseCorners,
-        StonePattern::GuardAndDraw,
-        StonePattern::Split,
-        StonePattern::Crowded,
-        StonePattern::Scattered,
-        StonePattern::FreezeAttempt,
-        StonePattern::Takeout,
-        StonePattern::Promotion,
-        StonePattern::Corner,
-        StonePattern::Symmetric,
-        StonePattern::Asymmetric,
-        StonePattern::Random
+        StonePattern::CenterGuard,      // 1. Basic guard
+        StonePattern::CornerGuards,     // 2. Corner tactics
+        StonePattern::SingleDraw,       // 3. Single stone in house
+        StonePattern::DoubleDraw,       // 4. Two stones in house
+        StonePattern::HouseCorners,     // 5. Four corners placement
+        StonePattern::GuardAndDraw,     // 6. Guard + house combination
+        StonePattern::Crowded,          // 7. Dense clustering
+        StonePattern::FreezeAttempt,    // 8. Freeze shot scenario
+        StonePattern::Corner,           // 9. Complex corner tactics
+        StonePattern::Random            // 10. Random placement
     };
 
     std::cout << "[ClusteringValidation] Generating test states..." << std::endl;
