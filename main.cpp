@@ -819,7 +819,7 @@ int main(int argc, char const* argv[])
             std::string csv_filename = "experiments/agreement_results/" +
                 experiment.generateFilename("clustered_vs_allgrid", ".csv", test_depth_for_exp);
             std::string summary_filename = "experiments/agreement_results/" +
-                experiment.generateFilename("summary", ".txt", test_depth_for_exp);
+                experiment.generateFilename("summary", ".md", test_depth_for_exp);
 
             experiment.exportResultsToCSV(csv_filename);
             experiment.exportSummaryToFile(summary_filename);
