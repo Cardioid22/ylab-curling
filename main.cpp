@@ -657,6 +657,7 @@ int main(int argc, char const* argv[])
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
+        int sim_count = 10;        // シミュレーション回数の引数（デフォルトは10回）
 
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "--experiment") {
@@ -683,6 +684,11 @@ int main(int argc, char const* argv[])
                 repeat_count = std::atoi(argv[i + 1]);
                 if (repeat_count < 1) repeat_count = 1;  // Ensure at least 1 repetition
                 i++;  // Skip next argument since it's the repeat count
+            }
+            if (std::string(argv[i]) == "--sim" && i + 1 < argc) {
+                sim_count = std::atoi(argv[i + 1]);
+                if (sim_count < 1) sim_count = 1;  // Ensure at least 1 simulation
+                i++;  // Skip next argument since it's the simulation count
             }
         }
 
@@ -830,7 +836,8 @@ int main(int argc, char const* argv[])
                     state_to_shot_table,
                     simWrapper,
                     simWrapper_allgrid,
-                    cluster_num_for_exp
+                    cluster_num_for_exp,
+                    sim_count  // クラスタメンバー分析用のシミュレーション回数
                 );
 
                 // 実験実行
@@ -875,12 +882,13 @@ int main(int argc, char const* argv[])
             std::cerr << "Usage: command <host> <port>" << std::endl;
             std::cerr << "       command --experiment                                                  (for efficiency experiment)" << std::endl;
             std::cerr << "       command --validate-clustering                                         (for clustering validation)" << std::endl;
-            std::cerr << "       command --agreement-experiment [--cn N] [--d D] [--repeat R]          (for Clustered vs AllGrid comparison)" << std::endl;
+            std::cerr << "       command --agreement-experiment [--cn N] [--d D] [--repeat R] [--sim S] (for Clustered vs AllGrid comparison)" << std::endl;
             std::cerr << "       command --simulation-reliability                                      (for simulation reliability measurement)" << std::endl;
             std::cerr << "\nOptions:" << std::endl;
-            std::cerr << "  --cn N       Specify number of clusters for agreement experiment (default: 4)" << std::endl;
+            std::cerr << "  --cn N       Specify number of clusters (default: 4)" << std::endl;
             std::cerr << "  --d D        Specify search depth for MCTS (default: 1)" << std::endl;
             std::cerr << "  --repeat R   Specify number of times to repeat the experiment (default: 1)" << std::endl;
+            std::cerr << "  --sim S      Specify number of simulations per shot for cluster analysis (default: 10)" << std::endl;
             return 1;
         }
 

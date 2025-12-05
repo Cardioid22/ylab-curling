@@ -17,7 +17,8 @@ AgreementExperiment::AgreementExperiment(
     std::unordered_map<int, ShotInfo> state_to_shot_table,
     std::shared_ptr<SimulatorWrapper> simulator_clustered,
     std::shared_ptr<SimulatorWrapper> simulator_allgrid,
-    int cluster_num
+    int cluster_num,
+    int simulations_per_shot
 ) : team_(team),
     game_setting_(game_setting),
     grid_m_(grid_m),
@@ -26,12 +27,14 @@ AgreementExperiment::AgreementExperiment(
     state_to_shot_table_(state_to_shot_table),
     simulator_clustered_(simulator_clustered),
     simulator_allgrid_(simulator_allgrid),
-    cluster_num_(cluster_num)
+    cluster_num_(cluster_num),
+    simulations_per_shot_(simulations_per_shot)
 {
     std::cout << "[AgreementExperiment] Initialized with "
               << grid_m_ << "x" << grid_n_ << " grid ("
               << (grid_m_ * grid_n_) << " total positions)\n";
     std::cout << "[AgreementExperiment] Using " << cluster_num_ << " clusters\n";
+    std::cout << "[AgreementExperiment] Simulations per shot for cluster analysis: " << simulations_per_shot_ << "\n";
 }
 
 int AgreementExperiment::calculateFullExplorationIterations(int max_depth) {
@@ -253,6 +256,9 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, 
     std::cout << "\n[Step 2] Running Clustered MCTS with various iterations\n";
     result.clustered_iterations_tested = generateClusteredIterationCounts(test_depth);
 
+    // Calculate target iteration count (1/10 of AllGrid iterations)
+    int target_iteration_for_analysis = allgrid_iterations / 10;
+
     for (int iterations : result.clustered_iterations_tested) {
         MCTSRunResult clustered_res = runClusteredMCTS(test_state.state, iterations);
         result.clustered_results.push_back(clustered_res);
@@ -273,6 +279,21 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, 
                   << " | Selected: Grid " << std::setw(2) << clustered_res.selected_grid_id
                   << " | Exact: " << (agrees ? "YES" : "NO")
                   << " | Cluster: " << (cluster_agrees ? "YES" : "NO") << "\n";
+
+        // Analyze cluster members ONLY when:
+        // 1. Cluster agrees
+        // 2. Iterations match the target (1/10 of AllGrid)
+        // 3. Simulations per shot is enabled
+        if (cluster_agrees && iterations == target_iteration_for_analysis && simulations_per_shot_ > 0) {
+            std::cout << "      [Target iteration count reached: analyzing cluster members]\n";
+            ClusterMemberAnalysis member_analysis = analyzeClusterMembers(
+                test_state.state,
+                result.allgrid_result.selected_grid_id,
+                clustered_res.selected_grid_id,
+                clustered_res.cluster_table
+            );
+            result.cluster_member_analyses.push_back(member_analysis);
+        }
     }
 
     // Calculate overall agreement rates
@@ -590,4 +611,221 @@ void AgreementExperiment::exportResultsToCSV(const std::string& filename) {
 
     file.close();
     std::cout << "\nResults exported to: " << filename << "\n";
+
+    // Export cluster member analysis results (if any)
+    bool has_member_analysis = false;
+    for (const auto& result : results_) {
+        if (!result.cluster_member_analyses.empty()) {
+            has_member_analysis = true;
+            break;
+        }
+    }
+
+    if (has_member_analysis) {
+        // Export detailed simulation results for cluster members
+        std::string member_detail_filename = filename;
+        size_t pos = member_detail_filename.find_last_of(".");
+        if (pos != std::string::npos) {
+            member_detail_filename = member_detail_filename.substr(0, pos) + "_cluster_member_details.csv";
+        } else {
+            member_detail_filename += "_cluster_member_details.csv";
+        }
+
+        std::ofstream member_file(member_detail_filename);
+        if (member_file.is_open()) {
+            member_file << "TestID,TestDescription,ClusterID,AllGridShotID,ClusteredShotID,MemberShotID,SimulationIndex,FinalScore\n";
+
+            for (const auto& result : results_) {
+                for (const auto& analysis : result.cluster_member_analyses) {
+                    for (const auto& member_result : analysis.member_results) {
+                        for (size_t sim_idx = 0; sim_idx < member_result.final_scores.size(); ++sim_idx) {
+                            member_file << result.test_id << ","
+                                       << result.test_description << ","
+                                       << analysis.cluster_id << ","
+                                       << analysis.allgrid_selected_shot_id << ","
+                                       << analysis.clustered_selected_shot_id << ","
+                                       << member_result.shot_id << ","
+                                       << sim_idx << ","
+                                       << std::fixed << std::setprecision(6) << member_result.final_scores[sim_idx] << "\n";
+                        }
+                    }
+                }
+            }
+
+            member_file.close();
+            std::cout << "Cluster member details exported to: " << member_detail_filename << "\n";
+        }
+
+        // Export cluster member statistics
+        std::string member_stats_filename = filename;
+        pos = member_stats_filename.find_last_of(".");
+        if (pos != std::string::npos) {
+            member_stats_filename = member_stats_filename.substr(0, pos) + "_cluster_member_stats.csv";
+        } else {
+            member_stats_filename += "_cluster_member_stats.csv";
+        }
+
+        std::ofstream stats_file(member_stats_filename);
+        if (stats_file.is_open()) {
+            stats_file << "TestID,TestDescription,ClusterID,ClusterSize,AllGridShotID,ClusteredShotID,MemberShotID,MeanScore,StdScore,ClusterScoreVariance\n";
+
+            for (const auto& result : results_) {
+                for (const auto& analysis : result.cluster_member_analyses) {
+                    for (const auto& member_result : analysis.member_results) {
+                        stats_file << result.test_id << ","
+                                  << result.test_description << ","
+                                  << analysis.cluster_id << ","
+                                  << analysis.member_shot_ids.size() << ","
+                                  << analysis.allgrid_selected_shot_id << ","
+                                  << analysis.clustered_selected_shot_id << ","
+                                  << member_result.shot_id << ","
+                                  << std::fixed << std::setprecision(6)
+                                  << member_result.mean_score << ","
+                                  << member_result.std_score << ","
+                                  << analysis.cluster_score_variance << "\n";
+                    }
+                }
+            }
+
+            stats_file.close();
+            std::cout << "Cluster member statistics exported to: " << member_stats_filename << "\n";
+        }
+    }
+}
+
+// ========================================
+// Cluster Member Analysis Functions
+// ========================================
+
+float AgreementExperiment::playoutToEnd(dc::GameState state) {
+    // ゲームが終了するまでランダムにプレイアウト
+    while (!state.game_result.has_value()) {
+        // ランダムに手を選択
+        int random_shot_id = rand() % state_to_shot_table_.size();
+        ShotInfo shot = state_to_shot_table_[random_shot_id];
+
+        // シミュレーション実行
+        state = simulator_clustered_->run_single_simulation(state, shot);
+    }
+
+    // 最終スコアを返す
+    return simulator_clustered_->evaluate(state);
+}
+
+ShotSimulationResult AgreementExperiment::simulateShotMultipleTimes(
+    const dc::GameState& initial_state,
+    const ShotInfo& shot,
+    int shot_id,
+    int num_simulations
+) {
+    ShotSimulationResult result;
+    result.shot_id = shot_id;
+
+    std::cout << "        Simulating shot " << shot_id << " " << num_simulations << " times..." << std::flush;
+
+    for (int sim_idx = 0; sim_idx < num_simulations; ++sim_idx) {
+        // ショットをシミュレーション
+        dc::GameState after_shot = simulator_clustered_->run_single_simulation(initial_state, shot);
+
+        // 終局までプレイアウト
+        float final_score = playoutToEnd(after_shot);
+        result.final_scores.push_back(final_score);
+    }
+
+    // 統計計算
+    result.mean_score = calculateMean(result.final_scores);
+    result.std_score = calculateStdDev(result.final_scores, result.mean_score);
+
+    std::cout << " done (mean=" << std::fixed << std::setprecision(2)
+              << result.mean_score << ", std=" << result.std_score << ")\n";
+
+    return result;
+}
+
+ClusterMemberAnalysis AgreementExperiment::analyzeClusterMembers(
+    const dc::GameState& initial_state,
+    int allgrid_shot_id,
+    int clustered_shot_id,
+    const std::vector<std::vector<int>>& cluster_table
+) {
+    std::cout << "\n      [Cluster Member Analysis] Analyzing cluster containing the correct shot...\n";
+
+    ClusterMemberAnalysis analysis;
+    analysis.allgrid_selected_shot_id = allgrid_shot_id;
+    analysis.clustered_selected_shot_id = clustered_shot_id;
+
+    // Find which cluster contains the clustered_shot_id
+    int target_cluster_id = -1;
+    for (size_t cluster_id = 0; cluster_id < cluster_table.size(); ++cluster_id) {
+        for (int state_id : cluster_table[cluster_id]) {
+            if (state_id == clustered_shot_id) {
+                target_cluster_id = cluster_id;
+                break;
+            }
+        }
+        if (target_cluster_id != -1) break;
+    }
+
+    if (target_cluster_id == -1) {
+        std::cerr << "      [ERROR] Could not find cluster for shot ID " << clustered_shot_id << "\n";
+        return analysis;
+    }
+
+    analysis.cluster_id = target_cluster_id;
+    analysis.member_shot_ids = cluster_table[target_cluster_id];
+
+    std::cout << "      Found cluster " << target_cluster_id
+              << " with " << analysis.member_shot_ids.size() << " members\n";
+
+    // Simulate each member
+    for (int shot_id : analysis.member_shot_ids) {
+        ShotInfo shot = state_to_shot_table_[shot_id];
+        ShotSimulationResult shot_result = simulateShotMultipleTimes(
+            initial_state,
+            shot,
+            shot_id,
+            simulations_per_shot_
+        );
+        analysis.member_results.push_back(shot_result);
+    }
+
+    // Calculate cluster-wide variance
+    std::vector<float> all_mean_scores;
+    for (const auto& member : analysis.member_results) {
+        all_mean_scores.push_back(member.mean_score);
+    }
+    analysis.cluster_score_variance = calculateVariance(all_mean_scores);
+
+    std::cout << "      Cluster score variance: " << std::fixed << std::setprecision(4)
+              << analysis.cluster_score_variance << "\n";
+
+    return analysis;
+}
+
+// Statistical helper functions
+float AgreementExperiment::calculateMean(const std::vector<float>& values) {
+    if (values.empty()) return 0.0f;
+    float sum = std::accumulate(values.begin(), values.end(), 0.0f);
+    return sum / values.size();
+}
+
+float AgreementExperiment::calculateStdDev(const std::vector<float>& values, float mean) {
+    if (values.empty()) return 0.0f;
+    float sum_sq_diff = 0.0f;
+    for (float val : values) {
+        float diff = val - mean;
+        sum_sq_diff += diff * diff;
+    }
+    return std::sqrt(sum_sq_diff / values.size());
+}
+
+float AgreementExperiment::calculateVariance(const std::vector<float>& values) {
+    if (values.empty()) return 0.0f;
+    float mean = calculateMean(values);
+    float sum_sq_diff = 0.0f;
+    for (float val : values) {
+        float diff = val - mean;
+        sum_sq_diff += diff * diff;
+    }
+    return sum_sq_diff / values.size();
 }
