@@ -656,6 +656,7 @@ int main(int argc, char const* argv[])
         bool simulation_reliability_mode = false;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
+        int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
 
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "--experiment") {
@@ -677,6 +678,11 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--d" && i + 1 < argc) {
                 depth_arg = std::atoi(argv[i + 1]);
                 i++;  // Skip next argument since it's the depth number
+            }
+            if (std::string(argv[i]) == "--repeat" && i + 1 < argc) {
+                repeat_count = std::atoi(argv[i + 1]);
+                if (repeat_count < 1) repeat_count = 1;  // Ensure at least 1 repetition
+                i++;  // Skip next argument since it's the repeat count
             }
         }
 
@@ -732,59 +738,8 @@ int main(int argc, char const* argv[])
         if (agreement_experiment_mode) {
             std::cout << "Running Agreement Experiment mode..." << std::endl;
 
-            // 初期化
-            g_team = dc::Team::k0;
-            g_game_setting.max_end = 1;
-            g_game_setting.five_rock_rule = true;
-            g_game_setting.thinking_time[0] = std::chrono::seconds(86400);
-            g_game_setting.thinking_time[1] = std::chrono::seconds(86400);
-
-            g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
-            g_simulator_storage = g_simulator->CreateStorage();
-
-            for (size_t i = 0; i < g_players.size(); ++i) {
-                g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
-            }
-
-            simWrapper = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
-            simWrapper_allgrid = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
-
-            // グリッドとショット情報の初期化
-            int S = GridSize_M * GridSize_N;
-            grid.resize(S);
-            shotData.resize(S);
-            grid_states.resize(S);
-            grid = MakeGrid(GridSize_M, GridSize_N);
-
-            std::cout << "Initializing " << S << " grid shots..." << std::endl;
-            for (int i = 0; i < S; ++i) {
-                ShotInfo shotinfo = FindShot(grid[i]);
-                shotData[i] = shotinfo;
-                simWrapper->initialShotData.push_back(shotinfo);
-                simWrapper_allgrid->initialShotData.push_back(shotinfo);
-                state_to_shot_table[i] = shotinfo;
-            }
-            std::cout << "Grid initialization complete.\n" << std::endl;
-
-            // 初期状態からグリッド状態を生成 (use proper constructor to initialize scores vector)
-            dc::GameState initial_state(g_game_setting);
-
-            std::cout << "Simulating " << S << " grid states from initial state..." << std::endl;
-            std::cout << "  Initial state - shot: " << static_cast<int>(initial_state.shot) << ", end: " << static_cast<int>(initial_state.end) << std::endl;
-            for (int i = 0; i < S; ++i) {
-                std::cout << "  Simulating grid #" << i << "..." << std::flush;
-                try {
-                    grid_states[i] = simWrapper->run_single_simulation(initial_state, shotData[i]);
-                    std::cout << " done" << std::endl;
-                } catch (const std::exception& e) {
-                    std::cout << " ERROR: " << e.what() << std::endl;
-                    throw;
-                }
-            }
-            std::cout << "Grid states simulation complete.\n" << std::endl;
-
             // 実験パラメータ
-            int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション          
+            int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション
 
             // クラスタ数の決定（コマンドライン引数 > デフォルト値）
             int cluster_num_for_exp = (cluster_num_arg > 0) ? cluster_num_arg : 4;
@@ -795,41 +750,116 @@ int main(int argc, char const* argv[])
             std::cout << "  Cluster num: " << cluster_num_for_exp << std::endl;
             std::cout << "  Test depth: " << test_depth_for_exp << std::endl;
             std::cout << "  Test patterns per type: " << num_test_patterns << std::endl;
+            std::cout << "  Repeat count: " << repeat_count << std::endl;
 
-            // Agreement Experiment作成
-            AgreementExperiment experiment(
-                g_team,
-                g_game_setting,
-                GridSize_M,
-                GridSize_N,
-                grid_states,
-                state_to_shot_table,
-                simWrapper,
-                simWrapper_allgrid,
-                cluster_num_for_exp
-            );
+            // 結果保存用ディレクトリ作成（全反復で共通）
+            std::string result_dir = "experiments/agreement_results/Grid" +
+                std::to_string(GridSize_M * GridSize_N) +
+                "_Depth" + std::to_string(test_depth_for_exp) +
+                "_Clusters" + std::to_string(cluster_num_for_exp) +
+                "_Repeat" + std::to_string(repeat_count);
 
-            // 実験実行
-            experiment.runExperiment(num_test_patterns, test_depth_for_exp);
+            std::filesystem::create_directories(result_dir);
 
-            // 結果保存用ディレクトリ作成
-            std::filesystem::create_directories("experiments/agreement_results");
+            std::cout << "\nResults will be saved to: " << result_dir << "\n" << std::endl;
 
-            // ファイル名を生成（グリッド数、深さ、クラスタ数を含む）
-            std::string csv_filename = "experiments/agreement_results/" +
-                experiment.generateFilename("clustered_vs_allgrid", ".csv", test_depth_for_exp);
-            std::string summary_filename = "experiments/agreement_results/" +
-                experiment.generateFilename("summary", ".md", test_depth_for_exp);
+            // 反復ループ
+            for (int repeat_idx = 0; repeat_idx < repeat_count; ++repeat_idx) {
+                std::cout << "\n\n===============================================\n";
+                std::cout << "===== REPETITION " << (repeat_idx + 1) << " / " << repeat_count << " =====\n";
+                std::cout << "===============================================\n\n";
 
-            experiment.exportResultsToCSV(csv_filename);
-            experiment.exportSummaryToFile(summary_filename);
+                // 初期化
+                g_team = dc::Team::k0;
+                g_game_setting.max_end = 1;
+                g_game_setting.five_rock_rule = true;
+                g_game_setting.thinking_time[0] = std::chrono::seconds(86400);
+                g_game_setting.thinking_time[1] = std::chrono::seconds(86400);
 
-            std::cout << "\n========================================\n";
-            std::cout << "Agreement Experiment Complete!\n";
-            std::cout << "Results saved to:\n";
-            std::cout << "  CSV: " << csv_filename << "\n";
-            std::cout << "  Summary: " << summary_filename << "\n";
-            std::cout << "========================================\n";
+                g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+                g_simulator_storage = g_simulator->CreateStorage();
+
+                for (size_t i = 0; i < g_players.size(); ++i) {
+                    g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+                }
+
+                simWrapper = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
+                simWrapper_allgrid = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
+
+                // グリッドとショット情報の初期化
+                int S = GridSize_M * GridSize_N;
+                grid.resize(S);
+                shotData.resize(S);
+                grid_states.resize(S);
+                grid = MakeGrid(GridSize_M, GridSize_N);
+
+                std::cout << "Initializing " << S << " grid shots..." << std::endl;
+                for (int i = 0; i < S; ++i) {
+                    ShotInfo shotinfo = FindShot(grid[i]);
+                    shotData[i] = shotinfo;
+                    simWrapper->initialShotData.push_back(shotinfo);
+                    simWrapper_allgrid->initialShotData.push_back(shotinfo);
+                    state_to_shot_table[i] = shotinfo;
+                }
+                std::cout << "Grid initialization complete.\n" << std::endl;
+
+                // 初期状態からグリッド状態を生成 (use proper constructor to initialize scores vector)
+                dc::GameState initial_state(g_game_setting);
+
+                std::cout << "Simulating " << S << " grid states from initial state..." << std::endl;
+                std::cout << "  Initial state - shot: " << static_cast<int>(initial_state.shot) << ", end: " << static_cast<int>(initial_state.end) << std::endl;
+                for (int i = 0; i < S; ++i) {
+                    std::cout << "  Simulating grid #" << i << "..." << std::flush;
+                    try {
+                        grid_states[i] = simWrapper->run_single_simulation(initial_state, shotData[i]);
+                        std::cout << " done" << std::endl;
+                    } catch (const std::exception& e) {
+                        std::cout << " ERROR: " << e.what() << std::endl;
+                        throw;
+                    }
+                }
+                std::cout << "Grid states simulation complete.\n" << std::endl;
+
+                // Agreement Experiment作成
+                AgreementExperiment experiment(
+                    g_team,
+                    g_game_setting,
+                    GridSize_M,
+                    GridSize_N,
+                    grid_states,
+                    state_to_shot_table,
+                    simWrapper,
+                    simWrapper_allgrid,
+                    cluster_num_for_exp
+                );
+
+                // 実験実行
+                experiment.runExperiment(num_test_patterns, test_depth_for_exp);
+
+                // ファイル名を生成（反復インデックスを先頭に追加）
+                std::string csv_filename = result_dir + "/" +
+                    std::to_string(repeat_idx + 1) + "_" +
+                    experiment.generateFilename("clustered_vs_allgrid", ".csv", test_depth_for_exp);
+                std::string summary_filename = result_dir + "/" +
+                    std::to_string(repeat_idx + 1) + "_" +
+                    experiment.generateFilename("summary", ".md", test_depth_for_exp);
+
+                experiment.exportResultsToCSV(csv_filename);
+                experiment.exportSummaryToFile(summary_filename);
+
+                std::cout << "\n========================================\n";
+                std::cout << "Repetition " << (repeat_idx + 1) << " Complete!\n";
+                std::cout << "Results saved to:\n";
+                std::cout << "  CSV: " << csv_filename << "\n";
+                std::cout << "  Summary: " << summary_filename << "\n";
+                std::cout << "========================================\n";
+            }
+
+            std::cout << "\n\n===============================================\n";
+            std::cout << "===== ALL REPETITIONS COMPLETE =====\n";
+            std::cout << "Total repetitions: " << repeat_count << "\n";
+            std::cout << "All results saved to: " << result_dir << "\n";
+            std::cout << "===============================================\n";
 
             return 0;
         }
@@ -843,12 +873,14 @@ int main(int argc, char const* argv[])
 
         if (argc != 3) {
             std::cerr << "Usage: command <host> <port>" << std::endl;
-            std::cerr << "       command --experiment                                (for efficiency experiment)" << std::endl;
-            std::cerr << "       command --validate-clustering                       (for clustering validation)" << std::endl;
-            std::cerr << "       command --agreement-experiment [--cluster-num N]    (for Clustered vs AllGrid comparison)" << std::endl;
-            std::cerr << "       command --simulation-reliability                    (for simulation reliability measurement)" << std::endl;
+            std::cerr << "       command --experiment                                                  (for efficiency experiment)" << std::endl;
+            std::cerr << "       command --validate-clustering                                         (for clustering validation)" << std::endl;
+            std::cerr << "       command --agreement-experiment [--cn N] [--d D] [--repeat R]          (for Clustered vs AllGrid comparison)" << std::endl;
+            std::cerr << "       command --simulation-reliability                                      (for simulation reliability measurement)" << std::endl;
             std::cerr << "\nOptions:" << std::endl;
-            std::cerr << "  --cluster-num N    Specify number of clusters for agreement experiment (default: 4)" << std::endl;
+            std::cerr << "  --cn N       Specify number of clusters for agreement experiment (default: 4)" << std::endl;
+            std::cerr << "  --d D        Specify search depth for MCTS (default: 1)" << std::endl;
+            std::cerr << "  --repeat R   Specify number of times to repeat the experiment (default: 1)" << std::endl;
             return 1;
         }
 
