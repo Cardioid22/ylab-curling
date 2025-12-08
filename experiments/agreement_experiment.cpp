@@ -93,7 +93,7 @@ MCTSRunResult AgreementExperiment::runAllGridMCTS(const dc::GameState& state, in
     );
 
     // Run MCTS
-    mcts.grow_tree(iterations, 3600.0);  // 1 hour timeout
+    mcts.grow_tree(iterations, 10800.0);  // 3 hour timeout
 
     // Get best shot
     ShotInfo best_shot = mcts.get_best_shot();
@@ -174,7 +174,7 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     );
 
     // Run MCTS
-    mcts.grow_tree(iterations, 3600.0);  // 1 hour timeout
+    mcts.grow_tree(iterations, 10800.0);  // 3 hour timeout
 
     // Get best shot
     ShotInfo best_shot = mcts.get_best_shot();
