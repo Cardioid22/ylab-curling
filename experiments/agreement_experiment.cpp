@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <cmath>
 #include <algorithm>
+#include <map>
 
 AgreementExperiment::AgreementExperiment(
     dc::Team team,
@@ -293,6 +294,25 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, 
                 clustered_res.cluster_table
             );
             result.cluster_member_analyses.push_back(member_analysis);
+
+            // 全クラスタ分析を実行
+            std::cout << "      [Analyzing all clusters]\n";
+            AllClusterAnalysis all_cluster_analysis = analyzeAllClusters(
+                test_state.state,
+                result.allgrid_result.selected_grid_id,
+                clustered_res.selected_grid_id,
+                clustered_res.cluster_table
+            );
+            result.all_cluster_analyses.push_back(all_cluster_analysis);
+
+            // ベストショット比較を生成
+            std::cout << "      [Generating best shot comparison]\n";
+            BestShotComparison best_shot_comp = generateBestShotComparison(
+                test_state.state,
+                result.allgrid_result.selected_grid_id,
+                clustered_res.selected_grid_id
+            );
+            result.best_shot_comparisons.push_back(best_shot_comp);
         }
     }
 
@@ -691,6 +711,207 @@ void AgreementExperiment::exportResultsToCSV(const std::string& filename) {
             std::cout << "Cluster member statistics exported to: " << member_stats_filename << "\n";
         }
     }
+
+    // Export all cluster analysis results (if any)
+    bool has_all_cluster_analysis = false;
+    for (const auto& result : results_) {
+        if (!result.all_cluster_analyses.empty()) {
+            has_all_cluster_analysis = true;
+            break;
+        }
+    }
+
+    if (has_all_cluster_analysis) {
+        // 1. All clusters raw scores CSV
+        std::string all_clusters_raw_filename = filename;
+        size_t pos = all_clusters_raw_filename.find_last_of(".");
+        if (pos != std::string::npos) {
+            all_clusters_raw_filename = all_clusters_raw_filename.substr(0, pos) + "_all_clusters_raw_scores.csv";
+        } else {
+            all_clusters_raw_filename += "_all_clusters_raw_scores.csv";
+        }
+
+        std::ofstream all_clusters_raw_file(all_clusters_raw_filename);
+        if (all_clusters_raw_file.is_open()) {
+            all_clusters_raw_file << "TestID,TestDescription,ClusterID,ShotID,SimulationIndex,FinalScore,IsAllGridShot,IsClusteredShot\n";
+
+            for (const auto& result : results_) {
+                for (const auto& all_cluster_analysis : result.all_cluster_analyses) {
+                    for (const auto& cluster : all_cluster_analysis.all_clusters) {
+                        for (const auto& member_result : cluster.member_results) {
+                            bool is_allgrid = (member_result.shot_id == cluster.allgrid_selected_shot_id);
+                            bool is_clustered = (member_result.shot_id == cluster.clustered_selected_shot_id);
+
+                            for (size_t sim_idx = 0; sim_idx < member_result.final_scores.size(); ++sim_idx) {
+                                all_clusters_raw_file << result.test_id << ","
+                                                      << result.test_description << ","
+                                                      << cluster.cluster_id << ","
+                                                      << member_result.shot_id << ","
+                                                      << sim_idx << ","
+                                                      << std::fixed << std::setprecision(6) << member_result.final_scores[sim_idx] << ","
+                                                      << (is_allgrid ? "YES" : "NO") << ","
+                                                      << (is_clustered ? "YES" : "NO") << "\n";
+                            }
+                        }
+                    }
+                }
+            }
+
+            all_clusters_raw_file.close();
+            std::cout << "All clusters raw scores exported to: " << all_clusters_raw_filename << "\n";
+        }
+
+        // 2. All clusters details CSV
+        std::string all_clusters_details_filename = filename;
+        pos = all_clusters_details_filename.find_last_of(".");
+        if (pos != std::string::npos) {
+            all_clusters_details_filename = all_clusters_details_filename.substr(0, pos) + "_all_clusters_details.csv";
+        } else {
+            all_clusters_details_filename += "_all_clusters_details.csv";
+        }
+
+        std::ofstream all_clusters_details_file(all_clusters_details_filename);
+        if (all_clusters_details_file.is_open()) {
+            all_clusters_details_file << "TestID,TestDescription,ClusterID,ShotID,MeanScore,StdScore,IsAllGridShot,IsClusteredShot\n";
+
+            for (const auto& result : results_) {
+                for (const auto& all_cluster_analysis : result.all_cluster_analyses) {
+                    for (const auto& cluster : all_cluster_analysis.all_clusters) {
+                        for (const auto& member_result : cluster.member_results) {
+                            bool is_allgrid = (member_result.shot_id == cluster.allgrid_selected_shot_id);
+                            bool is_clustered = (member_result.shot_id == cluster.clustered_selected_shot_id);
+
+                            all_clusters_details_file << result.test_id << ","
+                                                      << result.test_description << ","
+                                                      << cluster.cluster_id << ","
+                                                      << member_result.shot_id << ","
+                                                      << std::fixed << std::setprecision(6) << member_result.mean_score << ","
+                                                      << member_result.std_score << ","
+                                                      << (is_allgrid ? "YES" : "NO") << ","
+                                                      << (is_clustered ? "YES" : "NO") << "\n";
+                        }
+                    }
+                }
+            }
+
+            all_clusters_details_file.close();
+            std::cout << "All clusters details exported to: " << all_clusters_details_filename << "\n";
+        }
+
+        // 3. Cluster summary CSV
+        std::string cluster_summary_filename = filename;
+        pos = cluster_summary_filename.find_last_of(".");
+        if (pos != std::string::npos) {
+            cluster_summary_filename = cluster_summary_filename.substr(0, pos) + "_cluster_summary.csv";
+        } else {
+            cluster_summary_filename += "_cluster_summary.csv";
+        }
+
+        std::ofstream cluster_summary_file(cluster_summary_filename);
+        if (cluster_summary_file.is_open()) {
+            cluster_summary_file << "TestID,TestDescription,ClusterID,ClusterSize,ClusterMeanScore,ClusterScoreVariance,ContainsAllGrid,ContainsClustered,IsBestCluster\n";
+
+            for (const auto& result : results_) {
+                for (const auto& all_cluster_analysis : result.all_cluster_analyses) {
+                    for (const auto& cluster : all_cluster_analysis.all_clusters) {
+                        bool is_best = (cluster.cluster_id == all_cluster_analysis.best_cluster_id);
+
+                        cluster_summary_file << result.test_id << ","
+                                             << result.test_description << ","
+                                             << cluster.cluster_id << ","
+                                             << cluster.member_shot_ids.size() << ","
+                                             << std::fixed << std::setprecision(6) << cluster.cluster_mean_score << ","
+                                             << cluster.cluster_score_variance << ","
+                                             << (cluster.contains_allgrid_shot ? "YES" : "NO") << ","
+                                             << (cluster.contains_clustered_shot ? "YES" : "NO") << ","
+                                             << (is_best ? "YES" : "NO") << "\n";
+                    }
+                }
+            }
+
+            cluster_summary_file.close();
+            std::cout << "Cluster summary exported to: " << cluster_summary_filename << "\n";
+        }
+    }
+
+    // Export best shot comparison results (if any)
+    bool has_best_shot_comparison = false;
+    for (const auto& result : results_) {
+        if (!result.best_shot_comparisons.empty()) {
+            has_best_shot_comparison = true;
+            break;
+        }
+    }
+
+    if (has_best_shot_comparison) {
+        // 4. Best shot comparison CSV
+        std::string best_shot_filename = filename;
+        size_t pos = best_shot_filename.find_last_of(".");
+        if (pos != std::string::npos) {
+            best_shot_filename = best_shot_filename.substr(0, pos) + "_best_shot_comparison.csv";
+        } else {
+            best_shot_filename += "_best_shot_comparison.csv";
+        }
+
+        std::ofstream best_shot_file(best_shot_filename);
+        if (best_shot_file.is_open()) {
+            best_shot_file << "TestID,TestDescription,BestOverallShotID,BestOverallMeanScore,AllGridShotID,AllGridMeanScore,ClusteredShotID,ClusteredMeanScore\n";
+
+            for (const auto& result : results_) {
+                for (const auto& comp : result.best_shot_comparisons) {
+                    best_shot_file << result.test_id << ","
+                                   << result.test_description << ","
+                                   << comp.best_overall_shot_id << ","
+                                   << std::fixed << std::setprecision(6) << comp.best_overall_mean_score << ","
+                                   << comp.allgrid_shot_id << ","
+                                   << comp.allgrid_mean_score << ","
+                                   << comp.clustered_shot_id << ","
+                                   << comp.clustered_mean_score << "\n";
+                }
+            }
+
+            best_shot_file.close();
+            std::cout << "Best shot comparison exported to: " << best_shot_filename << "\n";
+        }
+
+        // 5. Best shot raw scores CSV
+        std::string best_shot_raw_filename = filename;
+        pos = best_shot_raw_filename.find_last_of(".");
+        if (pos != std::string::npos) {
+            best_shot_raw_filename = best_shot_raw_filename.substr(0, pos) + "_best_shot_raw_scores.csv";
+        } else {
+            best_shot_raw_filename += "_best_shot_raw_scores.csv";
+        }
+
+        std::ofstream best_shot_raw_file(best_shot_raw_filename);
+        if (best_shot_raw_file.is_open()) {
+            best_shot_raw_file << "TestID,TestDescription,ShotID,SimulationIndex,FinalScore,IsBestOverall,IsAllGrid,IsClustered\n";
+
+            for (const auto& result : results_) {
+                for (const auto& comp : result.best_shot_comparisons) {
+                    for (const auto& shot_result : comp.all_shot_results) {
+                        bool is_best = (shot_result.shot_id == comp.best_overall_shot_id);
+                        bool is_allgrid = (shot_result.shot_id == comp.allgrid_shot_id);
+                        bool is_clustered = (shot_result.shot_id == comp.clustered_shot_id);
+
+                        for (size_t sim_idx = 0; sim_idx < shot_result.final_scores.size(); ++sim_idx) {
+                            best_shot_raw_file << result.test_id << ","
+                                               << result.test_description << ","
+                                               << shot_result.shot_id << ","
+                                               << sim_idx << ","
+                                               << std::fixed << std::setprecision(6) << shot_result.final_scores[sim_idx] << ","
+                                               << (is_best ? "YES" : "NO") << ","
+                                               << (is_allgrid ? "YES" : "NO") << ","
+                                               << (is_clustered ? "YES" : "NO") << "\n";
+                        }
+                    }
+                }
+            }
+
+            best_shot_raw_file.close();
+            std::cout << "Best shot raw scores exported to: " << best_shot_raw_filename << "\n";
+        }
+    }
 }
 
 // ========================================
@@ -828,4 +1049,162 @@ float AgreementExperiment::calculateVariance(const std::vector<float>& values) {
         sum_sq_diff += diff * diff;
     }
     return sum_sq_diff / values.size();
+}
+
+// ========================================
+// New Analysis Functions
+// ========================================
+
+ClusterMemberAnalysis AgreementExperiment::analyzeSingleCluster(
+    const dc::GameState& initial_state,
+    int cluster_id,
+    const std::vector<int>& member_ids,
+    int allgrid_shot_id,
+    int clustered_shot_id
+) {
+    ClusterMemberAnalysis analysis;
+    analysis.cluster_id = cluster_id;
+    analysis.allgrid_selected_shot_id = allgrid_shot_id;
+    analysis.clustered_selected_shot_id = clustered_shot_id;
+    analysis.member_shot_ids = member_ids;
+    analysis.contains_allgrid_shot = false;
+    analysis.contains_clustered_shot = false;
+
+    std::cout << "        Analyzing cluster " << cluster_id
+              << " with " << member_ids.size() << " members\n";
+
+    // Check if this cluster contains the special shots
+    for (int shot_id : member_ids) {
+        if (shot_id == allgrid_shot_id) {
+            analysis.contains_allgrid_shot = true;
+        }
+        if (shot_id == clustered_shot_id) {
+            analysis.contains_clustered_shot = true;
+        }
+    }
+
+    // Simulate each member
+    for (int shot_id : member_ids) {
+        ShotInfo shot = state_to_shot_table_[shot_id];
+        ShotSimulationResult shot_result = simulateShotMultipleTimes(
+            initial_state,
+            shot,
+            shot_id,
+            simulations_per_shot_
+        );
+        analysis.member_results.push_back(shot_result);
+    }
+
+    // Calculate cluster-wide statistics
+    std::vector<float> all_mean_scores;
+    for (const auto& member : analysis.member_results) {
+        all_mean_scores.push_back(member.mean_score);
+    }
+    analysis.cluster_score_variance = calculateVariance(all_mean_scores);
+    analysis.cluster_mean_score = calculateMean(all_mean_scores);
+
+    std::cout << "        Cluster " << cluster_id << " mean=" << std::fixed << std::setprecision(2)
+              << analysis.cluster_mean_score << ", variance=" << analysis.cluster_score_variance
+              << " (AllGrid: " << (analysis.contains_allgrid_shot ? "YES" : "NO")
+              << ", Clustered: " << (analysis.contains_clustered_shot ? "YES" : "NO") << ")\n";
+
+    return analysis;
+}
+
+AllClusterAnalysis AgreementExperiment::analyzeAllClusters(
+    const dc::GameState& initial_state,
+    int allgrid_shot_id,
+    int clustered_shot_id,
+    const std::vector<std::vector<int>>& cluster_table
+) {
+    std::cout << "\n      [All Cluster Analysis] Analyzing " << cluster_table.size() << " clusters...\n";
+
+    AllClusterAnalysis result;
+    result.best_cluster_id = -1;
+    result.allgrid_cluster_id = -1;
+    result.clustered_cluster_id = -1;
+
+    float best_cluster_mean = -std::numeric_limits<float>::infinity();
+
+    for (size_t cluster_id = 0; cluster_id < cluster_table.size(); ++cluster_id) {
+        const auto& member_ids = cluster_table[cluster_id];
+
+        ClusterMemberAnalysis cluster_analysis = analyzeSingleCluster(
+            initial_state,
+            static_cast<int>(cluster_id),
+            member_ids,
+            allgrid_shot_id,
+            clustered_shot_id
+        );
+
+        result.all_clusters.push_back(cluster_analysis);
+
+        // Track best cluster
+        if (cluster_analysis.cluster_mean_score > best_cluster_mean) {
+            best_cluster_mean = cluster_analysis.cluster_mean_score;
+            result.best_cluster_id = static_cast<int>(cluster_id);
+        }
+
+        // Track which clusters contain allgrid and clustered shots
+        if (cluster_analysis.contains_allgrid_shot) {
+            result.allgrid_cluster_id = static_cast<int>(cluster_id);
+        }
+        if (cluster_analysis.contains_clustered_shot) {
+            result.clustered_cluster_id = static_cast<int>(cluster_id);
+        }
+    }
+
+    std::cout << "      [All Cluster Analysis] Best cluster: " << result.best_cluster_id
+              << ", AllGrid cluster: " << result.allgrid_cluster_id
+              << ", Clustered cluster: " << result.clustered_cluster_id << "\n";
+
+    return result;
+}
+
+BestShotComparison AgreementExperiment::generateBestShotComparison(
+    const dc::GameState& initial_state,
+    int allgrid_shot_id,
+    int clustered_shot_id
+) {
+    std::cout << "\n      [Best Shot Comparison] Simulating all " << state_to_shot_table_.size() << " shots...\n";
+
+    BestShotComparison result;
+    result.allgrid_shot_id = allgrid_shot_id;
+    result.clustered_shot_id = clustered_shot_id;
+    result.best_overall_shot_id = -1;
+    result.best_overall_mean_score = -std::numeric_limits<float>::infinity();
+    result.allgrid_mean_score = 0.0f;
+    result.clustered_mean_score = 0.0f;
+
+    // Simulate all shots
+    for (const auto& [shot_id, shot] : state_to_shot_table_) {
+        ShotSimulationResult shot_result = simulateShotMultipleTimes(
+            initial_state,
+            shot,
+            shot_id,
+            simulations_per_shot_
+        );
+        result.all_shot_results.push_back(shot_result);
+
+        // Track best overall
+        if (shot_result.mean_score > result.best_overall_mean_score) {
+            result.best_overall_mean_score = shot_result.mean_score;
+            result.best_overall_shot_id = shot_id;
+        }
+
+        // Track allgrid and clustered scores
+        if (shot_id == allgrid_shot_id) {
+            result.allgrid_mean_score = shot_result.mean_score;
+        }
+        if (shot_id == clustered_shot_id) {
+            result.clustered_mean_score = shot_result.mean_score;
+        }
+    }
+
+    std::cout << "      [Best Shot Comparison] Best: shot " << result.best_overall_shot_id
+              << " (mean=" << std::fixed << std::setprecision(2) << result.best_overall_mean_score
+              << "), AllGrid: shot " << allgrid_shot_id << " (mean=" << result.allgrid_mean_score
+              << "), Clustered: shot " << clustered_shot_id << " (mean=" << result.clustered_mean_score << ")\n";
+
+    return result;
 }

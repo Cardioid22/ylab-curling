@@ -29,6 +29,28 @@ struct ClusterMemberAnalysis {
     std::vector<int> member_shot_ids;                  // クラスタ内の全メンバーのショットID
     std::vector<ShotSimulationResult> member_results;  // 各メンバーのシミュレーション結果
     float cluster_score_variance;                      // クラスタ内の得点分散
+    float cluster_mean_score;                          // クラスタ全体の平均スコア
+    bool contains_allgrid_shot;                        // AllGridの選んだ手を含むか
+    bool contains_clustered_shot;                      // Clusteredの選んだ手を含むか
+};
+
+// 全クラスタの分析結果
+struct AllClusterAnalysis {
+    std::vector<ClusterMemberAnalysis> all_clusters;   // 全クラスタの分析
+    int best_cluster_id;                               // 最高平均スコアのクラスタID
+    int allgrid_cluster_id;                            // AllGridの手が属するクラスタID
+    int clustered_cluster_id;                          // Clusteredの手が属するクラスタID
+};
+
+// ベストショット比較結果
+struct BestShotComparison {
+    int best_overall_shot_id;                          // 全体で最高平均スコアのショットID
+    float best_overall_mean_score;                     // 全体での最高平均スコア
+    int allgrid_shot_id;                               // AllGridが選んだショットID
+    float allgrid_mean_score;                          // AllGridの手の平均スコア
+    int clustered_shot_id;                             // Clusteredが選んだショットID
+    float clustered_mean_score;                        // Clusteredの手の平均スコア
+    std::vector<ShotSimulationResult> all_shot_results; // 全ショットの結果
 };
 
 // Result from a single MCTS run
@@ -63,6 +85,12 @@ struct AgreementResult {
 
     // Cluster member analysis (only performed when cluster agrees)
     std::vector<ClusterMemberAnalysis> cluster_member_analyses;  // One per clustered result that agrees
+
+    // All cluster analysis (新機能: 全クラスタの詳細分析)
+    std::vector<AllClusterAnalysis> all_cluster_analyses;  // イテレーション毎の全クラスタ分析
+
+    // Best shot comparison (新機能: 最良ショット比較)
+    std::vector<BestShotComparison> best_shot_comparisons;  // イテレーション毎のベストショット比較
 };
 
 // Main experiment class for comparing Clustered vs AllGrid MCTS
@@ -139,6 +167,30 @@ private:
         int allgrid_shot_id,
         int clustered_shot_id,
         const std::vector<std::vector<int>>& cluster_table
+    );
+
+    // Analyze a single cluster
+    ClusterMemberAnalysis analyzeSingleCluster(
+        const dc::GameState& initial_state,
+        int cluster_id,
+        const std::vector<int>& member_ids,
+        int allgrid_shot_id,
+        int clustered_shot_id
+    );
+
+    // Analyze all clusters
+    AllClusterAnalysis analyzeAllClusters(
+        const dc::GameState& initial_state,
+        int allgrid_shot_id,
+        int clustered_shot_id,
+        const std::vector<std::vector<int>>& cluster_table
+    );
+
+    // Generate best shot comparison
+    BestShotComparison generateBestShotComparison(
+        const dc::GameState& initial_state,
+        int allgrid_shot_id,
+        int clustered_shot_id
     );
 
     // Simulate a single shot multiple times and return statistics
