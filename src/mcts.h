@@ -45,6 +45,7 @@ public:
 	bool is_fully_expanded() const;
 	MCTS_Node* select_best_child(double c = 1.41);
     MCTS_Node* select_worst_child(double c = 1.41);
+	MCTS_Node* select_most_visited_child();
 	void expand(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table);
 	void rollout();
 	double calculate_winrate() const;

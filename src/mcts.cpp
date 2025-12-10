@@ -102,6 +102,31 @@ MCTS_Node* MCTS_Node::select_worst_child(double c) {
     return worst;
 }
 
+MCTS_Node* MCTS_Node::select_most_visited_child() {
+    MCTS_Node* best = nullptr;
+    int max_visits = -1;
+
+    for (const auto& child : children) {
+        std::cout << "Child visits: " << child->visits
+                  << ", wins: " << child->wins
+                  << ", winrate: " << (child->visits > 0 ? static_cast<double>(child->wins) / child->visits : 0.0)
+                  << "\n";
+
+        if (child->visits > max_visits) {
+            max_visits = child->visits;
+            best = child.get();
+        }
+    }
+
+    if (best) {
+        std::cout << "[INFO] Selected most visited child with " << max_visits
+                  << " visits (winrate: " << (best->visits > 0 ? static_cast<double>(best->wins) / best->visits : 0.0)
+                  << ")\n";
+    }
+
+    return best;
+}
+
 void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) {
     static std::random_device rd;
     static std::mt19937 gen(10);
@@ -336,7 +361,8 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
         std::cout << "Expand Node #" << node->label << "\n";
         node->expand(all_states_, state_to_shot_table_);
     }
-    best_child_ = root_->select_best_child();
+    // Final decision: select child with most visits (not UCT score)
+    best_child_ = root_->select_most_visited_child();
     //root_->print_tree();
     std::cout << "MCTS Iteration Done.\n";
 }
