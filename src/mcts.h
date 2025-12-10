@@ -38,6 +38,7 @@ public:
         int gridM,
         int gridN,
         int cluster_num,
+        int num_rollout_sims = 10,
         std::optional<std::vector<ShotInfo>> shot_candidates = std::nullopt,
         std::optional<ShotInfo> selected_shot = std::nullopt
     );
@@ -55,6 +56,7 @@ private:
     int GridSize_N_ = 10;
     int max_degree = 6;
     int cluster_num_ = 4;  // Number of clusters for Clustered MCTS
+    int num_rollout_simulations_ = 10;  // Number of simulations per rollout
 
 	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) const;
 	dc::GameState getNextState(ShotInfo shotinfo) const;
@@ -69,7 +71,8 @@ public:
         std::shared_ptr<SimulatorWrapper> simWrapper,
         int gridM,
         int gridN,
-        int cluster_num = 4
+        int cluster_num = 4,
+        int num_rollout_sims = 10
     );
 
 	void grow_tree(int max_iter, double max_limited_time);  // main loop
@@ -93,6 +96,7 @@ private:
     double random_total_score = 0.0;
 
     int cluster_num_ = 4;  // Number of clusters for Clustered MCTS
+    int num_rollout_simulations_ = 10;  // Number of simulations per rollout
 
 };
 

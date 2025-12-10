@@ -61,24 +61,47 @@ dc::GameState SimulatorWrapper::run_single_simulation(dc::GameState const& game_
 }
 
 double SimulatorWrapper::run_simulations(dc::GameState const& state, const ShotInfo& shot) {
+    // DEPRECATED: Use run_multiple_simulations_with_random_policy() instead
+    // This method now uses random grid policy for remaining shots
+    if (initialShotData.empty()) {
+        std::cerr << "Error: initialShotData is empty. Cannot run random rollout.\n";
+        return 0.0;
+    }
+
     dc::GameState sim_state = state;  // Copy state
+    std::mt19937 gen(2);  // Fixed random seed = 2
+    std::uniform_int_distribution<int> grid_dist(0, initialShotData.size() - 1);
+    int shot_counter = 0;
+
     for (int i = sim_state.shot; i < 16; ++i) {
         g_simulator_->Load(*g_simulator_storage_);
         auto& current_player = *g_players[sim_state.shot / 4];
         if (!&current_player) {
             std::cout << "Player is null.\n";
         }
-        dc::Vector2 velocity(shot.vx, shot.vy);
-        auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+
+        // Choose shot: first shot is specified, rest are random from grid
+        ShotInfo current_shot;
+        if (shot_counter == 0) {
+            current_shot = shot;
+        } else {
+            int random_index = grid_dist(gen);
+            current_shot = initialShotData[random_index];
+        }
+
+        dc::Vector2 velocity(current_shot.vx, current_shot.vy);
+        auto rot = current_shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
         dc::moves::Shot shot_move{ velocity, rot };
-        dc::Move move{ shot_move }; // this move should be random
+        dc::Move move{ shot_move };
         dc::ApplyMove(g_game_setting, *g_simulator_, current_player, sim_state, move, std::chrono::milliseconds(0));
         g_simulator_->Save(*g_simulator_storage_);
+
+        shot_counter++;
 
         if (sim_state.IsGameOver()) {
             std::cout << "Game is Over!!\n";
             break;
-        } 
+        }
     }
 
     return evaluate(sim_state);
@@ -311,4 +334,60 @@ double SimulatorWrapper::run_greedy_rollout(
     }
 
     return evaluate(sim_state);
+}
+
+// Multiple simulations with random grid policy for MCTS rollout
+// Runs num_simulations full-game simulations from the given state
+// First shot is specified, remaining shots are randomly selected from grid
+// Returns the average score across all simulations
+double SimulatorWrapper::run_multiple_simulations_with_random_policy(
+    dc::GameState const& state,
+    const ShotInfo& first_shot,
+    int num_simulations
+) {
+    if (initialShotData.empty()) {
+        std::cerr << "Error: initialShotData is empty. Must initialize grid shots first.\n";
+        return 0.0;
+    }
+
+    if (num_simulations <= 0) {
+        std::cerr << "Warning: num_simulations must be positive. Using 1.\n";
+        num_simulations = 1;
+    }
+
+    // Fixed random seed for reproducibility
+    std::mt19937 gen(2);  // Random seed = 2 as requested
+    std::uniform_int_distribution<int> grid_dist(0, initialShotData.size() - 1);
+
+    double total_score = 0.0;
+
+    for (int sim = 0; sim < num_simulations; ++sim) {
+        dc::GameState sim_state = state;  // Copy state for each simulation
+        int shot_counter = 0;
+
+        // Simulate until game is over
+        while (!sim_state.IsGameOver() && sim_state.shot < 16) {
+            ShotInfo current_shot;
+
+            if (shot_counter == 0) {
+                // First shot: use the specified shot
+                current_shot = first_shot;
+            } else {
+                // Subsequent shots: random from grid
+                int random_index = grid_dist(gen);
+                current_shot = initialShotData[random_index];
+            }
+
+            // Apply the shot
+            sim_state = run_single_simulation(sim_state, current_shot);
+            shot_counter++;
+        }
+
+        // Evaluate the final state
+        double score = evaluate(sim_state);
+        total_score += score;
+    }
+
+    // Return average score
+    return total_score / num_simulations;
 }

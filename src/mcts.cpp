@@ -15,6 +15,7 @@ MCTS_Node::MCTS_Node(
     int gridM,
     int gridN,
     int cluster_num,
+    int num_rollout_sims,
     std::optional<std::vector<ShotInfo>> shot_candidates,
     std::optional<ShotInfo> selected_shot
 )
@@ -28,7 +29,8 @@ MCTS_Node::MCTS_Node(
     degree(0),
     label(0),
     source(node_source),
-    cluster_num_(cluster_num)
+    cluster_num_(cluster_num),
+    num_rollout_simulations_(num_rollout_sims)
 {
     static int global_label = 0;
     label = global_label++; // for debugging
@@ -191,6 +193,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         GridSize_M_,
         GridSize_N_,
         cluster_num_,
+        num_rollout_simulations_,
         std::nullopt,  // child will generate their own if selected later
         shot
     );
@@ -203,19 +206,30 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
     std::cout << "MCTS_Node New Node Generated Done. Degree: " << degree << ",# of children: " << children.size() << "\n";
 }
 void MCTS_Node::rollout() {
-    std::cout << "Rollout from node #" << label << "\n";
-    double game_score = terminal
-        ? simulator->evaluate(state)
-        : simulator->run_simulations(state, selected_shot);
+    std::cout << "Rollout from node #" << label << " with " << num_rollout_simulations_ << " simulations\n";
+
+    double game_score;
+    if (terminal) {
+        game_score = simulator->evaluate(state);
+    } else {
+        // Use multiple simulations with random grid policy
+        game_score = simulator->run_multiple_simulations_with_random_policy(
+            state,
+            selected_shot,
+            num_rollout_simulations_
+        );
+    }
+
     wins = game_score > 0 ? 1 : 0;
+
     if (source == NodeSource::Clustered) {
-        std::cout << "[Clustered] rollout score: " << game_score << "\n";
+        std::cout << "[Clustered] rollout avg score: " << game_score << "\n";
     }
     else if(source == NodeSource::Random){
-        std::cout << "[Random] rollout score: " << game_score << "\n";
+        std::cout << "[Random] rollout avg score: " << game_score << "\n";
     }
     else if (source == NodeSource::AllGrid) {
-        std::cout << "[AllGrid] rollout score: " << game_score << "\n";
+        std::cout << "[AllGrid] rollout avg score: " << game_score << "\n";
     }
     backpropagate(wins, 1); //if terminate is true, that node's visits will also +1 for now.
 }
@@ -275,13 +289,17 @@ MCTS::MCTS(dc::GameState const& root_state,
     std::shared_ptr<SimulatorWrapper> simWrapper,
     int gridM,
     int gridN,
-    int cluster_num)
-: state_to_shot_table_(std::move(state_to_shot_table)), simulator_(std::move(simWrapper)), cluster_num_(cluster_num)
+    int cluster_num,
+    int num_rollout_sims)
+: state_to_shot_table_(std::move(state_to_shot_table)),
+  simulator_(std::move(simWrapper)),
+  cluster_num_(cluster_num),
+  num_rollout_simulations_(num_rollout_sims)
 {
     all_states_.resize(states.size());
     std::copy(states.begin(), states.end(), all_states_.begin());
     std::shared_ptr<SimulatorWrapper> shared_sim = simulator_;
-    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim, gridM, gridN, cluster_num_);
+    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim, gridM, gridN, cluster_num_, num_rollout_sims);
 }
 void MCTS::grow_tree(int max_iter, double max_limited_time) {
     using Clock = std::chrono::high_resolution_clock;

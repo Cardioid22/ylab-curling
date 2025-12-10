@@ -27,6 +27,9 @@ public:
     double run_grid_rollout(dc::GameState const& state);  // Grid random rollout
     double run_greedy_rollout(dc::GameState const& state, double epsilon = 0.3);  // ε-greedy rollout
 
+    // Multiple simulations with random grid policy for MCTS rollout
+    double run_multiple_simulations_with_random_policy(dc::GameState const& state, const ShotInfo& first_shot, int num_simulations);
+
     float evaluate(dc::GameState& game_state) const;
     dc::Vector2 EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation);
     ShotInfo FindShot(Position const& pos);

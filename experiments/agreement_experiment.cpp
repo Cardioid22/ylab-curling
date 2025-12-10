@@ -82,6 +82,7 @@ MCTSRunResult AgreementExperiment::runAllGridMCTS(const dc::GameState& state, in
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Create MCTS with AllGrid node source
+    int num_rollout_simulations = 10;  // Number of simulations per rollout
     MCTS mcts(
         state,
         NodeSource::AllGrid,
@@ -90,7 +91,8 @@ MCTSRunResult AgreementExperiment::runAllGridMCTS(const dc::GameState& state, in
         simulator_allgrid_,
         grid_m_,
         grid_n_,
-        cluster_num_  // Pass cluster_num (not used for AllGrid, but required)
+        cluster_num_,  // Pass cluster_num (not used for AllGrid, but required)
+        num_rollout_simulations
     );
 
     // Run MCTS
@@ -163,6 +165,7 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     float silhouette_score = clustering.evaluateClusteringQuality();
 
     // Create MCTS with Clustered node source
+    int num_rollout_simulations = 10;  // Number of simulations per rollout
     MCTS mcts(
         state,
         NodeSource::Clustered,
@@ -171,7 +174,8 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
         simulator_clustered_,
         grid_m_,
         grid_n_,
-        cluster_num_  // Pass configurable cluster_num
+        cluster_num_,  // Pass configurable cluster_num
+        num_rollout_simulations
     );
 
     // Run MCTS

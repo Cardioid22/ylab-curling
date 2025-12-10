@@ -30,10 +30,11 @@ ShotInfo SimpleExperiment::findIdealShot(
     game_setting.max_end = 1;
     game_setting.five_rock_rule = true;
 
-    auto simWrapper = std::make_shared<SimulatorWrapper>(team, game_setting);   
+    auto simWrapper = std::make_shared<SimulatorWrapper>(team, game_setting);
+    int num_rollout_simulations = 10;  // Number of simulations per rollout
 
     MCTS benchmark_mcts(state, NodeSource::AllGrid, grid_states_,
-                       state_to_shot_table_, simWrapper, GridSize_M_, GridSize_N_);
+                       state_to_shot_table_, simWrapper, GridSize_M_, GridSize_N_, 4, num_rollout_simulations);
     benchmark_mcts.grow_tree(max_iterations, 3600.0);
 
     ShotInfo ideal = benchmark_mcts.get_best_shot();
@@ -79,8 +80,9 @@ ExperimentResult SimpleExperiment::runSingleComparison(
     // Clustered MCTS
     std::cout << "\n--- Clustered MCTS ---" << std::endl;
     auto sim_clustered = std::make_shared<SimulatorWrapper>(team, game_setting);
+    int num_rollout_simulations = 10;  // Number of simulations per rollout
     MCTS mcts_clustered(state, NodeSource::Clustered, grid_states_,
-                       state_to_shot_table_, sim_clustered, GridSize_M_, GridSize_N_);
+                       state_to_shot_table_, sim_clustered, GridSize_M_, GridSize_N_, 4, num_rollout_simulations);
     int repeat = 3;
     for (int iter = 1; iter <= repeat; ++iter) {
         mcts_clustered.grow_tree(max_iterations, 3600); 
@@ -108,7 +110,7 @@ ExperimentResult SimpleExperiment::runSingleComparison(
     std::cout << "\n--- AllGrid MCTS ---" << std::endl;
     auto sim_allgrid = std::make_shared<SimulatorWrapper>(team, game_setting);
     MCTS mcts_allgrid(state, NodeSource::AllGrid, grid_states_,
-                     state_to_shot_table_, sim_allgrid, GridSize_M_, GridSize_N_);
+                     state_to_shot_table_, sim_allgrid, GridSize_M_, GridSize_N_, 4, num_rollout_simulations);
 
     for (int iter = 1; iter <= repeat; ++iter) {
         mcts_allgrid.grow_tree(max_iterations, 3600);  // 1 iteration at a time

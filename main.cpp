@@ -367,14 +367,15 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
 
     // Calculate cluster_num for MCTS (use log2(S) + 1 as default)
     int cluster_num_for_game = static_cast<int>(std::log2(S)) + 1;
+    int num_rollout_simulations = 10;  // Number of simulations per rollout (default: 10)
 
-    MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper, GridSize_M, GridSize_N, cluster_num_for_game);
+    MCTS mcts_clustered(current_state, NodeSource::Clustered, grid_states, state_to_shot_table, simWrapper, GridSize_M, GridSize_N, cluster_num_for_game, num_rollout_simulations);
     mcts_clustered.grow_tree(mcts_iter, 86400.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);
 
     std::cout << "------AllGrid Tree------" << '\n';
 
-    MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid, GridSize_M, GridSize_N, cluster_num_for_game);
+    MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid, GridSize_M, GridSize_N, cluster_num_for_game, num_rollout_simulations);
     mcts_allgrid.grow_tree(cluster_iter, 86400.0);
     mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
     ShotInfo best = mcts_clustered.get_best_shot();

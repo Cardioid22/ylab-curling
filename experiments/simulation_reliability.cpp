@@ -160,6 +160,7 @@ std::unique_ptr<MCTS_Node> SimulationReliabilityExperiment::buildMCTSTree(
         grid_m_,                        // grid M
         grid_n_,                        // grid N
         4,                              // cluster_num (not used for Random, but required)
+        10,                             // num_rollout_simulations
         std::nullopt,                   // shot candidates
         std::nullopt                    // selected shot
     );
