@@ -52,12 +52,18 @@ public:
 	void backpropagate(int w, int n);
     bool NextIsOpponentTurn() const;
     void print_tree(int indent = 0) const;
+
+    // Allow MCTS to track rollout timing
+    friend class MCTS;
+    void set_parent_mcts(class MCTS* parent) { parent_mcts_ = parent; }
+
 private:
     int GridSize_M_ = 10;
     int GridSize_N_ = 10;
     int max_degree = 6;
     int cluster_num_ = 4;  // Number of clusters for Clustered MCTS
     int num_rollout_simulations_ = 10;  // Number of simulations per rollout
+    class MCTS* parent_mcts_ = nullptr;  // Pointer to parent MCTS for timing tracking
 
 	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) const;
 	dc::GameState getNextState(ShotInfo shotinfo) const;
@@ -65,6 +71,8 @@ private:
 
 class MCTS {
 public:
+	friend class MCTS_Node;  // Allow MCTS_Node to access private members for timing tracking
+
 	MCTS(dc::GameState const& root_state,
         NodeSource node_source,
         std::vector<dc::GameState> states,
@@ -82,6 +90,11 @@ public:
     void report_rollout_result() const;
     void export_rollout_result_to_csv(const std::string& filename, int shot_num, int grid_m, int grid_n, std::vector<ShotInfo> shotData) const;
 
+    // Timing information
+    double get_total_rollout_time() const { return total_rollout_time_; }
+    int get_total_rollout_count() const { return total_rollout_count_; }
+    double get_total_clustering_time() const { return total_clustering_time_; }
+    int get_total_clustering_count() const { return total_clustering_count_; }
 
 private:
 	std::unique_ptr<MCTS_Node> root_;
@@ -98,6 +111,12 @@ private:
 
     int cluster_num_ = 4;  // Number of clusters for Clustered MCTS
     int num_rollout_simulations_ = 10;  // Number of simulations per rollout
+
+    // Timing tracking
+    double total_rollout_time_ = 0.0;
+    int total_rollout_count_ = 0;
+    double total_clustering_time_ = 0.0;  // Time spent on clustering within MCTS
+    int total_clustering_count_ = 0;      // Number of clustering operations
 
 };
 

@@ -142,17 +142,23 @@ MCTSRunResult AgreementExperiment::runAllGridMCTS(const dc::GameState& state, in
     // Export MCTS details
     mcts.report_rollout_result();
 
+    // Get rollout timing from MCTS
+    double rollout_time = mcts.get_total_rollout_time();
+    int rollout_count = mcts.get_total_rollout_count();
+
     MCTSRunResult result;
     result.selected_grid_id = selected_grid_id;
     result.win_rate = win_rate;
     result.iterations = iterations;
     result.elapsed_time_sec = elapsed.count();
     result.node_source = NodeSource::AllGrid;
+    result.rollout_time_sec = rollout_time;  // Store rollout time
+    result.rollout_count = rollout_count;  // Store rollout count
 
     std::cout << "  [AllGrid MCTS] Selected grid ID: " << selected_grid_id
               << " (win rate: " << std::fixed << std::setprecision(3) << win_rate
               << ", time: " << std::setprecision(2)
-              << elapsed.count() << "s)\n";
+              << elapsed.count() << "s, rollouts: " << rollout_time << "s)\n";
 
     return result;
 }
@@ -163,9 +169,12 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Get cluster information before running MCTS
+    auto clustering_start = std::chrono::high_resolution_clock::now();
     ClusteringV2 clustering(cluster_num_, grid_states_, grid_m_, grid_n_, team_);
     std::vector<std::vector<int>> cluster_table = clustering.getClusterIdTable();
     float silhouette_score = clustering.evaluateClusteringQuality();
+    auto clustering_end = std::chrono::high_resolution_clock::now();
+    double clustering_time = std::chrono::duration<double>(clustering_end - clustering_start).count();
 
     // Create MCTS with Clustered node source
     int num_rollout_simulations = 10;  // Number of simulations per rollout
@@ -190,6 +199,17 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
+
+    // Get rollout timing from MCTS
+    double rollout_time = mcts.get_total_rollout_time();
+    int rollout_count = mcts.get_total_rollout_count();
+
+    // Get clustering timing from MCTS (internal clustering during tree expansion)
+    double mcts_clustering_time = mcts.get_total_clustering_time();
+    int mcts_clustering_count = mcts.get_total_clustering_count();
+
+    // Total clustering time = pre-MCTS clustering + MCTS internal clustering
+    double total_clustering_time = clustering_time + mcts_clustering_time;
 
     // Debug: Print best shot details
     std::cout << "    [DEBUG] Best shot: vx=" << best_shot.vx
@@ -230,16 +250,25 @@ MCTSRunResult AgreementExperiment::runClusteredMCTS(const dc::GameState& state, 
     result.node_source = NodeSource::Clustered;
     result.cluster_table = cluster_table;  // Store cluster information
     result.silhouette_score = silhouette_score;  // Store silhouette score
+    result.clustering_time_sec = total_clustering_time;  // Store total clustering time (pre-MCTS + MCTS internal)
+    result.rollout_time_sec = rollout_time;  // Store rollout time
+    result.rollout_count = rollout_count;  // Store rollout count
 
     std::cout << "    [Clustered MCTS] Selected grid ID: " << selected_grid_id
               << " (win rate: " << std::fixed << std::setprecision(3) << win_rate
               << ", time: " << std::setprecision(2)
-              << elapsed.count() << "s, silhouette: " << std::setprecision(4) << silhouette_score << ")\n";
+              << elapsed.count() << "s, silhouette: " << std::setprecision(4) << silhouette_score
+              << ", clustering: " << std::setprecision(2) << total_clustering_time << "s"
+              << " [pre: " << clustering_time << "s + mcts: " << mcts_clustering_time
+              << "s (" << mcts_clustering_count << " ops)]"
+              << ", rollouts: " << rollout_time << "s)\n";
 
     return result;
 }
 
 AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, int test_depth) {
+    auto test_start_time = std::chrono::high_resolution_clock::now();
+
     std::cout << "\n===========================================\n";
     std::cout << "Test ID: " << test_state.test_id << "\n";
     std::cout << "Description: " << test_state.description << "\n";
@@ -254,14 +283,19 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, 
 
     // Step 1: Run AllGrid MCTS with full exploration
     std::cout << "\n[Step 1] Running AllGrid MCTS (Ground Truth)\n";
+    auto allgrid_start = std::chrono::high_resolution_clock::now();
 	int allgrid_iterations = calculateFullExplorationIterations(test_depth); // X-depth full exploration
     result.allgrid_result = runAllGridMCTS(test_state.state, allgrid_iterations);
+    auto allgrid_end = std::chrono::high_resolution_clock::now();
+    result.allgrid_time_sec = std::chrono::duration<double>(allgrid_end - allgrid_start).count();
 
     std::cout << "\n[Ground Truth] AllGrid selected: Grid ID "
-              << result.allgrid_result.selected_grid_id << "\n";
+              << result.allgrid_result.selected_grid_id
+              << " (Time: " << std::fixed << std::setprecision(2) << result.allgrid_time_sec << "s)\n";
 
     // Step 2: Run Clustered MCTS with various iteration counts
     std::cout << "\n[Step 2] Running Clustered MCTS with various iterations\n";
+    auto clustered_start = std::chrono::high_resolution_clock::now();
     result.clustered_iterations_tested = generateClusteredIterationCounts(test_depth);
 
     // Calculate target iteration count (1/10 of AllGrid iterations)
@@ -294,6 +328,8 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, 
         // 3. Simulations per shot is enabled
         if (cluster_agrees && iterations == target_iteration_for_analysis && simulations_per_shot_ > 0) {
             std::cout << "      [Target iteration count reached: analyzing cluster members]\n";
+            auto analysis_start = std::chrono::high_resolution_clock::now();
+
             ClusterMemberAnalysis member_analysis = analyzeClusterMembers(
                 test_state.state,
                 result.allgrid_result.selected_grid_id,
@@ -320,12 +356,22 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, 
                 clustered_res.selected_grid_id
             );
             result.best_shot_comparisons.push_back(best_shot_comp);
+
+            auto analysis_end = std::chrono::high_resolution_clock::now();
+            result.cluster_analysis_time_sec += std::chrono::duration<double>(analysis_end - analysis_start).count();
         }
     }
+
+    auto clustered_end = std::chrono::high_resolution_clock::now();
+    result.clustered_total_time_sec = std::chrono::duration<double>(clustered_end - clustered_start).count();
 
     // Calculate overall agreement rates
     result.overall_agreement_rate = calculateAgreementRate(result.agreement_flags);
     result.overall_cluster_agreement_rate = calculateAgreementRate(result.cluster_agreement_flags);
+
+    // Calculate total test time
+    auto test_end_time = std::chrono::high_resolution_clock::now();
+    result.total_test_time_sec = std::chrono::duration<double>(test_end_time - test_start_time).count();
 
     std::cout << "\n[Summary] Exact Agreement Rate: "
               << std::fixed << std::setprecision(1)
@@ -333,6 +379,18 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, 
     std::cout << "[Summary] Cluster Agreement Rate: "
               << std::fixed << std::setprecision(1)
               << result.overall_cluster_agreement_rate << "%\n";
+    std::cout << "\n[Timing Breakdown]\n";
+    std::cout << "  AllGrid MCTS:       " << std::setw(8) << std::fixed << std::setprecision(2)
+              << result.allgrid_time_sec << "s ("
+              << std::setw(5) << std::setprecision(1) << (result.allgrid_time_sec / result.total_test_time_sec * 100) << "%)\n";
+    std::cout << "  Clustered MCTS:     " << std::setw(8) << result.clustered_total_time_sec << "s ("
+              << std::setw(5) << (result.clustered_total_time_sec / result.total_test_time_sec * 100) << "%)\n";
+    std::cout << "  Cluster Analysis:   " << std::setw(8) << result.cluster_analysis_time_sec << "s ("
+              << std::setw(5) << (result.cluster_analysis_time_sec / result.total_test_time_sec * 100) << "%)\n";
+    double other_time = result.total_test_time_sec - result.allgrid_time_sec - result.clustered_total_time_sec;
+    std::cout << "  Other:              " << std::setw(8) << other_time << "s ("
+              << std::setw(5) << (other_time / result.total_test_time_sec * 100) << "%)\n";
+    std::cout << "  Total:              " << std::setw(8) << result.total_test_time_sec << "s\n";
     std::cout << "===========================================\n";
 
     return result;
@@ -550,6 +608,69 @@ void AgreementExperiment::exportSummaryToFile(const std::string& filename) {
     file << "=========================================\n";
     file << "\n";
 
+    // Write timing breakdown summary
+    if (!results_.empty()) {
+        file << "Average Timing Breakdown per Test:\n";
+        file << "-------------------------------------------\n";
+
+        double total_allgrid = 0.0, total_clustered = 0.0, total_analysis = 0.0, total_time = 0.0;
+        double total_allgrid_rollout = 0.0, total_clustered_rollout = 0.0, total_clustering = 0.0;
+        int total_allgrid_rollout_count = 0, total_clustered_rollout_count = 0;
+
+        for (const auto& result : results_) {
+            total_allgrid += result.allgrid_time_sec;
+            total_clustered += result.clustered_total_time_sec;
+            total_analysis += result.cluster_analysis_time_sec;
+            total_time += result.total_test_time_sec;
+
+            // Sum rollout times
+            total_allgrid_rollout += result.allgrid_result.rollout_time_sec;
+            total_allgrid_rollout_count += result.allgrid_result.rollout_count;
+
+            for (const auto& clustered_res : result.clustered_results) {
+                total_clustered_rollout += clustered_res.rollout_time_sec;
+                total_clustered_rollout_count += clustered_res.rollout_count;
+                total_clustering += clustered_res.clustering_time_sec;
+            }
+        }
+
+        int num_tests = results_.size();
+        double avg_allgrid = total_allgrid / num_tests;
+        double avg_clustered = total_clustered / num_tests;
+        double avg_analysis = total_analysis / num_tests;
+        double avg_total = total_time / num_tests;
+        double avg_other = avg_total - avg_allgrid - avg_clustered;
+
+        double avg_allgrid_rollout = total_allgrid_rollout / num_tests;
+        double avg_clustered_rollout = total_clustered_rollout / num_tests;
+        double avg_clustering = total_clustering / num_tests;
+
+        file << "  AllGrid MCTS:       " << std::setw(8) << std::fixed << std::setprecision(2)
+             << avg_allgrid << "s (" << std::setw(5) << std::setprecision(1)
+             << (avg_allgrid / avg_total * 100) << "%)\n";
+        file << "    - Rollouts:       " << std::setw(8) << avg_allgrid_rollout << "s ("
+             << std::setw(5) << (avg_allgrid_rollout / avg_allgrid * 100) << "% of AllGrid)\n";
+        file << "  Clustered MCTS:     " << std::setw(8) << avg_clustered << "s ("
+             << std::setw(5) << (avg_clustered / avg_total * 100) << "%)\n";
+        file << "    - Clustering:     " << std::setw(8) << avg_clustering << "s ("
+             << std::setw(5) << (avg_clustering / avg_clustered * 100) << "% of Clustered)\n";
+        file << "    - Rollouts:       " << std::setw(8) << avg_clustered_rollout << "s ("
+             << std::setw(5) << (avg_clustered_rollout / avg_clustered * 100) << "% of Clustered)\n";
+        file << "  Cluster Analysis:   " << std::setw(8) << avg_analysis << "s ("
+             << std::setw(5) << (avg_analysis / avg_total * 100) << "%)\n";
+        file << "  Other:              " << std::setw(8) << avg_other << "s ("
+             << std::setw(5) << (avg_other / avg_total * 100) << "%)\n";
+        file << "  Total:              " << std::setw(8) << avg_total << "s\n";
+        file << "\n";
+        file << "Average Rollout Counts:\n";
+        file << "  AllGrid:   " << (total_allgrid_rollout_count / num_tests) << " rollouts\n";
+        file << "  Clustered: " << (total_clustered_rollout_count / num_tests) << " rollouts (total across all iterations)\n";
+        file << "\n";
+        file << "Total Cumulative Time: " << std::setprecision(2) << total_time << "s\n";
+        file << "=========================================\n";
+        file << "\n";
+    }
+
     // Write detailed breakdown by test case
     file << "Detailed Breakdown by Test Case:\n";
     file << "-------------------------------------------\n";
@@ -572,6 +693,20 @@ void AgreementExperiment::exportSummaryToFile(const std::string& filename) {
                  << " | Exact: " << (exact_agrees ? "YES" : "NO")
                  << " | Cluster: " << (cluster_agrees ? "YES" : "NO") << "\n";
         }
+
+        // Add timing breakdown for this test
+        file << "\n  [Timing Breakdown for Test " << result.test_id << "]\n";
+        file << "    AllGrid MCTS:       " << std::setw(8) << std::fixed << std::setprecision(2)
+             << result.allgrid_time_sec << "s ("
+             << std::setw(5) << std::setprecision(1) << (result.allgrid_time_sec / result.total_test_time_sec * 100) << "%)\n";
+        file << "    Clustered MCTS:     " << std::setw(8) << result.clustered_total_time_sec << "s ("
+             << std::setw(5) << (result.clustered_total_time_sec / result.total_test_time_sec * 100) << "%)\n";
+        file << "    Cluster Analysis:   " << std::setw(8) << result.cluster_analysis_time_sec << "s ("
+             << std::setw(5) << (result.cluster_analysis_time_sec / result.total_test_time_sec * 100) << "%)\n";
+        double other_time = result.total_test_time_sec - result.allgrid_time_sec - result.clustered_total_time_sec;
+        file << "    Other:              " << std::setw(8) << other_time << "s ("
+             << std::setw(5) << (other_time / result.total_test_time_sec * 100) << "%)\n";
+        file << "    Total:              " << std::setw(8) << result.total_test_time_sec << "s\n";
     }
 
     file.close();

@@ -2,6 +2,7 @@
 #include <limits>
 #include <memory>
 #include <random>
+#include <chrono>
 #include "mcts.h"
 #include "digitalcurling3/digitalcurling3.hpp"
 #define DBL_EPSILON 2.2204460492503131e-016
@@ -223,6 +224,7 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
         shot
     );
     child_node->source = shot_source;
+    child_node->set_parent_mcts(parent_mcts_);  // Inherit parent MCTS pointer
     child_node->rollout();
     if (children.size() <= max_degree) {
         children.push_back(std::move(child_node));
@@ -232,6 +234,8 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
 }
 void MCTS_Node::rollout() {
     std::cout << "Rollout from node #" << label << " with " << num_rollout_simulations_ << " simulations\n";
+
+    auto rollout_start = std::chrono::high_resolution_clock::now();
 
     double game_score;
     if (terminal) {
@@ -243,6 +247,15 @@ void MCTS_Node::rollout() {
             selected_shot,
             num_rollout_simulations_
         );
+    }
+
+    auto rollout_end = std::chrono::high_resolution_clock::now();
+    double rollout_time = std::chrono::duration<double>(rollout_end - rollout_start).count();
+
+    // Track rollout timing in parent MCTS
+    if (parent_mcts_ != nullptr) {
+        parent_mcts_->total_rollout_time_ += rollout_time;
+        parent_mcts_->total_rollout_count_ += 1;
     }
 
     wins = game_score > 0 ? 1 : 0;
@@ -275,8 +288,20 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
 {
     std::vector<int> recommended_states;
     std::vector<ShotInfo> candidates;
+
+    // Measure clustering time
+    auto clustering_start = std::chrono::high_resolution_clock::now();
     ClusteringV2 algo(cluster_num_, all_states, GridSize_M_, GridSize_N_, simulator->g_team);
     recommended_states = algo.getRecommendedStates();
+    auto clustering_end = std::chrono::high_resolution_clock::now();
+    double clustering_time = std::chrono::duration<double>(clustering_end - clustering_start).count();
+
+    // Track clustering timing in parent MCTS
+    if (parent_mcts_ != nullptr) {
+        parent_mcts_->total_clustering_time_ += clustering_time;
+        parent_mcts_->total_clustering_count_ += 1;
+    }
+
     for (int state_index : recommended_states) {
         auto it = state_to_shot_table.find(state_index);
         if (it != state_to_shot_table.end() && candidates.size() < max_degree) {
@@ -325,6 +350,7 @@ MCTS::MCTS(dc::GameState const& root_state,
     std::copy(states.begin(), states.end(), all_states_.begin());
     std::shared_ptr<SimulatorWrapper> shared_sim = simulator_;
     root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim, gridM, gridN, cluster_num_, num_rollout_sims);
+    root_->set_parent_mcts(this);
 }
 void MCTS::grow_tree(int max_iter, double max_limited_time) {
     using Clock = std::chrono::high_resolution_clock;

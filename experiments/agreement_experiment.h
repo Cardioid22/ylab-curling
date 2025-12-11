@@ -62,6 +62,11 @@ struct MCTSRunResult {
     NodeSource node_source;    // Clustered or AllGrid
     std::vector<std::vector<int>> cluster_table;  // Cluster ID -> State IDs mapping (only for Clustered)
     float silhouette_score = -1.0f;  // Silhouette score for clustering quality (only for Clustered)
+
+    // Detailed timing breakdown
+    double clustering_time_sec = 0.0;  // Time spent on clustering (Clustered only)
+    double rollout_time_sec = 0.0;     // Time spent on rollouts (simulations)
+    int rollout_count = 0;             // Number of rollouts performed
 };
 
 // Result comparing Clustered vs AllGrid MCTS
@@ -91,6 +96,12 @@ struct AgreementResult {
 
     // Best shot comparison (新機能: 最良ショット比較)
     std::vector<BestShotComparison> best_shot_comparisons;  // イテレーション毎のベストショット比較
+
+    // Timing breakdown (各処理パートの実行時間)
+    double allgrid_time_sec = 0.0;           // AllGrid MCTS実行時間
+    double clustered_total_time_sec = 0.0;   // Clustered MCTS全体の実行時間
+    double cluster_analysis_time_sec = 0.0;  // クラスター分析の実行時間
+    double total_test_time_sec = 0.0;        // テスト全体の実行時間
 };
 
 // Main experiment class for comparing Clustered vs AllGrid MCTS
