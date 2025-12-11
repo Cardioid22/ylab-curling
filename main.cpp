@@ -759,12 +759,20 @@ int main(int argc, char const* argv[])
             std::cout << "  Test patterns per type: " << num_test_patterns << std::endl;
             std::cout << "  Repeat count: " << repeat_count << std::endl;
 
+            std::ostringstream oss;
+            std::time_t t = std::time(nullptr);
+            std::tm tm = *std::localtime(&t);
+            // yyyymmddhhmm 形式に整形
+            oss << std::put_time(&tm, "%Y%m%d%H%M");
+            std::string timestamp = oss.str();
+
             // 結果保存用ディレクトリ作成（全反復で共通）
             std::string result_dir = "experiments/agreement_results/Grid" +
                 std::to_string(GridSize_M * GridSize_N) +
                 "_Depth" + std::to_string(test_depth_for_exp) +
                 "_Clusters" + std::to_string(cluster_num_for_exp) +
-                "_Repeat" + std::to_string(repeat_count);
+                "_Repeat" + std::to_string(repeat_count) +
+                "_" + timestamp;
 
             std::filesystem::create_directories(result_dir);
 

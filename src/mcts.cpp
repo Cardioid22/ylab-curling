@@ -361,6 +361,7 @@ void MCTS::grow_tree(int max_iter, double max_limited_time) {
         std::cout << "Expand Node #" << node->label << "\n";
         node->expand(all_states_, state_to_shot_table_);
     }
+    //best_child_ = root_->select_best_child();
     // Final decision: select child with most visits (not UCT score)
     best_child_ = root_->select_most_visited_child();
     //root_->print_tree();

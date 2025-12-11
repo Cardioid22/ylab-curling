@@ -63,11 +63,14 @@ std::vector<int> AgreementExperiment::generateClusteredIterationCounts(int depth
     std::vector<int> counts;
 
     // Start with small iteration counts
-    counts.push_back(clustered_full / 10);
-    counts.push_back(clustered_full / 5);
-    counts.push_back(clustered_full / 2);
+    counts.push_back(clustered_full * 0.1);
+    counts.push_back(clustered_full * 0.15);
+    counts.push_back(clustered_full * 0.2);
+    counts.push_back(clustered_full * 0.25);
+    counts.push_back(clustered_full * 0.3);
+    //counts.push_back(clustered_full * 0.5);
     // Full exploration
-    counts.push_back(clustered_full);
+    //counts.push_back(clustered_full);
     
     //counts.push_back(clustered_full * 2);
     //counts.push_back(clustered_full * 5);
