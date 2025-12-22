@@ -659,6 +659,7 @@ int main(int argc, char const* argv[])
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
         int sim_count = 10;        // シミュレーション回数の引数（デフォルトは10回）
+        int test_patterns_arg = -1; // テストパターン数の引数（-1はデフォルト値を使用）
 
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "--experiment") {
@@ -690,6 +691,11 @@ int main(int argc, char const* argv[])
                 sim_count = std::atoi(argv[i + 1]);
                 if (sim_count < 1) sim_count = 1;  // Ensure at least 1 simulation
                 i++;  // Skip next argument since it's the simulation count
+            }
+            if (std::string(argv[i]) == "--test-num" && i + 1 < argc) {
+                test_patterns_arg = std::atoi(argv[i + 1]);
+                if (test_patterns_arg < 1) test_patterns_arg = 1;  // Ensure at least 1 pattern per type
+                i++;  // Skip next argument since it's the test pattern count
             }
         }
 
@@ -745,8 +751,8 @@ int main(int argc, char const* argv[])
         if (agreement_experiment_mode) {
             std::cout << "Running Agreement Experiment mode..." << std::endl;
 
-            // 実験パラメータ
-            int num_test_patterns = 1;  // 各パターンタイプにつき1つのバリエーション
+            // 実験パラメータ（コマンドライン引数 > デフォルト値）
+            int num_test_patterns = (test_patterns_arg > 0) ? test_patterns_arg : 5;  // 各パターンタイプにつき5つのバリエーション（デフォルト）
 
             // クラスタ数の決定（コマンドライン引数 > デフォルト値）
             int cluster_num_for_exp = (cluster_num_arg > 0) ? cluster_num_arg : 4;
@@ -757,6 +763,7 @@ int main(int argc, char const* argv[])
             std::cout << "  Cluster num: " << cluster_num_for_exp << std::endl;
             std::cout << "  Test depth: " << test_depth_for_exp << std::endl;
             std::cout << "  Test patterns per type: " << num_test_patterns << std::endl;
+            std::cout << "  Total test cases: " << (num_test_patterns * 10) << " (10 pattern types x " << num_test_patterns << " variations)" << std::endl;
             std::cout << "  Repeat count: " << repeat_count << std::endl;
 
             std::ostringstream oss;
@@ -889,15 +896,16 @@ int main(int argc, char const* argv[])
 
         if (argc != 3) {
             std::cerr << "Usage: command <host> <port>" << std::endl;
-            std::cerr << "       command --experiment                                                  (for efficiency experiment)" << std::endl;
-            std::cerr << "       command --validate-clustering                                         (for clustering validation)" << std::endl;
-            std::cerr << "       command --agreement-experiment [--cn N] [--d D] [--repeat R] [--sim S] (for Clustered vs AllGrid comparison)" << std::endl;
-            std::cerr << "       command --simulation-reliability                                      (for simulation reliability measurement)" << std::endl;
+            std::cerr << "       command --experiment                                                            (for efficiency experiment)" << std::endl;
+            std::cerr << "       command --validate-clustering                                                   (for clustering validation)" << std::endl;
+            std::cerr << "       command --agreement-experiment [--cn N] [--d D] [--repeat R] [--sim S] [--test-num T] (for Clustered vs AllGrid comparison)" << std::endl;
+            std::cerr << "       command --simulation-reliability                                                (for simulation reliability measurement)" << std::endl;
             std::cerr << "\nOptions:" << std::endl;
-            std::cerr << "  --cn N       Specify number of clusters (default: 4)" << std::endl;
-            std::cerr << "  --d D        Specify search depth for MCTS (default: 1)" << std::endl;
-            std::cerr << "  --repeat R   Specify number of times to repeat the experiment (default: 1)" << std::endl;
-            std::cerr << "  --sim S      Specify number of simulations per shot for cluster analysis (default: 10)" << std::endl;
+            std::cerr << "  --cn N         Specify number of clusters (default: 4)" << std::endl;
+            std::cerr << "  --d D          Specify search depth for MCTS (default: 1)" << std::endl;
+            std::cerr << "  --repeat R     Specify number of times to repeat the experiment (default: 1)" << std::endl;
+            std::cerr << "  --sim S        Specify number of simulations per shot for cluster analysis (default: 10)" << std::endl;
+            std::cerr << "  --test-num T   Specify number of test patterns per type (default: 5, total cases: T x 10 types)" << std::endl;
             return 1;
         }
 
