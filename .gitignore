@@ -23,3 +23,6 @@ _deps
 
 # experiments 以下の pyc を無視
 experiments/**/*.pyc
+
+# Parallel agreement experiment results
+experiments/parallel_agreement_results/

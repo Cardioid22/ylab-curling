@@ -123,6 +123,9 @@ public:
     // Run the complete experiment
     void runExperiment(int num_test_patterns_per_type = 1, int test_depth = 1);
 
+    // Run a single test case by ID (for parallel execution)
+    void runSingleTestById(int test_id, int num_test_patterns_per_type, int test_depth);
+
     // Export results to CSV
     void exportResultsToCSV(const std::string& filename);
 

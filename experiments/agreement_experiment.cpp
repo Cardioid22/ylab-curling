@@ -470,6 +470,39 @@ void AgreementExperiment::runExperiment(int num_test_patterns_per_type, int test
     printSummary();
 }
 
+void AgreementExperiment::runSingleTestById(int test_id, int num_test_patterns_per_type, int test_depth) {
+    std::cout << "\n=========================================\n";
+    std::cout << "SINGLE TEST EXECUTION (Test ID: " << test_id << ")\n";
+    std::cout << "=========================================\n";
+    std::cout << "Grid size: " << grid_m_ << "x" << grid_n_ << " (total: " << (grid_m_ * grid_n_) << ")\n";
+    std::cout << "Test depth: " << test_depth << "\n";
+    std::cout << "Number of clusters: " << cluster_num_ << "\n";
+    std::cout << "Test patterns per type: " << num_test_patterns_per_type << "\n";
+    std::cout << "=========================================\n\n";
+
+    // Generate all test states (deterministic with fixed seed)
+    ClusteringValidation validator(team_);
+    std::vector<TestState> test_states = validator.generateTestStates(num_test_patterns_per_type);
+
+    // Validate test ID
+    if (test_id < 0 || test_id >= static_cast<int>(test_states.size())) {
+        std::cerr << "[ERROR] Invalid test ID: " << test_id << "\n";
+        std::cerr << "Valid range: 0 to " << (test_states.size() - 1) << "\n";
+        return;
+    }
+
+    std::cout << "Total available tests: " << test_states.size() << "\n";
+    std::cout << "Running test ID: " << test_id << "\n\n";
+
+    // Run single test
+    const auto& test_state = test_states[test_id];
+    AgreementResult result = runSingleTest(test_state, test_depth);
+    results_.push_back(result);
+
+    std::cout << "\n[Test " << test_id << " Complete]\n";
+    std::cout << "=========================================\n";
+}
+
 void AgreementExperiment::printSummary() {
     std::cout << "\n\n";
     std::cout << "=========================================\n";

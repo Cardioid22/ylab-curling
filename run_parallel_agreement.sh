@@ -160,8 +160,8 @@ run_test() {
 
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting test $test_id" >> "$log_file"
 
-    # Run the test with nohup
-    nohup "$EXECUTABLE" --agreement-experiment \
+    # Run the test (nohup is redundant if script itself is nohup'd, but doesn't hurt)
+    "$EXECUTABLE" --agreement-experiment \
         --test-id "$test_id" \
         --cn "$CLUSTER_NUM" \
         --d "$DEPTH" \

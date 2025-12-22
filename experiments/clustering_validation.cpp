@@ -185,16 +185,16 @@ TestState ClusteringValidation::createPattern(StonePattern pattern, int variatio
         break;
 
     case StonePattern::Random:
-        // Random placement
+        // Random placement (with fixed seed for reproducibility)
         {
-            std::random_device rd;
-            std::mt19937 gen(rd() + variation);  // Change seed by variation
+            const int FIXED_SEED = 23;  // Fixed seed for reproducibility
+            std::mt19937 gen(FIXED_SEED + variation);  // Change seed by variation
             std::uniform_int_distribution<> num_stones(2, 6);
             int n = num_stones(gen);
 
             for (int i = 0; i < n; ++i) {
                 dc::Team t = (i % 2 == 0) ? team_ : dc::GetOpponentTeam(team_);
-                placeRandomStone(state, t, i / 2);
+                placeRandomStone(state, t, i / 2, gen);  // Pass generator to avoid static RNG
             }
         }
         break;
@@ -463,10 +463,10 @@ void ClusteringValidation::placeStone(
 void ClusteringValidation::placeRandomStone(
     dc::GameState& state,
     dc::Team team,
-    int index
+    int index,
+    std::mt19937& gen
 ) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    // Use passed generator instead of static random device for reproducibility
     std::uniform_real_distribution<float> x_dist(-2.0f, 2.0f);
     std::uniform_real_distribution<float> y_dist(GuardLineY_, HouseCenterY_ + 1.5f);
 

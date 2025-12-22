@@ -208,7 +208,8 @@ private:
     void placeRandomStone(
         dc::GameState& state,
         dc::Team team,
-        int index
+        int index,
+        std::mt19937& gen
     );
 
     /**

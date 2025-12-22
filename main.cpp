@@ -660,6 +660,7 @@ int main(int argc, char const* argv[])
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
         int sim_count = 10;        // シミュレーション回数の引数（デフォルトは10回）
         int test_patterns_arg = -1; // テストパターン数の引数（-1はデフォルト値を使用）
+        int test_id_arg = -1;      // 特定のテストIDを実行する引数（-1は全テスト実行）
 
         for (int i = 1; i < argc; ++i) {
             if (std::string(argv[i]) == "--experiment") {
@@ -696,6 +697,11 @@ int main(int argc, char const* argv[])
                 test_patterns_arg = std::atoi(argv[i + 1]);
                 if (test_patterns_arg < 1) test_patterns_arg = 1;  // Ensure at least 1 pattern per type
                 i++;  // Skip next argument since it's the test pattern count
+            }
+            if (std::string(argv[i]) == "--test-id" && i + 1 < argc) {
+                test_id_arg = std::atoi(argv[i + 1]);
+                if (test_id_arg < 0) test_id_arg = 0;  // Ensure non-negative test ID
+                i++;  // Skip next argument since it's the test ID
             }
         }
 
@@ -764,7 +770,12 @@ int main(int argc, char const* argv[])
             std::cout << "  Test depth: " << test_depth_for_exp << std::endl;
             std::cout << "  Test patterns per type: " << num_test_patterns << std::endl;
             std::cout << "  Total test cases: " << (num_test_patterns * 10) << " (10 pattern types x " << num_test_patterns << " variations)" << std::endl;
-            std::cout << "  Repeat count: " << repeat_count << std::endl;
+            if (test_id_arg >= 0) {
+                std::cout << "  Execution mode: SINGLE TEST (Test ID: " << test_id_arg << ")" << std::endl;
+            } else {
+                std::cout << "  Execution mode: ALL TESTS" << std::endl;
+                std::cout << "  Repeat count: " << repeat_count << std::endl;
+            }
 
             std::ostringstream oss;
             std::time_t t = std::time(nullptr);
@@ -773,23 +784,51 @@ int main(int argc, char const* argv[])
             oss << std::put_time(&tm, "%Y%m%d%H%M");
             std::string timestamp = oss.str();
 
-            // 結果保存用ディレクトリ作成（全反復で共通）
-            std::string result_dir = "experiments/agreement_results/Grid" +
-                std::to_string(GridSize_M * GridSize_N) +
-                "_Depth" + std::to_string(test_depth_for_exp) +
-                "_Clusters" + std::to_string(cluster_num_for_exp) +
-                "_Repeat" + std::to_string(repeat_count) +
-                "_" + timestamp;
+            // 結果保存用ディレクトリ作成
+            std::string result_dir;
+            if (test_id_arg >= 0) {
+                // Single test mode: Use environment variable for shared directory or create new one
+                const char* shared_dir_env = std::getenv("AGREEMENT_RESULT_DIR");
+                if (shared_dir_env != nullptr) {
+                    // Use shared directory from environment variable (for parallel execution)
+                    result_dir = shared_dir_env;
+                } else {
+                    // Create individual directory for this test
+                    result_dir = "experiments/parallel_agreement_results/Grid" +
+                        std::to_string(GridSize_M * GridSize_N) +
+                        "_Depth" + std::to_string(test_depth_for_exp) +
+                        "_Clusters" + std::to_string(cluster_num_for_exp) +
+                        "_TestID" + std::to_string(test_id_arg) +
+                        "_" + timestamp;
+                }
+            } else {
+                // All tests mode: Include repeat count in directory name
+                result_dir = "experiments/agreement_results/Grid" +
+                    std::to_string(GridSize_M * GridSize_N) +
+                    "_Depth" + std::to_string(test_depth_for_exp) +
+                    "_Clusters" + std::to_string(cluster_num_for_exp) +
+                    "_Repeat" + std::to_string(repeat_count) +
+                    "_" + timestamp;
+            }
 
             std::filesystem::create_directories(result_dir);
 
             std::cout << "\nResults will be saved to: " << result_dir << "\n" << std::endl;
 
+            // Single test mode: run only once, no repetitions
+            int effective_repeat_count = (test_id_arg >= 0) ? 1 : repeat_count;
+
             // 反復ループ
-            for (int repeat_idx = 0; repeat_idx < repeat_count; ++repeat_idx) {
-                std::cout << "\n\n===============================================\n";
-                std::cout << "===== REPETITION " << (repeat_idx + 1) << " / " << repeat_count << " =====\n";
-                std::cout << "===============================================\n\n";
+            for (int repeat_idx = 0; repeat_idx < effective_repeat_count; ++repeat_idx) {
+                if (test_id_arg >= 0) {
+                    std::cout << "\n\n===============================================\n";
+                    std::cout << "===== SINGLE TEST EXECUTION =====\n";
+                    std::cout << "===============================================\n\n";
+                } else {
+                    std::cout << "\n\n===============================================\n";
+                    std::cout << "===== REPETITION " << (repeat_idx + 1) << " / " << repeat_count << " =====\n";
+                    std::cout << "===============================================\n\n";
+                }
 
                 // 初期化
                 g_team = dc::Team::k0;
@@ -856,22 +895,42 @@ int main(int argc, char const* argv[])
                     sim_count  // クラスタメンバー分析用のシミュレーション回数
                 );
 
-                // 実験実行
-                experiment.runExperiment(num_test_patterns, test_depth_for_exp);
+                // 実験実行（単一テストモードまたは全テストモード）
+                if (test_id_arg >= 0) {
+                    // Single test mode
+                    experiment.runSingleTestById(test_id_arg, num_test_patterns, test_depth_for_exp);
+                } else {
+                    // All tests mode
+                    experiment.runExperiment(num_test_patterns, test_depth_for_exp);
+                }
 
-                // ファイル名を生成（反復インデックスを先頭に追加）
-                std::string csv_filename = result_dir + "/" +
-                    std::to_string(repeat_idx + 1) + "_" +
-                    experiment.generateFilename("clustered_vs_allgrid", ".csv", test_depth_for_exp);
-                std::string summary_filename = result_dir + "/" +
-                    std::to_string(repeat_idx + 1) + "_" +
-                    experiment.generateFilename("summary", ".md", test_depth_for_exp);
+                // ファイル名を生成
+                std::string csv_filename, summary_filename;
+                if (test_id_arg >= 0) {
+                    // Single test mode: use simple test ID based filename for parallel execution
+                    char test_id_str[10];
+                    snprintf(test_id_str, sizeof(test_id_str), "%03d", test_id_arg);  // Zero-padded (e.g., 001, 099)
+                    csv_filename = result_dir + "/test_" + std::string(test_id_str) + "_result.csv";
+                    summary_filename = result_dir + "/test_" + std::string(test_id_str) + "_summary.md";
+                } else {
+                    // All tests mode: use repetition index in filename
+                    csv_filename = result_dir + "/" +
+                        std::to_string(repeat_idx + 1) + "_" +
+                        experiment.generateFilename("clustered_vs_allgrid", ".csv", test_depth_for_exp);
+                    summary_filename = result_dir + "/" +
+                        std::to_string(repeat_idx + 1) + "_" +
+                        experiment.generateFilename("summary", ".md", test_depth_for_exp);
+                }
 
                 experiment.exportResultsToCSV(csv_filename);
                 experiment.exportSummaryToFile(summary_filename);
 
                 std::cout << "\n========================================\n";
-                std::cout << "Repetition " << (repeat_idx + 1) << " Complete!\n";
+                if (test_id_arg >= 0) {
+                    std::cout << "Test ID " << test_id_arg << " Complete!\n";
+                } else {
+                    std::cout << "Repetition " << (repeat_idx + 1) << " Complete!\n";
+                }
                 std::cout << "Results saved to:\n";
                 std::cout << "  CSV: " << csv_filename << "\n";
                 std::cout << "  Summary: " << summary_filename << "\n";
@@ -879,8 +938,13 @@ int main(int argc, char const* argv[])
             }
 
             std::cout << "\n\n===============================================\n";
-            std::cout << "===== ALL REPETITIONS COMPLETE =====\n";
-            std::cout << "Total repetitions: " << repeat_count << "\n";
+            if (test_id_arg >= 0) {
+                std::cout << "===== SINGLE TEST COMPLETE =====\n";
+                std::cout << "Test ID: " << test_id_arg << "\n";
+            } else {
+                std::cout << "===== ALL REPETITIONS COMPLETE =====\n";
+                std::cout << "Total repetitions: " << repeat_count << "\n";
+            }
             std::cout << "All results saved to: " << result_dir << "\n";
             std::cout << "===============================================\n";
 
@@ -898,14 +962,18 @@ int main(int argc, char const* argv[])
             std::cerr << "Usage: command <host> <port>" << std::endl;
             std::cerr << "       command --experiment                                                            (for efficiency experiment)" << std::endl;
             std::cerr << "       command --validate-clustering                                                   (for clustering validation)" << std::endl;
-            std::cerr << "       command --agreement-experiment [--cn N] [--d D] [--repeat R] [--sim S] [--test-num T] (for Clustered vs AllGrid comparison)" << std::endl;
+            std::cerr << "       command --agreement-experiment [OPTIONS]                                        (for Clustered vs AllGrid comparison)" << std::endl;
             std::cerr << "       command --simulation-reliability                                                (for simulation reliability measurement)" << std::endl;
-            std::cerr << "\nOptions:" << std::endl;
+            std::cerr << "\nOptions for --agreement-experiment:" << std::endl;
             std::cerr << "  --cn N         Specify number of clusters (default: 4)" << std::endl;
             std::cerr << "  --d D          Specify search depth for MCTS (default: 1)" << std::endl;
-            std::cerr << "  --repeat R     Specify number of times to repeat the experiment (default: 1)" << std::endl;
-            std::cerr << "  --sim S        Specify number of simulations per shot for cluster analysis (default: 10)" << std::endl;
             std::cerr << "  --test-num T   Specify number of test patterns per type (default: 5, total cases: T x 10 types)" << std::endl;
+            std::cerr << "  --test-id ID   Run only a single test case with the specified ID (0 to T*10-1)" << std::endl;
+            std::cerr << "                 If specified, --repeat is ignored. Use for parallel execution." << std::endl;
+            std::cerr << "  --repeat R     Specify number of times to repeat the experiment (default: 1, ignored if --test-id is set)" << std::endl;
+            std::cerr << "  --sim S        Specify number of simulations per shot for cluster analysis (default: 10)" << std::endl;
+            std::cerr << "\nParallel Execution Example:" << std::endl;
+            std::cerr << "  for i in {0..99}; do ./ylab_client.exe --agreement-experiment --test-id $i --test-num 10 & done" << std::endl;
             return 1;
         }
 
