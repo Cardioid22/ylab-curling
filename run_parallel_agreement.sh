@@ -131,17 +131,29 @@ cat "$CONFIG_FILE"
 echo "========================================"
 echo ""
 
-# Find executable
+# Find executable (check multiple possible locations)
 if [ -f "build/Release/ylab_client.exe" ]; then
     EXECUTABLE="build/Release/ylab_client.exe"
 elif [ -f "build/Release/ylab_client" ]; then
     EXECUTABLE="build/Release/ylab_client"
+elif [ -f "build/ylab_client.exe" ]; then
+    EXECUTABLE="build/ylab_client.exe"
+elif [ -f "build/ylab_client" ]; then
+    EXECUTABLE="build/ylab_client"
 elif [ -f "ylab_client.exe" ]; then
     EXECUTABLE="./ylab_client.exe"
 elif [ -f "ylab_client" ]; then
     EXECUTABLE="./ylab_client"
 else
     echo "Error: ylab_client executable not found!"
+    echo "Searched locations:"
+    echo "  - build/Release/ylab_client.exe"
+    echo "  - build/Release/ylab_client"
+    echo "  - build/ylab_client.exe"
+    echo "  - build/ylab_client"
+    echo "  - ./ylab_client.exe"
+    echo "  - ./ylab_client"
+    echo ""
     echo "Please build the project first."
     exit 1
 fi
