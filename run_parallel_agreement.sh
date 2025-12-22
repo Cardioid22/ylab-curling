@@ -160,15 +160,17 @@ run_test() {
 
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting test $test_id" >> "$log_file"
 
-    # Run the test (nohup is redundant if script itself is nohup'd, but doesn't hurt)
-    "$EXECUTABLE" --agreement-experiment \
+    # Run the test with nohup to ensure it continues even if parent is interrupted
+    nohup "$EXECUTABLE" --agreement-experiment \
         --test-id "$test_id" \
         --cn "$CLUSTER_NUM" \
         --d "$DEPTH" \
         --test-num "$TEST_NUM" \
         --sim "$SIM_COUNT" \
-        >> "$log_file" 2>&1
+        >> "$log_file" 2>&1 &
 
+    # Wait for the background process to complete
+    wait $!
     local exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
