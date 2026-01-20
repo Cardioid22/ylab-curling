@@ -554,19 +554,96 @@ void ClusteringV2::selectRepresentative(Cluster& cluster) {
         return;
     }
 
-    // 重心に最も近い状態を選ぶ
-    float min_dist = std::numeric_limits<float>::max();
+    // クラスタ内で最もスコアが高い状態を選ぶ
+    float max_score = -std::numeric_limits<float>::max();
     int best_id = cluster.state_ids[0];
 
     for (int id : cluster.state_ids) {
-        float dist = computeDistance(features_[id], cluster.centroid);
-        if (dist < min_dist) {
-            min_dist = dist;
+        float score = evaluateStateScore(id);
+        if (score > max_score) {
+            max_score = score;
             best_id = id;
         }
     }
 
     cluster.representative_id = best_id;
+
+    std::cout << "[ClusteringV2] Cluster representative selected: state " << best_id
+              << " (score: " << max_score << ")" << std::endl;
+}
+
+float ClusteringV2::evaluateStateScore(int state_id) const {
+    if (state_id < 0 || state_id >= static_cast<int>(states_.size())) {
+        return -std::numeric_limits<float>::max();
+    }
+
+    const auto& state = states_[state_id];
+    float score = 0.0f;
+
+    // チーム情報
+    dc::Team my_team = g_team_;
+    dc::Team opponent_team = dc::GetOpponentTeam(g_team_);
+
+    // ハウス内のストーン評価
+    int my_stones_in_house = 0;
+    int opponent_stones_in_house = 0;
+
+    // 中心に最も近いストーンの距離とチームを記録
+    float closest_distance = std::numeric_limits<float>::max();
+    int closest_team = -1;
+
+    // 各ストーンの評価
+    for (int team = 0; team < 2; ++team) {
+        for (int index = 0; index < 8; ++index) {
+            const auto& stone = state.stones[team][index];
+
+            if (!stone) continue;
+
+            float x = stone->position.x;
+            float y = stone->position.y;
+            float dist_to_center = std::sqrt(
+                std::pow(x - HouseCenterX_, 2) + std::pow(y - HouseCenterY_, 2)
+            );
+
+            // ハウス内判定 (HouseRadius内)
+            if (dist_to_center <= HouseRadius_) {
+                if (team == static_cast<int>(my_team)) {
+                    my_stones_in_house++;
+
+                    // ハウス内のストーンは距離に応じて加点
+                    // 中心に近いほど高得点（最大5点、最小1点）
+                    float position_score = std::max(1.0f, 5.0f - dist_to_center);
+                    score += position_score;
+                }
+                else {
+                    opponent_stones_in_house++;
+
+                    // 相手のストーンは減点
+                    float position_score = std::max(1.0f, 5.0f - dist_to_center);
+                    score -= position_score;
+                }
+            }
+
+            // 最も中心に近いストーンを記録
+            if (dist_to_center < closest_distance) {
+                closest_distance = dist_to_center;
+                closest_team = team;
+            }
+        }
+    }
+
+    // ハウス内のストーン数の差によるボーナス
+    int stone_difference = my_stones_in_house - opponent_stones_in_house;
+    score += stone_difference * 3.0f;
+
+    // No.1ストーン（最も中心に近いストーン）のボーナス
+    if (closest_team == static_cast<int>(my_team)) {
+        score += 10.0f;  // 自チームがNo.1なら大きなボーナス
+    } else if (closest_team == static_cast<int>(opponent_team)) {
+        score -= 10.0f;  // 相手チームがNo.1なら大きなペナルティ
+    }
+
+    return score;
 }
 
 float ClusteringV2::computeVariance(const Cluster& cluster) const {

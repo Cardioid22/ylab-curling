@@ -908,7 +908,7 @@ int main(int argc, char const* argv[])
                 std::string csv_filename, summary_filename;
                 if (test_id_arg >= 0) {
                     // Single test mode: use simple test ID based filename for parallel execution
-                    char test_id_str[10];
+                    char test_id_str[20];  // Increased buffer size to avoid truncation warning
                     snprintf(test_id_str, sizeof(test_id_str), "%03d", test_id_arg);  // Zero-padded (e.g., 001, 099)
                     csv_filename = result_dir + "/test_" + std::string(test_id_str) + "_result.csv";
                     summary_filename = result_dir + "/test_" + std::string(test_id_str) + "_summary.md";

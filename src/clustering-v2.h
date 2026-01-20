@@ -261,11 +261,21 @@ private:
     /**
      * @brief クラスタの代表状態を選出
      *
-     * 重心に最も近い実際の状態を選ぶ
+     * クラスタ内で最もスコアが高い状態を選ぶ
      *
      * @param cluster クラスタ
      */
     void selectRepresentative(Cluster& cluster);
+
+    /**
+     * @brief 状態のスコアを評価
+     *
+     * 自チームにとって有利な状態ほど高いスコアを返す
+     *
+     * @param state_id 状態のインデックス
+     * @return スコア (高いほど有利)
+     */
+    float evaluateStateScore(int state_id) const;
 
     /**
      * @brief クラスタの内部分散を計算
