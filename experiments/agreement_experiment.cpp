@@ -322,12 +322,13 @@ AgreementResult AgreementExperiment::runSingleTest(const TestState& test_state, 
                   << " | Exact: " << (agrees ? "YES" : "NO")
                   << " | Cluster: " << (cluster_agrees ? "YES" : "NO") << "\n";
 
-        // Analyze cluster members ONLY when:
-        // 1. Cluster agrees
-        // 2. Iterations match the target (1/10 of AllGrid)
-        // 3. Simulations per shot is enabled
-        if (cluster_agrees && iterations == target_iteration_for_analysis && simulations_per_shot_ > 0) {
-            std::cout << "      [Target iteration count reached: analyzing cluster members]\n";
+        // Analyze cluster members when:
+        // 1. Iterations match the target (1/10 of AllGrid)
+        // 2. Simulations per shot is enabled
+        // We analyze regardless of agreement to investigate failures
+        if (iterations == target_iteration_for_analysis && simulations_per_shot_ > 0) {
+            std::cout << "      [Target iteration count reached: analyzing cluster members (Agreement: " 
+                      << (cluster_agrees ? "YES" : "NO") << ")]\n";
             auto analysis_start = std::chrono::high_resolution_clock::now();
 
             ClusterMemberAnalysis member_analysis = analyzeClusterMembers(

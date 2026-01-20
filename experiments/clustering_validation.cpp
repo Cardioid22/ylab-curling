@@ -103,11 +103,27 @@ TestState ClusteringValidation::createPattern(StonePattern pattern, int variatio
         break;
 
     case StonePattern::HouseCorners:
-        // Stones placed at four corners of house
-        placeStone(state, team_, 0, -1.2f, HouseCenterY_ - 1.2f);
-        placeStone(state, team_, 1, 1.2f, HouseCenterY_ - 1.2f);
-        placeStone(state, dc::GetOpponentTeam(team_), 0, -1.2f, HouseCenterY_ + 1.2f);
-        placeStone(state, dc::GetOpponentTeam(team_), 1, 1.2f, HouseCenterY_ + 1.2f);
+        {
+            // Stones placed at four corners of house
+            // Rotate slightly based on variation (approx 5 degrees per variation)
+            float angle_rad = variation * 5.0f * 3.14159265f / 180.0f;
+            float cos_a = std::cos(angle_rad);
+            float sin_a = std::sin(angle_rad);
+
+            struct RelPos { float x, y; dc::Team t; int idx; };
+            std::vector<RelPos> stones = {
+                {-1.2f, -1.2f, team_, 0},
+                { 1.2f, -1.2f, team_, 1},
+                {-1.2f,  1.2f, dc::GetOpponentTeam(team_), 0},
+                { 1.2f,  1.2f, dc::GetOpponentTeam(team_), 1}
+            };
+
+            for (const auto& s : stones) {
+                float rx = s.x * cos_a - s.y * sin_a;
+                float ry = s.x * sin_a + s.y * cos_a;
+                placeStone(state, s.t, s.idx, rx, HouseCenterY_ + ry);
+            }
+        }
         break;
 
     case StonePattern::GuardAndDraw:
@@ -125,12 +141,30 @@ TestState ClusteringValidation::createPattern(StonePattern pattern, int variatio
         break;
 
     case StonePattern::Crowded:
-        // Densely packed stones (near house center)
-        placeStone(state, team_, 0, -0.2f, HouseCenterY_ - 0.3f);
-        placeStone(state, team_, 1, 0.2f, HouseCenterY_ + 0.2f);
-        placeStone(state, team_, 2, 0.0f, HouseCenterY_ + 0.5f);
-        placeStone(state, dc::GetOpponentTeam(team_), 0, -0.3f, HouseCenterY_ + 0.1f);
-        placeStone(state, dc::GetOpponentTeam(team_), 1, 0.3f, HouseCenterY_ - 0.2f);
+        {
+            // Densely packed stones (near house center)
+            // Rotate the entire cluster based on variation to prevent overlap
+            // 360 degrees / 10 variations = 36 degrees step
+            float angle_rad = variation * 36.0f * 3.14159265f / 180.0f;
+            float cos_a = std::cos(angle_rad);
+            float sin_a = std::sin(angle_rad);
+
+            // Base positions relative to house center
+            struct RelPos { float x, y; dc::Team t; int idx; };
+            std::vector<RelPos> stones = {
+                {-0.2f, -0.3f, team_, 0},
+                { 0.2f,  0.2f, team_, 1},
+                { 0.0f,  0.5f, team_, 2},
+                {-0.3f,  0.1f, dc::GetOpponentTeam(team_), 0},
+                { 0.3f, -0.2f, dc::GetOpponentTeam(team_), 1}
+            };
+
+            for (const auto& s : stones) {
+                float rx = s.x * cos_a - s.y * sin_a;
+                float ry = s.x * sin_a + s.y * cos_a;
+                placeStone(state, s.t, s.idx, rx, HouseCenterY_ + ry);
+            }
+        }
         break;
 
     case StonePattern::Scattered:
