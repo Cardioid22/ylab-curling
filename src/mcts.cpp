@@ -106,22 +106,35 @@ MCTS_Node* MCTS_Node::select_worst_child(double c) {
 MCTS_Node* MCTS_Node::select_most_visited_child() {
     MCTS_Node* best = nullptr;
     int max_visits = -1;
+    double best_winrate = -1.0;
 
     for (const auto& child : children) {
+        double winrate = child->visits > 0
+            ? static_cast<double>(child->wins) / child->visits
+            : 0.0;
+
         std::cout << "Child visits: " << child->visits
                   << ", wins: " << child->wins
-                  << ", winrate: " << (child->visits > 0 ? static_cast<double>(child->wins) / child->visits : 0.0)
+                  << ", winrate: " << winrate
                   << "\n";
 
+        // Primary: most visits
+        // Secondary (tiebreaker): highest winrate when visits are equal
         if (child->visits > max_visits) {
             max_visits = child->visits;
+            best_winrate = winrate;
+            best = child.get();
+        }
+        else if (child->visits == max_visits && winrate > best_winrate) {
+            // Same visits, but higher winrate -> use as tiebreaker
+            best_winrate = winrate;
             best = child.get();
         }
     }
 
     if (best) {
         std::cout << "[INFO] Selected most visited child with " << max_visits
-                  << " visits (winrate: " << (best->visits > 0 ? static_cast<double>(best->wins) / best->visits : 0.0)
+                  << " visits (winrate: " << best_winrate
                   << ")\n";
     }
 
