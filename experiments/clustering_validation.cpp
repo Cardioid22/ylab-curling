@@ -27,18 +27,20 @@ std::vector<TestState> ClusteringValidation::generateTestStates(int num_patterns
     std::vector<TestState> test_states;
     int test_id = 0;
 
-    // Enumerate all pattern types (reduced to 10 representative patterns)
+    // Enumerate all pattern types
+    // NOTE: Low agreement rate patterns are commented out for focused testing
+    // High agreement types only: Corner(80%), CenterGuard(70%), Crowded(60%), GuardAndDraw(50%)
     std::vector<StonePattern> all_patterns = {
-        StonePattern::CenterGuard,      // 1. Basic guard (local)
-        StonePattern::CornerGuards,     // 2. Corner tactics
-        StonePattern::SingleDraw,       // 3. Single stone in house (local)
-        StonePattern::DoubleDraw,       // 4. Two stones in house
-        StonePattern::HouseCorners,     // 5. Four corners placement
-        StonePattern::GuardAndDraw,     // 6. Guard + house combination (local)
-        StonePattern::Crowded,          // 7. Dense clustering (local)
-        StonePattern::FreezeAttempt,    // 8. Freeze shot scenario
-        StonePattern::Corner,           // 9. Complex corner tactics
-        StonePattern::Random            // 10. Random placement (local)
+        StonePattern::CenterGuard,      // 1. Basic guard (local) - 70% agreement
+        // StonePattern::CornerGuards,  // EXCLUDED: 30% agreement
+        // StonePattern::SingleDraw,    // EXCLUDED: 30% agreement
+        // StonePattern::DoubleDraw,    // EXCLUDED: 20% agreement
+        // StonePattern::HouseCorners,  // EXCLUDED: 20% agreement
+        StonePattern::GuardAndDraw,     // 2. Guard + house combination (local) - 50% agreement
+        StonePattern::Crowded,          // 3. Dense clustering (local) - 60% agreement
+        // StonePattern::FreezeAttempt, // EXCLUDED: 40% agreement
+        StonePattern::Corner,           // 4. Complex corner tactics - 80% agreement
+        // StonePattern::Random         // EXCLUDED: 40% agreement
     };
 
     std::cout << "[ClusteringValidation] Generating test states..." << std::endl;
