@@ -27,20 +27,18 @@ std::vector<TestState> ClusteringValidation::generateTestStates(int num_patterns
     std::vector<TestState> test_states;
     int test_id = 0;
 
-    // Enumerate all pattern types
-    // NOTE: Low agreement rate patterns are commented out for focused testing
-    // High agreement types only: Corner(80%), CenterGuard(70%), Crowded(60%), GuardAndDraw(50%)
+    // Enumerate all 10 pattern types for full experiment
     std::vector<StonePattern> all_patterns = {
-        StonePattern::CenterGuard,      // 1. Basic guard (local) - 70% agreement
-        // StonePattern::CornerGuards,  // EXCLUDED: 30% agreement
-        // StonePattern::SingleDraw,    // EXCLUDED: 30% agreement
-        // StonePattern::DoubleDraw,    // EXCLUDED: 20% agreement
-        // StonePattern::HouseCorners,  // EXCLUDED: 20% agreement
-        StonePattern::GuardAndDraw,     // 2. Guard + house combination (local) - 50% agreement
-        StonePattern::Crowded,          // 3. Dense clustering (local) - 60% agreement
-        // StonePattern::FreezeAttempt, // EXCLUDED: 40% agreement
-        StonePattern::Corner,           // 4. Complex corner tactics - 80% agreement
-        // StonePattern::Random         // EXCLUDED: 40% agreement
+        StonePattern::CenterGuard,      // ID 0-9
+        StonePattern::CornerGuards,     // ID 10-19
+        StonePattern::SingleDraw,       // ID 20-29
+        StonePattern::DoubleDraw,       // ID 30-39
+        StonePattern::HouseCorners,     // ID 40-49
+        StonePattern::GuardAndDraw,     // ID 50-59
+        StonePattern::Crowded,          // ID 60-69
+        StonePattern::FreezeAttempt,    // ID 70-79
+        StonePattern::Corner,           // ID 80-89
+        StonePattern::Random            // ID 90-99
     };
 
     std::cout << "[ClusteringValidation] Generating test states..." << std::endl;
