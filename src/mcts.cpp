@@ -143,7 +143,7 @@ MCTS_Node* MCTS_Node::select_most_visited_child() {
 
 void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) {
     static std::random_device rd;
-    static std::mt19937 gen(10);
+    static std::mt19937 gen(rd());
     std::uniform_real_distribution<float> vx_dist(-0.24f, 0.24f);
     std::uniform_real_distribution<float> vy_dist(2.38f, 2.48f);
     NodeSource shot_source;

@@ -69,7 +69,8 @@ double SimulatorWrapper::run_simulations(dc::GameState const& state, const ShotI
     }
 
     dc::GameState sim_state = state;  // Copy state
-    std::mt19937 gen(2);  // Fixed random seed = 2
+    std::random_device rd;
+    std::mt19937 gen(rd());
     std::uniform_int_distribution<int> grid_dist(0, initialShotData.size() - 1);
     int shot_counter = 0;
 
@@ -355,8 +356,9 @@ double SimulatorWrapper::run_multiple_simulations_with_random_policy(
         num_simulations = 1;
     }
 
-    // Fixed random seed for reproducibility
-    std::mt19937 gen(2);  // Random seed = 2 as requested
+    // Random seed from device
+    std::random_device rd;
+    std::mt19937 gen(rd());
     std::uniform_int_distribution<int> grid_dist(0, initialShotData.size() - 1);
 
     double total_score = 0.0;
