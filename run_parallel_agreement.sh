@@ -15,9 +15,12 @@
 #   --parallel P    Number of parallel jobs (default: 10)
 #   --start-id S    Starting test ID (default: 0)
 #   --end-id E      Ending test ID (default: auto-calculated from test-num)
+#   --sim S         Number of simulations per shot (default: 10)
+#   --repeat R      Number of times to repeat each test (default: 1)
 #
 # Example:
 #   ./run_parallel_agreement.sh --cn 4 --d 1 --test-num 10 --parallel 10
+#   ./run_parallel_agreement.sh --cn 4 --d 3 --start-id 0 --end-id 49 --repeat 3
 ################################################################################
 
 set -e  # Exit on error
@@ -30,6 +33,7 @@ PARALLEL_JOBS=10
 START_ID=0
 END_ID=-1  # Will be calculated
 SIM_COUNT=10
+REPEAT_COUNT=1
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -62,9 +66,13 @@ while [[ $# -gt 0 ]]; do
             SIM_COUNT="$2"
             shift 2
             ;;
+        --repeat)
+            REPEAT_COUNT="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--cn N] [--d D] [--test-num T] [--parallel P] [--start-id S] [--end-id E] [--sim S]"
+            echo "Usage: $0 [--cn N] [--d D] [--test-num T] [--parallel P] [--start-id S] [--end-id E] [--sim S] [--repeat R]"
             exit 1
             ;;
     esac
@@ -120,6 +128,7 @@ Parallel Jobs: $PARALLEL_JOBS
 Start Test ID: $START_ID
 End Test ID: $END_ID
 Simulations per Shot: $SIM_COUNT
+Repeat Count: $REPEAT_COUNT
 Grid Size: $GRID_SIZE
 Result Directory: $RESULT_DIR
 EOF
@@ -179,6 +188,7 @@ run_test() {
         --d "$DEPTH" \
         --test-num "$TEST_NUM" \
         --sim "$SIM_COUNT" \
+        --repeat "$REPEAT_COUNT" \
         >> "$log_file" 2>&1 &
 
     # Wait for the background process to complete
@@ -196,7 +206,7 @@ run_test() {
 
 # Export function for parallel execution
 export -f run_test
-export EXECUTABLE CLUSTER_NUM DEPTH TEST_NUM SIM_COUNT LOG_DIR
+export EXECUTABLE CLUSTER_NUM DEPTH TEST_NUM SIM_COUNT REPEAT_COUNT LOG_DIR
 
 echo "Starting parallel execution..."
 echo "Progress will be logged to: $RESULT_DIR/run_progress.log"
