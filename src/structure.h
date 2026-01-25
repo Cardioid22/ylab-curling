@@ -27,7 +27,8 @@ using LinkageMatrix = std::vector<LinkageRow>;
 enum class NodeSource {
     Clustered,
     Random,
-    AllGrid
+    AllGrid,
+    Specified  // For Zoom-In: use specified shot candidates
 };
 
 #endif

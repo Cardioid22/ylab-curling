@@ -81,7 +81,8 @@ public:
         int gridM,
         int gridN,
         int cluster_num = 4,
-        int num_rollout_sims = 10
+        int num_rollout_sims = 10,
+        std::optional<std::vector<ShotInfo>> shot_candidates = std::nullopt
     );
 
 	void grow_tree(int max_iter, double max_limited_time);  // main loop

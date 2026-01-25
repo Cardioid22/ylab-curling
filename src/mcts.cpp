@@ -353,7 +353,8 @@ MCTS::MCTS(dc::GameState const& root_state,
     int gridM,
     int gridN,
     int cluster_num,
-    int num_rollout_sims)
+    int num_rollout_sims,
+    std::optional<std::vector<ShotInfo>> shot_candidates)
 : state_to_shot_table_(std::move(state_to_shot_table)),
   simulator_(std::move(simWrapper)),
   cluster_num_(cluster_num),
@@ -362,7 +363,8 @@ MCTS::MCTS(dc::GameState const& root_state,
     all_states_.resize(states.size());
     std::copy(states.begin(), states.end(), all_states_.begin());
     std::shared_ptr<SimulatorWrapper> shared_sim = simulator_;
-    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim, gridM, gridN, cluster_num_, num_rollout_sims);
+    // Pass shot_candidates to root node
+    root_ = std::make_unique<MCTS_Node>(nullptr, root_state, node_source, shared_sim, gridM, gridN, cluster_num_, num_rollout_sims, shot_candidates);
     root_->set_parent_mcts(this);
 }
 void MCTS::grow_tree(int max_iter, double max_limited_time) {
