@@ -54,6 +54,8 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     src/simulator.cpp
     src/analysis.cpp
     src/analysis.h
+    src/shot_generator.h
+    src/shot_generator.cpp
     # 実験用ファイル
     experiments/simple_experiment.h
     experiments/simple_experiment.cpp
@@ -63,6 +65,12 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     experiments/agreement_experiment.cpp
     experiments/simulation_reliability.h
     experiments/simulation_reliability.cpp
+    experiments/timing_benchmark.h
+    experiments/timing_benchmark.cpp
+    experiments/pool_experiment.h
+    experiments/pool_experiment.cpp
+    experiments/pool_clustering_experiment.h
+    experiments/pool_clustering_experiment.cpp
     # example.cpp
 
 )
@@ -77,3 +85,9 @@ target_link_libraries(ylab_client  # add_executable() で実行ファイル名�
     Boost::regex
     Threads::Threads
 )
+
+# 大会用クライアント（tournament_client/）: MCTS + ClusteringV2
+add_subdirectory(tournament_client)
+
+# 大会用クライアント2（tournament_client2/）: CEM (Cross-Entropy Method)
+add_subdirectory(tournament_client2)

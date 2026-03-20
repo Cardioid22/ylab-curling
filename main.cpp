@@ -19,6 +19,9 @@
 #include "experiments/clustering_validation.h"
 #include "experiments/agreement_experiment.h"
 #include "experiments/simulation_reliability.h"
+#include "experiments/timing_benchmark.h"
+#include "experiments/pool_experiment.h"
+#include "experiments/pool_clustering_experiment.h"
 #define DBL_EPSILON 2.2204460492503131e-016
 
 namespace dc = digitalcurling3;
@@ -655,6 +658,9 @@ int main(int argc, char const* argv[])
         bool validate_clustering_mode = false;
         bool agreement_experiment_mode = false;
         bool simulation_reliability_mode = false;
+        bool timing_benchmark_mode = false;
+        bool pool_experiment_mode = false;
+        bool pool_clustering_mode = false;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -676,6 +682,15 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--simulation-reliability") {
                 simulation_reliability_mode = true;
+            }
+            if (std::string(argv[i]) == "--timing-benchmark") {
+                timing_benchmark_mode = true;
+            }
+            if (std::string(argv[i]) == "--pool-experiment") {
+                pool_experiment_mode = true;
+            }
+            if (std::string(argv[i]) == "--pool-clustering") {
+                pool_clustering_mode = true;
             }
             if (std::string(argv[i]) == "--cn" && i + 1 < argc) {
                 cluster_num_arg = std::atoi(argv[i + 1]);
@@ -971,6 +986,76 @@ int main(int argc, char const* argv[])
             return 0;
         }
 
+        // Timing Benchmark モード
+        if (timing_benchmark_mode) {
+            std::cout << "Running Timing Benchmark mode..." << std::endl;
+
+            // 初期化（大会と同じ10エンド設定）
+            g_team = dc::Team::k0;
+            g_game_setting.max_end = 10;
+            g_game_setting.five_rock_rule = true;
+            g_game_setting.thinking_time[0] = std::chrono::seconds(219);
+            g_game_setting.thinking_time[1] = std::chrono::seconds(219);
+
+            g_simulator = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
+            g_simulator_storage = g_simulator->CreateStorage();
+            for (size_t i = 0; i < g_players.size(); ++i) {
+                g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+            }
+
+            simWrapper = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
+
+            int S = GridSize_M * GridSize_N;
+            grid.resize(S);
+            shotData.resize(S);
+            grid = MakeGrid(GridSize_M, GridSize_N);
+            for (int i = 0; i < S; ++i) {
+                ShotInfo shotinfo = FindShot(grid[i]);
+                shotData[i] = shotinfo;
+                simWrapper->initialShotData.push_back(shotinfo);
+                state_to_shot_table[i] = shotinfo;
+            }
+
+            TimingBenchmark benchmark(
+                g_team, g_game_setting, simWrapper,
+                GridSize_M, GridSize_N, shotData, state_to_shot_table
+            );
+
+            auto result = benchmark.runBenchmark(20);
+
+            std::string output_dir = "experiments/timing_benchmark_results";
+            benchmark.exportResults(result, output_dir);
+
+            std::cout << "\nResults saved to: " << output_dir << std::endl;
+            return 0;
+        }
+
+        // Pool Experiment モード
+        if (pool_experiment_mode) {
+            std::cout << "Running Pool Experiment mode..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 10;
+            game_setting.sheet_width = 4.75f;
+
+            PoolExperiment pool_exp(game_setting);
+            pool_exp.runPoolGeneration();
+            return 0;
+        }
+
+        // Pool Clustering モード
+        if (pool_clustering_mode) {
+            std::cout << "Running Pool Clustering mode..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 10;
+            game_setting.sheet_width = 4.75f;
+
+            PoolClusteringExperiment pce(game_setting);
+            pce.run();
+            return 0;
+        }
+
         // Simulation Reliability モード
         if (simulation_reliability_mode) {
             std::cout << "Running Simulation Reliability mode..." << std::endl;
@@ -984,6 +1069,8 @@ int main(int argc, char const* argv[])
             std::cerr << "       command --validate-clustering                                                   (for clustering validation)" << std::endl;
             std::cerr << "       command --agreement-experiment [OPTIONS]                                        (for Clustered vs AllGrid comparison)" << std::endl;
             std::cerr << "       command --simulation-reliability                                                (for simulation reliability measurement)" << std::endl;
+            std::cerr << "       command --pool-experiment                                                       (for extended candidate pool experiment)" << std::endl;
+            std::cerr << "       command --pool-clustering                                                       (for pool clustering analysis)" << std::endl;
             std::cerr << "\nOptions for --agreement-experiment:" << std::endl;
             std::cerr << "  --cn N         Specify number of clusters (default: 4)" << std::endl;
             std::cerr << "  --d D          Specify search depth for MCTS (default: 1)" << std::endl;
