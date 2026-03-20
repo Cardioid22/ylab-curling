@@ -61,10 +61,23 @@ private:
     // テスト盤面を生成
     std::vector<dc::GameState> createTestStates();
 
-    // 距離計算（Clusteringクラスと同じロジック）
+    // 距離計算
     bool isInHouse(const std::optional<dc::Transform>& stone) const;
+    int getZone(const std::optional<dc::Transform>& stone) const;  // 0:ハウス内, 1:ガード, 2:遠方
+
+    // 旧距離関数（絶対位置比較）
     float dist(const dc::GameState& a, const dc::GameState& b) const;
     std::vector<std::vector<float>> makeDistanceTable(const std::vector<dc::GameState>& states);
+
+    // 盤面スコア評価（カーリングの得点ルール準拠）
+    float evaluateBoard(const dc::GameState& state) const;
+
+    // デルタ距離関数v2（入力盤面からの変化量 + スコア + インタラクション + 近接度）
+    float distDelta(const dc::GameState& input, const dc::GameState& a, const dc::GameState& b) const;
+    std::vector<std::vector<float>> makeDistanceTableDelta(
+        const dc::GameState& input_state,
+        const std::vector<dc::GameState>& result_states
+    );
 
     // 階層的クラスタリング
     std::vector<std::set<int>> runClustering(

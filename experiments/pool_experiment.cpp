@@ -59,7 +59,7 @@ std::vector<dc::GameState> PoolExperiment::createTestStates() {
     // テスト盤面3: 相手石2個 + 自分石1個 (典型的な中盤)
     {
         dc::GameState s(game_setting_);
-        s.shot = 5;
+        s.shot = 4;  // team0の手番 (偶数 = team0)
         // 自分(team0)の石1個
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY + 0.3f), 0.f));
         // 相手(team1)の石2個
