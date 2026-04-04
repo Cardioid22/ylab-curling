@@ -19,6 +19,10 @@ public:
     std::array<std::unique_ptr<dc::IPlayer>, 4> g_players;
     std::vector<ShotInfo> initialShotData;
 
+    // Limit rollout depth: -1 = full game, N = max N shots per rollout sim.
+    // Set to a small value (e.g. 16) for fast tournament play.
+    int max_rollout_shots = -1;
+
     dc::GameState run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot);
     double run_simulations(dc::GameState const& game_state, const ShotInfo& shot);  // return win/loss (deprecated - use rollout methods)
     dc::GameState run_full_simulations(dc::GameState const& state, const ShotInfo& shot);

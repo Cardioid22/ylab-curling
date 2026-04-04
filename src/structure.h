@@ -26,6 +26,7 @@ using LinkageMatrix = std::vector<LinkageRow>;
 
 enum class NodeSource {
     Clustered,
+    DeltaClustered,
     Random,
     AllGrid
 };

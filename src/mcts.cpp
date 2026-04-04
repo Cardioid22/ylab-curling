@@ -3,10 +3,194 @@
 #include <memory>
 #include <random>
 #include <chrono>
+#include <set>
+#include <cmath>
+#include <algorithm>
 #include "mcts.h"
 #include "digitalcurling3/digitalcurling3.hpp"
 #define DBL_EPSILON 2.2204460492503131e-016
 namespace dc = digitalcurling3;
+
+// ========== デルタ距離関数 (Delta Distance Function) ==========
+// pool_clustering_experiment.cpp の distDelta v2 と同等
+
+static constexpr float kHouseCenterX_dc = 0.0f;
+static constexpr float kHouseCenterY_dc = 38.405f;
+static constexpr float kHouseRadius_dc = 1.829f;
+
+static int getZoneDC(const std::optional<dc::Transform>& stone) {
+    if (!stone) return -1;
+    float x = stone->position.x;
+    float y = stone->position.y;
+    float d = std::sqrt(x * x + (y - kHouseCenterY_dc) * (y - kHouseCenterY_dc));
+    if (d <= kHouseRadius_dc) return 0;
+    if (y < kHouseCenterY_dc - kHouseRadius_dc && y > kHouseCenterY_dc - 3.0f * kHouseRadius_dc) return 1;
+    return 2;
+}
+
+static float evaluateBoardDC(const dc::GameState& state) {
+    struct SI { float dist; int team; };
+    std::vector<SI> in_house;
+    for (int t = 0; t < 2; t++) {
+        for (int i = 0; i < 8; i++) {
+            if (!state.stones[t][i]) continue;
+            float dx = state.stones[t][i]->position.x;
+            float dy = state.stones[t][i]->position.y - kHouseCenterY_dc;
+            float d = std::sqrt(dx * dx + dy * dy);
+            if (d <= kHouseRadius_dc + 0.145f) {
+                in_house.push_back({d, t});
+            }
+        }
+    }
+    if (in_house.empty()) return 0.0f;
+    std::sort(in_house.begin(), in_house.end(), [](auto& a, auto& b) { return a.dist < b.dist; });
+    int scoring_team = in_house[0].team;
+    int score = 0;
+    for (auto& s : in_house) {
+        if (s.team == scoring_team) score++;
+        else break;
+    }
+    return scoring_team == 0 ? static_cast<float>(score) : -static_cast<float>(score);
+}
+
+static float distDeltaDC(const dc::GameState& input, const dc::GameState& a, const dc::GameState& b) {
+    constexpr float MOVE_THRESHOLD = 0.01f;
+    constexpr float PENALTY_EXISTENCE = 30.0f;
+    constexpr float PENALTY_ZONE = 12.0f;
+    constexpr float NEW_STONE_WEIGHT = 4.0f;
+    constexpr float MOVED_STONE_WEIGHT = 2.0f;
+    constexpr float PENALTY_INTERACTION = 15.0f;
+    constexpr float INTERACTION_THRESHOLD = 0.03f;
+    constexpr float SCORE_WEIGHT = 8.0f;
+    constexpr float PROXIMITY_WEIGHT = 5.0f;
+
+    float distance = 0.0f;
+    float max_disp_a = 0.0f, max_disp_b = 0.0f;
+    int new_team = -1, new_idx = -1;
+
+    for (int team = 0; team < 2; team++) {
+        for (int idx = 0; idx < 8; idx++) {
+            bool in_inp = input.stones[team][idx].has_value();
+            bool in_a = a.stones[team][idx].has_value();
+            bool in_b = b.stones[team][idx].has_value();
+
+            if (in_inp) {
+                if (in_a && in_b) {
+                    float dxa = a.stones[team][idx]->position.x - input.stones[team][idx]->position.x;
+                    float dya = a.stones[team][idx]->position.y - input.stones[team][idx]->position.y;
+                    float dxb = b.stones[team][idx]->position.x - input.stones[team][idx]->position.x;
+                    float dyb = b.stones[team][idx]->position.y - input.stones[team][idx]->position.y;
+                    float ma = std::sqrt(dxa*dxa + dya*dya);
+                    float mb = std::sqrt(dxb*dxb + dyb*dyb);
+                    max_disp_a = std::max(max_disp_a, ma);
+                    max_disp_b = std::max(max_disp_b, mb);
+                    if (ma < MOVE_THRESHOLD && mb < MOVE_THRESHOLD) continue;
+                    float ddx = dxa - dxb, ddy = dya - dyb;
+                    distance += MOVED_STONE_WEIGHT * std::sqrt(ddx*ddx + ddy*ddy);
+                    if (getZoneDC(a.stones[team][idx]) != getZoneDC(b.stones[team][idx]))
+                        distance += PENALTY_ZONE;
+                } else if (in_a != in_b) {
+                    distance += PENALTY_EXISTENCE;
+                }
+            } else {
+                if (in_a && in_b) {
+                    new_team = team; new_idx = idx;
+                    float dx = a.stones[team][idx]->position.x - b.stones[team][idx]->position.x;
+                    float dy = a.stones[team][idx]->position.y - b.stones[team][idx]->position.y;
+                    distance += NEW_STONE_WEIGHT * std::sqrt(dx*dx + dy*dy);
+                    if (getZoneDC(a.stones[team][idx]) != getZoneDC(b.stones[team][idx]))
+                        distance += PENALTY_ZONE;
+                } else if (in_a != in_b) {
+                    distance += PENALTY_EXISTENCE;
+                }
+            }
+        }
+    }
+
+    if ((max_disp_a > INTERACTION_THRESHOLD) != (max_disp_b > INTERACTION_THRESHOLD))
+        distance += PENALTY_INTERACTION;
+
+    if (new_team >= 0) {
+        auto minProx = [&](const dc::GameState& st) -> float {
+            float mn = 1e9f;
+            float nx = st.stones[new_team][new_idx]->position.x;
+            float ny = st.stones[new_team][new_idx]->position.y;
+            for (int t = 0; t < 2; t++)
+                for (int i = 0; i < 8; i++) {
+                    if (t == new_team && i == new_idx) continue;
+                    if (!st.stones[t][i]) continue;
+                    float dx = nx - st.stones[t][i]->position.x;
+                    float dy = ny - st.stones[t][i]->position.y;
+                    mn = std::min(mn, std::sqrt(dx*dx + dy*dy));
+                }
+            return mn;
+        };
+        float pa = minProx(a), pb = minProx(b);
+        if (pa < 100.0f || pb < 100.0f)
+            distance += PROXIMITY_WEIGHT * std::abs(pa - pb);
+    }
+
+    distance += SCORE_WEIGHT * std::abs(evaluateBoardDC(a) - evaluateBoardDC(b));
+
+    float ca = 1e9f, cb = 1e9f;
+    int ta = -1, tb = -1;
+    for (int t = 0; t < 2; t++)
+        for (int i = 0; i < 8; i++) {
+            if (a.stones[t][i]) { float d = std::sqrt(std::pow(a.stones[t][i]->position.x,2)+std::pow(a.stones[t][i]->position.y-kHouseCenterY_dc,2)); if(d<ca){ca=d;ta=t;} }
+            if (b.stones[t][i]) { float d = std::sqrt(std::pow(b.stones[t][i]->position.x,2)+std::pow(b.stones[t][i]->position.y-kHouseCenterY_dc,2)); if(d<cb){cb=d;tb=t;} }
+        }
+    if (ta >= 0 && tb >= 0 && ta != tb) distance += 10.0f;
+
+    return distance;
+}
+
+static std::vector<std::set<int>> hierarchicalClusteringDC(
+    const std::vector<std::vector<float>>& dist_table, int n_clusters
+) {
+    int n = static_cast<int>(dist_table.size());
+    std::vector<std::set<int>> clusters(n);
+    for (int i = 0; i < n; i++) clusters[i].insert(i);
+
+    while (static_cast<int>(clusters.size()) > n_clusters) {
+        float min_dist = std::numeric_limits<float>::max();
+        int best_i = -1, best_j = -1;
+        for (int i = 0; i < static_cast<int>(clusters.size()); i++) {
+            for (int j = i + 1; j < static_cast<int>(clusters.size()); j++) {
+                float total = 0.0f; int count = 0;
+                for (int a : clusters[i])
+                    for (int b : clusters[j]) { total += dist_table[a][b]; count++; }
+                float avg = total / count;
+                if (avg < min_dist) { min_dist = avg; best_i = i; best_j = j; }
+            }
+        }
+        if (best_i == -1) break;
+        clusters[best_i].insert(clusters[best_j].begin(), clusters[best_j].end());
+        clusters.erase(clusters.begin() + best_j);
+    }
+    return clusters;
+}
+
+static std::vector<int> calculateMedoidsDC(
+    const std::vector<std::vector<float>>& dist_table,
+    const std::vector<std::set<int>>& clusters
+) {
+    std::vector<int> medoids;
+    for (auto& cluster : clusters) {
+        if (cluster.empty()) { medoids.push_back(-1); continue; }
+        if (cluster.size() == 1) { medoids.push_back(*cluster.begin()); continue; }
+        float min_total = std::numeric_limits<float>::max();
+        int best = -1;
+        for (int c : cluster) {
+            float total = 0.0f;
+            for (int o : cluster) if (c != o) total += dist_table[c][o];
+            if (total < min_total) { min_total = total; best = c; }
+        }
+        medoids.push_back(best);
+    }
+    return medoids;
+}
+
+// ==========================================================
 
 MCTS_Node::MCTS_Node(
     MCTS_Node* parent,
@@ -160,6 +344,11 @@ void MCTS_Node::expand(std::vector<dc::GameState> all_states, std::unordered_map
                     generate_possible_shots_after(all_states, state_to_shot_table)
                 );
             }
+            else if (source == NodeSource::DeltaClustered) {
+                untried_shots = std::make_unique<std::vector<ShotInfo>>(
+                    generate_delta_clustered_shots(all_states, state_to_shot_table)
+                );
+            }
             else if(source == NodeSource::Random){
                 untried_shots = std::make_unique<std::vector<ShotInfo>>();
                 for (int i = 0; i < max_degree; i++) {
@@ -276,6 +465,9 @@ void MCTS_Node::rollout() {
     if (source == NodeSource::Clustered) {
         std::cout << "[Clustered] rollout avg score: " << game_score << "\n";
     }
+    else if (source == NodeSource::DeltaClustered) {
+        std::cout << "[DeltaClustered] rollout avg score: " << game_score << "\n";
+    }
     else if(source == NodeSource::Random){
         std::cout << "[Random] rollout avg score: " << game_score << "\n";
     }
@@ -323,6 +515,57 @@ std::vector<ShotInfo> MCTS_Node::generate_possible_shots_after(
     }
     return candidates;
 }
+// Delta Clustered shot generation using hierarchical clustering on delta distances
+std::vector<ShotInfo> MCTS_Node::generate_delta_clustered_shots(
+    const std::vector<dc::GameState>& all_states,
+    const std::unordered_map<int, ShotInfo>& state_to_shot_table) const
+{
+    auto clustering_start = std::chrono::high_resolution_clock::now();
+
+    int n = static_cast<int>(all_states.size());
+    if (n == 0) return {};
+
+    // Build delta distance table using current state as input (pre-simulation state)
+    std::vector<std::vector<float>> dist_table(n, std::vector<float>(n, 0.0f));
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            float d = distDeltaDC(state, all_states[i], all_states[j]);
+            dist_table[i][j] = d;
+            dist_table[j][i] = d;
+        }
+    }
+
+    // Hierarchical clustering (average linkage)
+    auto clusters = hierarchicalClusteringDC(dist_table, cluster_num_);
+
+    // Calculate medoids
+    auto medoids = calculateMedoidsDC(dist_table, clusters);
+
+    // Track clustering timing
+    auto clustering_end = std::chrono::high_resolution_clock::now();
+    double clustering_time = std::chrono::duration<double>(clustering_end - clustering_start).count();
+    if (parent_mcts_ != nullptr) {
+        parent_mcts_->total_clustering_time_ += clustering_time;
+        parent_mcts_->total_clustering_count_ += 1;
+    }
+
+    // Map medoid indices to ShotInfo
+    std::vector<ShotInfo> candidates;
+    for (int medoid_idx : medoids) {
+        if (medoid_idx < 0) continue;
+        auto it = state_to_shot_table.find(medoid_idx);
+        if (it != state_to_shot_table.end() && static_cast<int>(candidates.size()) < max_degree) {
+            candidates.push_back(it->second);
+        }
+    }
+
+    std::cout << "[DeltaClustered] Generated " << candidates.size()
+              << " candidates from " << n << " states ("
+              << clustering_time << "s)\n";
+
+    return candidates;
+}
+
  //get next state through shotinfo
 dc::GameState MCTS_Node::getNextState(ShotInfo shotinfo) const {
     dc::GameState next_state = simulator->run_single_simulation(state, shotinfo);
@@ -437,9 +680,9 @@ void MCTS::report_rollout_result() const {
 
     std::cout << "=== MCTS Rollout Result Summary ===\n";
 
-    int clustered_count = 0, random_count = 0, allgrid_count = 0;
-    float max_clustered_score = -1e9, max_random_score = -1e9, max_allgrid_score = -1e9;
-    float total_clustered_score = 0.0, total_random_score = 0.0, total_allgrid_score = 0.0;
+    int clustered_count = 0, delta_clustered_count = 0, random_count = 0, allgrid_count = 0;
+    float max_clustered_score = -1e9, max_delta_clustered_score = -1e9, max_random_score = -1e9, max_allgrid_score = -1e9;
+    float total_clustered_score = 0.0, total_delta_clustered_score = 0.0, total_random_score = 0.0, total_allgrid_score = 0.0;
 
     for (const auto& child : root_->children) {
         std::string label;
@@ -448,6 +691,12 @@ void MCTS::report_rollout_result() const {
             clustered_count++;
             total_clustered_score += child->score;
             max_clustered_score = std::max(max_clustered_score, child->score);
+        }
+        else if (child->source == NodeSource::DeltaClustered) {
+            label = "DeltaClustered";
+            delta_clustered_count++;
+            total_delta_clustered_score += child->score;
+            max_delta_clustered_score = std::max(max_delta_clustered_score, child->score);
         }
         else if (child->source == NodeSource::Random) {
             label = "Random";
@@ -478,6 +727,10 @@ void MCTS::report_rollout_result() const {
     if (clustered_count > 0) {
         std::cout << "Clustered Avg Score: " << (total_clustered_score / clustered_count)
             << ", Max Score: " << max_clustered_score << "\n";
+    }
+    if (delta_clustered_count > 0) {
+        std::cout << "DeltaClustered Avg Score: " << (total_delta_clustered_score / delta_clustered_count)
+            << ", Max Score: " << max_delta_clustered_score << "\n";
     }
     if (random_count > 0) {
         std::cout << "Random Avg Score: " << (total_random_score / random_count)
@@ -510,8 +763,11 @@ void MCTS::export_rollout_result_to_csv(const std::string& filename, int shot_nu
     std::cout << root_->children.size() << "\n";
     for (const auto& child : root_->children) {
         std::string label;
-        if (child->source == NodeSource::Clustered) { 
+        if (child->source == NodeSource::Clustered) {
             label = "Clustered";
+        }
+        else if (child->source == NodeSource::DeltaClustered) {
+            label = "DeltaClustered";
         }
         else if (child->source == NodeSource::Random) {
             label = "Random";

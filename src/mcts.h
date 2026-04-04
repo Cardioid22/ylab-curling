@@ -66,6 +66,7 @@ private:
     class MCTS* parent_mcts_ = nullptr;  // Pointer to parent MCTS for timing tracking
 
 	std::vector<ShotInfo> generate_possible_shots_after(std::vector<dc::GameState> all_states, std::unordered_map<int, ShotInfo> state_to_shot_table) const;
+	std::vector<ShotInfo> generate_delta_clustered_shots(const std::vector<dc::GameState>& all_states, const std::unordered_map<int, ShotInfo>& state_to_shot_table) const;
 	dc::GameState getNextState(ShotInfo shotinfo) const;
 };
 

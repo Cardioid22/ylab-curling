@@ -367,8 +367,9 @@ double SimulatorWrapper::run_multiple_simulations_with_random_policy(
         dc::GameState sim_state = state;  // Copy state for each simulation
         int shot_counter = 0;
 
-        // Simulate until game is over
-        while (!sim_state.IsGameOver() && sim_state.shot < 16) {
+        // Simulate until game is over (or rollout depth limit reached)
+        while (!sim_state.IsGameOver() &&
+               (max_rollout_shots < 0 || shot_counter < max_rollout_shots)) {
             ShotInfo current_shot;
 
             if (shot_counter == 0) {
