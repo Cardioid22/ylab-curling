@@ -7,6 +7,7 @@
 #include <cmath>
 #include <iomanip>
 #include <algorithm>
+#include <numeric>
 #include <map>
 
 namespace dc = digitalcurling3;
@@ -59,12 +60,14 @@ PoolClusteringExperiment::PoolClusteringExperiment(dc::GameSetting const& game_s
 
 std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     std::vector<dc::GameState> states;
+    test_state_names_.clear();
 
-    // テスト盤面1: 空場
+    // テスト盤面1: 空場（第1投）
     {
         dc::GameState s(game_setting_);
         s.shot = 0;
         states.push_back(s);
+        test_state_names_.push_back("empty");
     }
 
     // テスト盤面2: 相手石がティー近くに1個
@@ -73,19 +76,21 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
         s.shot = 2;
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.2f, kHouseCenterY), 0.f));
         states.push_back(s);
+        test_state_names_.push_back("opp1_tee");
     }
 
     // テスト盤面3: 相手石2個 + 自分石1個
     {
         dc::GameState s(game_setting_);
-        s.shot = 4;  // team0の手番 (偶数 = team0)
+        s.shot = 4;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY + 0.3f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY - 0.2f), 0.f));
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.1f, kHouseCenterY + 0.8f), 0.f));
         states.push_back(s);
+        test_state_names_.push_back("opp2_my1");
     }
 
-    // テスト盤面4: 混雑した盤面
+    // テスト盤面4: 混雑した盤面（3対3）
     {
         dc::GameState s(game_setting_);
         s.shot = 10;
@@ -96,6 +101,476 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.3f, kHouseCenterY + 1.5f), 0.f));
         s.stones[1][2].emplace(dc::Transform(dc::Vector2(0.8f, kHouseCenterY - 0.8f), 0.f));
         states.push_back(s);
+        test_state_names_.push_back("crowded_3v3");
+    }
+
+    // テスト盤面5: センターガード（相手石がガードゾーンに1個）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 2;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY - 2.5f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("center_guard");
+    }
+
+    // テスト盤面6: ダブルガード（ガードゾーンに2個）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 4;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.1f, kHouseCenterY - 2.0f), 0.f));
+        s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.1f, kHouseCenterY - 3.0f), 0.f));
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.5f, kHouseCenterY + 0.5f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("double_guard");
+    }
+
+    // テスト盤面7: ボタン争い（両チームがティー付近に1個ずつ）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 4;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(-0.15f, kHouseCenterY + 0.1f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.1f, kHouseCenterY - 0.05f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("button_fight");
+    }
+
+    // テスト盤面8: フリーズ狙い（相手石がハウス中心、自分石なし）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 2;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY + 0.05f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("freeze_target");
+    }
+
+    // テスト盤面9: 相手3点取り状態（自分不利）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 8;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY), 0.f));
+        s.stones[1][1].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY + 0.2f), 0.f));
+        s.stones[1][2].emplace(dc::Transform(dc::Vector2(-0.2f, kHouseCenterY - 0.1f), 0.f));
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(1.5f, kHouseCenterY + 0.8f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("opp_scoring_3");
+    }
+
+    // テスト盤面10: コーナーガード（左右のガード）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 6;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(-1.5f, kHouseCenterY - 1.0f), 0.f));
+        s.stones[0][1].emplace(dc::Transform(dc::Vector2(1.5f, kHouseCenterY - 1.2f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY + 0.3f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("corner_guards");
+    }
+
+    // テスト盤面11: ブランクエンド狙い（終盤、石が少ない）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 14;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY - 0.3f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(-0.8f, kHouseCenterY + 1.2f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("blank_end");
+    }
+
+    // テスト盤面12: 左寄り配置
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 6;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(-1.0f, kHouseCenterY + 0.5f), 0.f));
+        s.stones[0][1].emplace(dc::Transform(dc::Vector2(-0.8f, kHouseCenterY - 0.3f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(-1.2f, kHouseCenterY + 0.1f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("left_heavy");
+    }
+
+    // テスト盤面13: 自分有利（自分2点状態）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 6;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.05f, kHouseCenterY + 0.05f), 0.f));
+        s.stones[0][1].emplace(dc::Transform(dc::Vector2(-0.3f, kHouseCenterY + 0.4f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.8f, kHouseCenterY - 0.6f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("my_scoring_2");
+    }
+
+    // テスト盤面14: 密集ハウス（4対4、終盤）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 14;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.1f, kHouseCenterY + 0.1f), 0.f));
+        s.stones[0][1].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY + 0.8f), 0.f));
+        s.stones[0][2].emplace(dc::Transform(dc::Vector2(0.7f, kHouseCenterY - 0.4f), 0.f));
+        s.stones[0][3].emplace(dc::Transform(dc::Vector2(-0.2f, kHouseCenterY - 1.0f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(-0.1f, kHouseCenterY - 0.05f), 0.f));
+        s.stones[1][1].emplace(dc::Transform(dc::Vector2(0.4f, kHouseCenterY + 0.5f), 0.f));
+        s.stones[1][2].emplace(dc::Transform(dc::Vector2(-0.8f, kHouseCenterY - 0.3f), 0.f));
+        s.stones[1][3].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY + 1.5f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("packed_house_4v4");
+    }
+
+    // テスト盤面15: ガード+ドロー混在
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 6;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY - 2.5f), 0.f));  // ガード
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY + 0.2f), 0.f));  // ハウス内
+        s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY - 2.0f), 0.f)); // ガード
+        states.push_back(s);
+        test_state_names_.push_back("guard_and_draw");
+    }
+
+    // テスト盤面16: スプリット配置（左右に分散）
+    {
+        dc::GameState s(game_setting_);
+        s.shot = 8;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(-1.5f, kHouseCenterY + 0.5f), 0.f));
+        s.stones[0][1].emplace(dc::Transform(dc::Vector2(1.5f, kHouseCenterY + 0.3f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(-1.2f, kHouseCenterY - 0.2f), 0.f));
+        s.stones[1][1].emplace(dc::Transform(dc::Vector2(1.0f, kHouseCenterY - 0.5f), 0.f));
+        states.push_back(s);
+        test_state_names_.push_back("split_lr");
+    }
+
+    // === プログラム生成盤面（17〜100） ===
+    // 決定的な擬似乱数で多様な盤面を生成
+    auto pseudoRand = [](int seed) -> float {
+        // 簡易ハッシュベース乱数 [-1, 1]
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return (seed % 2001 - 1000) / 1000.0f;
+    };
+
+    // shot番号を配置済み石数から自動計算するヘルパー
+    // shot = 配置済み石の合計数（team0がshot/2投、team1がshot/2投 済みで、次はteam0の手番）
+    auto calcShot = [](const dc::GameState& s) -> int {
+        int total = 0;
+        for (int t = 0; t < 2; t++)
+            for (int i = 0; i < 8; i++)
+                if (s.stones[t][i].has_value()) total++;
+        // 偶数にして自チーム（team0）の手番にする
+        return (total % 2 == 0) ? total : total + 1;
+    };
+
+    // カテゴリ1: 相手石1個（様々な位置）(17-26)
+    for (int i = 0; i < 10; i++) {
+        dc::GameState s(game_setting_);
+        float x = pseudoRand(i * 7 + 1) * 1.5f;
+        float y = kHouseCenterY + pseudoRand(i * 7 + 2) * 2.0f;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(x, y), 0.f));
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("opp1_pos" + std::to_string(i));
+    }
+
+    // カテゴリ2: 自分1石+相手1石(27-36)
+    for (int i = 0; i < 10; i++) {
+        dc::GameState s(game_setting_);
+        float mx = pseudoRand(i * 11 + 3) * 1.2f;
+        float my = kHouseCenterY + pseudoRand(i * 11 + 4) * 1.5f;
+        float ox = pseudoRand(i * 11 + 5) * 1.2f;
+        float oy = kHouseCenterY + pseudoRand(i * 11 + 6) * 1.5f;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(mx, my), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(ox, oy), 0.f));
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("1v1_pos" + std::to_string(i));
+    }
+
+    // カテゴリ3: ガード配置バリエーション(37-46)
+    for (int i = 0; i < 10; i++) {
+        dc::GameState s(game_setting_);
+        float gx = pseudoRand(i * 13 + 7) * 0.8f;
+        float gy = kHouseCenterY - 2.0f - pseudoRand(i * 13 + 8) * 1.5f;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(gx, gy), 0.f));
+        if (i >= 3) {
+            float hx = pseudoRand(i * 13 + 9) * 0.5f;
+            float hy = kHouseCenterY + pseudoRand(i * 13 + 10) * 0.8f;
+            s.stones[1][1].emplace(dc::Transform(dc::Vector2(hx, hy), 0.f));
+        }
+        if (i >= 6) {
+            float mx2 = pseudoRand(i * 13 + 11) * 0.6f;
+            float my2 = kHouseCenterY + pseudoRand(i * 13 + 12) * 0.5f;
+            s.stones[0][0].emplace(dc::Transform(dc::Vector2(mx2, my2), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("guard_var" + std::to_string(i));
+    }
+
+    // カテゴリ4: ハウス内密集（2v2〜3v3）(47-56)
+    for (int i = 0; i < 10; i++) {
+        dc::GameState s(game_setting_);
+        int n_my = 1 + (i % 3);
+        int n_opp = 1 + ((i + 1) % 3);
+        for (int j = 0; j < n_my && j < 4; j++) {
+            float x = pseudoRand(i * 17 + j * 3 + 20) * 1.0f;
+            float y = kHouseCenterY + pseudoRand(i * 17 + j * 3 + 21) * 1.2f;
+            s.stones[0][j].emplace(dc::Transform(dc::Vector2(x, y), 0.f));
+        }
+        for (int j = 0; j < n_opp && j < 4; j++) {
+            float x = pseudoRand(i * 17 + j * 3 + 30) * 1.0f;
+            float y = kHouseCenterY + pseudoRand(i * 17 + j * 3 + 31) * 1.2f;
+            s.stones[1][j].emplace(dc::Transform(dc::Vector2(x, y), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("house_dense" + std::to_string(i));
+    }
+
+    // カテゴリ5: 得点盤面（自分有利/不利）(57-66)
+    for (int i = 0; i < 10; i++) {
+        dc::GameState s(game_setting_);
+        bool my_advantage = (i < 5);
+        int scoring_team = my_advantage ? 0 : 1;
+        int other_team = 1 - scoring_team;
+        float r1 = 0.1f + pseudoRand(i * 19 + 40) * 0.3f;
+        float a1 = pseudoRand(i * 19 + 41) * 3.14159f;
+        s.stones[scoring_team][0].emplace(dc::Transform(
+            dc::Vector2(r1 * std::cos(a1), kHouseCenterY + r1 * std::sin(a1)), 0.f));
+        if (i % 3 > 0) {
+            float r2 = 0.3f + pseudoRand(i * 19 + 42) * 0.5f;
+            float a2 = pseudoRand(i * 19 + 43) * 3.14159f;
+            s.stones[scoring_team][1].emplace(dc::Transform(
+                dc::Vector2(r2 * std::cos(a2), kHouseCenterY + r2 * std::sin(a2)), 0.f));
+        }
+        float r3 = 0.8f + pseudoRand(i * 19 + 44) * 0.8f;
+        float a3 = pseudoRand(i * 19 + 45) * 3.14159f;
+        s.stones[other_team][0].emplace(dc::Transform(
+            dc::Vector2(r3 * std::cos(a3), kHouseCenterY + r3 * std::sin(a3)), 0.f));
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("scoring" + std::to_string(i));
+    }
+
+    // カテゴリ6: 終盤密集（3v3〜4v4）(67-76)
+    for (int i = 0; i < 10; i++) {
+        dc::GameState s(game_setting_);
+        int n_stones = 3 + (i % 2);
+        for (int j = 0; j < n_stones && j < 4; j++) {
+            float x0 = pseudoRand(i * 23 + j * 5 + 50) * 1.3f;
+            float y0 = kHouseCenterY + pseudoRand(i * 23 + j * 5 + 51) * 1.5f;
+            s.stones[0][j].emplace(dc::Transform(dc::Vector2(x0, y0), 0.f));
+            float x1 = pseudoRand(i * 23 + j * 5 + 52) * 1.3f;
+            float y1 = kHouseCenterY + pseudoRand(i * 23 + j * 5 + 53) * 1.5f;
+            s.stones[1][j].emplace(dc::Transform(dc::Vector2(x1, y1), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("endgame" + std::to_string(i));
+    }
+
+    // カテゴリ7: フリーズ対象バリエーション(77-84)
+    for (int i = 0; i < 8; i++) {
+        dc::GameState s(game_setting_);
+        float tx = pseudoRand(i * 29 + 60) * 0.4f;
+        float ty = kHouseCenterY + pseudoRand(i * 29 + 61) * 0.3f;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(tx, ty), 0.f));
+        if (i >= 4) {
+            float mx = pseudoRand(i * 29 + 62) * 0.8f;
+            float my = kHouseCenterY + pseudoRand(i * 29 + 63) * 0.6f;
+            s.stones[0][0].emplace(dc::Transform(dc::Vector2(mx, my), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("freeze_var" + std::to_string(i));
+    }
+
+    // カテゴリ8: 左右非対称・エッジケース(85-92)
+    for (int i = 0; i < 8; i++) {
+        dc::GameState s(game_setting_);
+        float side = (i % 2 == 0) ? 1.0f : -1.0f;
+        s.stones[0][0].emplace(dc::Transform(
+            dc::Vector2(side * (0.8f + pseudoRand(i * 31 + 70) * 0.5f),
+                        kHouseCenterY + pseudoRand(i * 31 + 71) * 1.0f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(
+            dc::Vector2(side * (0.5f + pseudoRand(i * 31 + 72) * 0.3f),
+                        kHouseCenterY + pseudoRand(i * 31 + 73) * 0.8f), 0.f));
+        if (i >= 3) {
+            s.stones[0][1].emplace(dc::Transform(
+                dc::Vector2(-side * 0.3f, kHouseCenterY - 2.0f), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("asym" + std::to_string(i));
+    }
+
+    // カテゴリ9: 混合戦略（ガード+ハウス）(93-100)
+    for (int i = 0; i < 8; i++) {
+        dc::GameState s(game_setting_);
+        // ガード
+        s.stones[1][0].emplace(dc::Transform(
+            dc::Vector2(pseudoRand(i * 37 + 80) * 0.5f,
+                        kHouseCenterY - 2.5f + pseudoRand(i * 37 + 81) * 0.5f), 0.f));
+        // ハウス内（相手）
+        s.stones[1][1].emplace(dc::Transform(
+            dc::Vector2(pseudoRand(i * 37 + 82) * 0.6f,
+                        kHouseCenterY + pseudoRand(i * 37 + 83) * 0.5f), 0.f));
+        // ハウス内（自分）
+        s.stones[0][0].emplace(dc::Transform(
+            dc::Vector2(pseudoRand(i * 37 + 84) * 0.7f,
+                        kHouseCenterY + pseudoRand(i * 37 + 85) * 0.8f), 0.f));
+        if (i >= 4) {
+            s.stones[0][1].emplace(dc::Transform(
+                dc::Vector2(pseudoRand(i * 37 + 86) * 0.4f,
+                            kHouseCenterY - 2.0f + pseudoRand(i * 37 + 87) * 0.3f), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("mixed" + std::to_string(i));
+    }
+
+    // === 追加カテゴリ（101〜200） ===
+
+    // カテゴリ10: 相手2石バリエーション(101-115)
+    for (int i = 0; i < 15; i++) {
+        dc::GameState s(game_setting_);
+        float x1 = pseudoRand(i * 41 + 100) * 1.5f;
+        float y1 = kHouseCenterY + pseudoRand(i * 41 + 101) * 1.8f;
+        float x2 = pseudoRand(i * 41 + 102) * 1.2f;
+        float y2 = kHouseCenterY + pseudoRand(i * 41 + 103) * 1.5f;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(x1, y1), 0.f));
+        s.stones[1][1].emplace(dc::Transform(dc::Vector2(x2, y2), 0.f));
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("opp2_var" + std::to_string(i));
+    }
+
+    // カテゴリ11: 自分2石+相手1石(116-130)
+    for (int i = 0; i < 15; i++) {
+        dc::GameState s(game_setting_);
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(
+            pseudoRand(i * 43 + 110) * 1.0f,
+            kHouseCenterY + pseudoRand(i * 43 + 111) * 1.2f), 0.f));
+        s.stones[0][1].emplace(dc::Transform(dc::Vector2(
+            pseudoRand(i * 43 + 112) * 0.8f,
+            kHouseCenterY + pseudoRand(i * 43 + 113) * 1.0f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(
+            pseudoRand(i * 43 + 114) * 1.3f,
+            kHouseCenterY + pseudoRand(i * 43 + 115) * 1.5f), 0.f));
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("my2_opp1_" + std::to_string(i));
+    }
+
+    // カテゴリ12: ティー周辺の接戦(131-145)
+    for (int i = 0; i < 15; i++) {
+        dc::GameState s(game_setting_);
+        float r = 0.1f + pseudoRand(i * 47 + 120) * 0.5f;
+        float a = pseudoRand(i * 47 + 121) * 3.14159f;
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(
+            r * std::cos(a), kHouseCenterY + r * std::sin(a)), 0.f));
+        float r2 = 0.15f + pseudoRand(i * 47 + 122) * 0.4f;
+        float a2 = pseudoRand(i * 47 + 123) * 3.14159f;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(
+            r2 * std::cos(a2), kHouseCenterY + r2 * std::sin(a2)), 0.f));
+        if (i >= 5) {
+            float r3 = 0.3f + pseudoRand(i * 47 + 124) * 0.6f;
+            float a3 = pseudoRand(i * 47 + 125) * 3.14159f;
+            s.stones[1][1].emplace(dc::Transform(dc::Vector2(
+                r3 * std::cos(a3), kHouseCenterY + r3 * std::sin(a3)), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("tee_fight" + std::to_string(i));
+    }
+
+    // カテゴリ13: ダブルガード配置(146-155)
+    for (int i = 0; i < 10; i++) {
+        dc::GameState s(game_setting_);
+        float gx1 = pseudoRand(i * 53 + 130) * 0.3f;
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(gx1, kHouseCenterY - 2.5f), 0.f));
+        float gx2 = pseudoRand(i * 53 + 131) * 0.4f;
+        s.stones[1][1].emplace(dc::Transform(dc::Vector2(gx2, kHouseCenterY - 3.0f), 0.f));
+        if (i >= 3) {
+            s.stones[1][2].emplace(dc::Transform(dc::Vector2(
+                pseudoRand(i * 53 + 132) * 0.5f,
+                kHouseCenterY + pseudoRand(i * 53 + 133) * 0.4f), 0.f));
+        }
+        if (i >= 6) {
+            s.stones[0][0].emplace(dc::Transform(dc::Vector2(
+                pseudoRand(i * 53 + 134) * 0.4f,
+                kHouseCenterY + pseudoRand(i * 53 + 135) * 0.6f), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("dbl_guard" + std::to_string(i));
+    }
+
+    // カテゴリ14: 2v2ハウス内バトル(156-170)
+    for (int i = 0; i < 15; i++) {
+        dc::GameState s(game_setting_);
+        for (int j = 0; j < 2; j++) {
+            float mx = pseudoRand(i * 59 + j * 4 + 140) * 1.2f;
+            float my = kHouseCenterY + pseudoRand(i * 59 + j * 4 + 141) * 1.3f;
+            s.stones[0][j].emplace(dc::Transform(dc::Vector2(mx, my), 0.f));
+            float ox = pseudoRand(i * 59 + j * 4 + 142) * 1.2f;
+            float oy = kHouseCenterY + pseudoRand(i * 59 + j * 4 + 143) * 1.3f;
+            s.stones[1][j].emplace(dc::Transform(dc::Vector2(ox, oy), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("2v2_house" + std::to_string(i));
+    }
+
+    // カテゴリ15: ハウス外の石がある盤面(171-180)
+    for (int i = 0; i < 10; i++) {
+        dc::GameState s(game_setting_);
+        // ハウス外の石（ガードゾーンや遠方）
+        s.stones[0][0].emplace(dc::Transform(dc::Vector2(
+            pseudoRand(i * 61 + 150) * 0.5f,
+            kHouseCenterY - 3.0f + pseudoRand(i * 61 + 151) * 1.0f), 0.f));
+        s.stones[1][0].emplace(dc::Transform(dc::Vector2(
+            pseudoRand(i * 61 + 152) * 0.6f,
+            kHouseCenterY - 2.0f + pseudoRand(i * 61 + 153) * 0.5f), 0.f));
+        if (i >= 4) {
+            s.stones[1][1].emplace(dc::Transform(dc::Vector2(
+                pseudoRand(i * 61 + 154) * 0.3f,
+                kHouseCenterY + pseudoRand(i * 61 + 155) * 0.5f), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("outside" + std::to_string(i));
+    }
+
+    // カテゴリ16: 3v2非対称(181-195)
+    for (int i = 0; i < 15; i++) {
+        dc::GameState s(game_setting_);
+        for (int j = 0; j < 3; j++) {
+            s.stones[0][j].emplace(dc::Transform(dc::Vector2(
+                pseudoRand(i * 67 + j * 3 + 160) * 1.2f,
+                kHouseCenterY + pseudoRand(i * 67 + j * 3 + 161) * 1.5f), 0.f));
+        }
+        for (int j = 0; j < 2; j++) {
+            s.stones[1][j].emplace(dc::Transform(dc::Vector2(
+                pseudoRand(i * 67 + j * 3 + 170) * 1.0f,
+                kHouseCenterY + pseudoRand(i * 67 + j * 3 + 171) * 1.3f), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("3v2_asym" + std::to_string(i));
+    }
+
+    // カテゴリ17: 第1投〜第4投の序盤(196-200)
+    for (int i = 0; i < 5; i++) {
+        dc::GameState s(game_setting_);
+        if (i >= 1) {
+            s.stones[1][0].emplace(dc::Transform(dc::Vector2(
+                pseudoRand(i * 71 + 180) * 1.0f,
+                kHouseCenterY + pseudoRand(i * 71 + 181) * 1.5f), 0.f));
+        }
+        if (i >= 3) {
+            s.stones[0][0].emplace(dc::Transform(dc::Vector2(
+                pseudoRand(i * 71 + 182) * 0.8f,
+                kHouseCenterY + pseudoRand(i * 71 + 183) * 1.0f), 0.f));
+        }
+        s.shot = calcShot(s);
+        states.push_back(s);
+        test_state_names_.push_back("early" + std::to_string(i));
     }
 
     return states;
@@ -482,6 +957,56 @@ std::vector<int> PoolClusteringExperiment::calculateMedoids(
     return medoids;
 }
 
+std::vector<int> PoolClusteringExperiment::greedyFarthestPointSampling(
+    const dc::GameState& input_state,
+    const std::vector<dc::GameState>& result_states,
+    int k
+) {
+    int n = static_cast<int>(result_states.size());
+    if (k >= n) {
+        std::vector<int> all(n);
+        std::iota(all.begin(), all.end(), 0);
+        return all;
+    }
+    if (k <= 0) return {};
+
+    // 最初の点: 先頭の候補を選ぶ（評価関数に依存しない公平な初期化）
+    int first = 0;
+
+    std::vector<int> selected;
+    selected.push_back(first);
+
+    // min_dist[i] = selectedの中で最も近い点との距離
+    std::vector<float> min_dist(n, std::numeric_limits<float>::max());
+    min_dist[first] = -1.0f;  // 選択済み
+
+    for (int iter = 1; iter < k; iter++) {
+        // 最後に選ばれた点との距離で min_dist を更新
+        int last = selected.back();
+        for (int i = 0; i < n; i++) {
+            if (min_dist[i] < 0.0f) continue;  // 選択済み
+            float d = distDelta(input_state, result_states[i], result_states[last]);
+            min_dist[i] = std::min(min_dist[i], d);
+        }
+
+        // min_distが最大の点を選出
+        int farthest = -1;
+        float max_min_dist = -1.0f;
+        for (int i = 0; i < n; i++) {
+            if (min_dist[i] < 0.0f) continue;
+            if (min_dist[i] > max_min_dist) {
+                max_min_dist = min_dist[i];
+                farthest = i;
+            }
+        }
+        if (farthest < 0) break;
+        selected.push_back(farthest);
+        min_dist[farthest] = -1.0f;
+    }
+
+    return selected;
+}
+
 PoolClusteringResult PoolClusteringExperiment::analyzeClusterComposition(
     const std::string& state_name,
     const CandidatePool& pool,
@@ -589,13 +1114,13 @@ void PoolClusteringExperiment::exportResultCSV(
 }
 
 void PoolClusteringExperiment::run() {
-    std::cout << "================================================" << std::endl;
-    std::cout << "  Pool Clustering Experiment" << std::endl;
-    std::cout << "  - Comparing Original vs Delta distance functions" << std::endl;
-    std::cout << "================================================" << std::endl;
+    std::cout << "================================================================" << std::endl;
+    std::cout << "  3-Method Comparison: FullPool vs DeltaClustered vs GreedyFPS" << std::endl;
+    std::cout << "================================================================" << std::endl;
 
     auto test_states = createTestStates();
-    std::string state_names[] = { "empty", "opp1_tee", "opp2_my1", "crowded" };
+    auto& state_names = test_state_names_;
+    std::cout << "Test states: " << test_states.size() << std::endl;
 
     std::string output_dir = "experiments/pool_clustering_results";
     std::filesystem::create_directories(output_dir);
@@ -603,220 +1128,378 @@ void PoolClusteringExperiment::run() {
     ShotGenerator generator(game_setting_);
     auto grid = PoolExperiment(game_setting_).makeGrid(4, 4);
 
-    std::vector<int> k_values = {4, 6, 8, 12, 16};
+    // 保持率ベースのK値（候補数に応じて動的に決定）
+    std::vector<float> retention_ratios = {0.1f, 0.2f, 0.3f, 0.5f, 0.7f};
 
-    auto typeToName = [](ShotType t) -> std::string {
+    auto classifyType = [](ShotType t) -> std::string {
         switch (t) {
-            case ShotType::PASS: return "PASS";
-            case ShotType::DRAW: return "DRAW";
-            case ShotType::PREGUARD: return "PREGUARD";
-            case ShotType::HIT: return "HIT";
-            case ShotType::FREEZE: return "FREEZE";
-            case ShotType::PEEL: return "PEEL";
-            case ShotType::COMEAROUND: return "COMEAROUND";
-            case ShotType::POSTGUARD: return "POSTGUARD";
-            case ShotType::DRAWRAISE: return "DRAWRAISE";
-            default: return "OTHER";
+            case ShotType::DRAW: return "Draw";
+            case ShotType::HIT: return "Hit";
+            case ShotType::FREEZE: return "Freeze";
+            case ShotType::PREGUARD: case ShotType::POSTGUARD: return "Guard";
+            case ShotType::PASS: return "Pass";
+            default: return "Other";
         }
     };
 
-    // サマリー用の蓄積
-    struct SummaryRow {
+    // サマリー用（手法ごとに1行）
+    struct ResultRow {
         std::string state;
+        int total_candidates;
+        float ratio;
         int k;
-        float purity_orig;
-        float coverage_orig;
-        float purity_delta;
-        float coverage_delta;
-        int max_cluster_orig;   // 最大クラスタのサイズ
-        int max_cluster_delta;
+        std::string method;  // "DeltaClustered" or "GreedyFPS"
+        // 最良手比較
+        std::string pool_best_label;
+        std::string pool_best_type;
+        float pool_best_score;
+        std::string sel_best_label;
+        std::string sel_best_type;
+        float sel_best_score;
+        bool same_shot;
+        bool same_type;
+        float score_diff;
+        int dist_computations;  // 距離計算回数
+        // クラスタ分析（DeltaClustered専用）
+        float weighted_purity;   // 加重平均純度（タイプとクラスタの一致度）
+        bool pool_best_in_same_cluster;  // 歩の最良手がDCの選んだ手と同じクラスタ内か
     };
-    std::vector<SummaryRow> summary;
+    std::vector<ResultRow> results;
 
     for (size_t s = 0; s < test_states.size(); s++) {
         auto& state = test_states[s];
         dc::Team my_team = dc::Team::k0;
 
-        std::cout << "\n========== State: " << state_names[s]
-                  << " (shot=" << state.shot << ") ==========" << std::endl;
-
-        // プール生成（1回だけ）
-        auto t0 = std::chrono::high_resolution_clock::now();
         auto pool = generator.generatePool(state, my_team, grid);
-        auto t1 = std::chrono::high_resolution_clock::now();
-        double pool_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-        std::cout << "  Pool: " << pool.candidates.size()
-                  << " candidates (" << std::fixed << std::setprecision(1) << pool_ms << " ms)" << std::endl;
+        int n = static_cast<int>(pool.candidates.size());
 
-        // 距離テーブル計算（両方）
-        auto dist_orig = makeDistanceTable(pool.result_states);
+        if (n <= 2) continue;  // 候補が少なすぎる場合スキップ
+
+        // === 歩方式: 全候補を評価して最良手 ===
+        int best_pool_idx = -1;
+        float best_pool_score = -std::numeric_limits<float>::max();
+        for (int i = 0; i < n; i++) {
+            float score = evaluateBoard(pool.result_states[i]);
+            if (score > best_pool_score) {
+                best_pool_score = score;
+                best_pool_idx = i;
+            }
+        }
+        std::string best_pool_type = classifyType(pool.candidates[best_pool_idx].type);
+        std::string best_pool_label = pool.candidates[best_pool_idx].label;
+
+        std::cout << "\n[" << (s + 1) << "/" << test_states.size() << "] " << state_names[s]
+                  << " (N=" << n << ") Pool best: " << best_pool_label
+                  << "(" << best_pool_type << ",score=" << std::fixed << std::setprecision(1) << best_pool_score << ")" << std::endl;
+
+        // Delta距離テーブル構築（DeltaClustered用）
         auto dist_delta = makeDistanceTableDelta(state, pool.result_states);
 
-        // デバッグ: 代表的な距離値の比較（最初のDraw, 最初のHit, 最初のGuard）
-        {
-            int draw_idx = -1, hit_idx = -1, guard_idx = -1, freeze_idx = -1;
-            for (int i = 0; i < static_cast<int>(pool.candidates.size()); i++) {
-                if (draw_idx < 0 && pool.candidates[i].type == ShotType::DRAW) draw_idx = i;
-                if (hit_idx < 0 && pool.candidates[i].type == ShotType::HIT) hit_idx = i;
-                if (guard_idx < 0 && (pool.candidates[i].type == ShotType::PREGUARD || pool.candidates[i].type == ShotType::POSTGUARD)) guard_idx = i;
-                if (freeze_idx < 0 && pool.candidates[i].type == ShotType::FREEZE) freeze_idx = i;
+        for (float ratio : retention_ratios) {
+            int k = std::max(2, static_cast<int>(std::round(n * ratio)));
+            if (k >= n) continue;
+
+            // === 方式1: DeltaClustered（階層的クラスタリング + メドイド）===
+            auto clusters = runClustering(dist_delta, k);
+            auto medoids = calculateMedoids(dist_delta, clusters);
+
+            int best_dc_idx = -1;
+            float best_dc_score = -std::numeric_limits<float>::max();
+            for (int m : medoids) {
+                if (m < 0) continue;
+                float score = evaluateBoard(pool.result_states[m]);
+                if (score > best_dc_score) { best_dc_score = score; best_dc_idx = m; }
             }
-            std::cout << "  Distance samples (orig/delta):" << std::endl;
-            if (draw_idx >= 0 && hit_idx >= 0)
-                std::cout << "    Draw-Hit:    " << std::setprecision(2) << dist_orig[draw_idx][hit_idx]
-                          << " / " << dist_delta[draw_idx][hit_idx]
-                          << "  [" << pool.candidates[draw_idx].label << " vs " << pool.candidates[hit_idx].label << "]" << std::endl;
-            if (draw_idx >= 0 && guard_idx >= 0)
-                std::cout << "    Draw-Guard:  " << dist_orig[draw_idx][guard_idx]
-                          << " / " << dist_delta[draw_idx][guard_idx]
-                          << "  [" << pool.candidates[draw_idx].label << " vs " << pool.candidates[guard_idx].label << "]" << std::endl;
-            if (draw_idx >= 0 && freeze_idx >= 0)
-                std::cout << "    Draw-Freeze: " << dist_orig[draw_idx][freeze_idx]
-                          << " / " << dist_delta[draw_idx][freeze_idx]
-                          << "  [" << pool.candidates[draw_idx].label << " vs " << pool.candidates[freeze_idx].label << "]" << std::endl;
-            // Draw同士の距離
-            if (draw_idx >= 0) {
-                for (int i = draw_idx + 1; i < static_cast<int>(pool.candidates.size()); i++) {
-                    if (pool.candidates[i].type == ShotType::DRAW && pool.candidates[i].label != pool.candidates[draw_idx].label) {
-                        std::cout << "    Draw-Draw:   " << dist_orig[draw_idx][i]
-                                  << " / " << dist_delta[draw_idx][i]
-                                  << "  [" << pool.candidates[draw_idx].label << " vs " << pool.candidates[i].label << "]" << std::endl;
-                        break;
-                    }
+
+            // === クラスタ純度（Purity）計算 ===
+            // 各クラスタ内の最多タイプの割合の加重平均
+            float total_purity = 0.0f;
+            int total_members = 0;
+            for (auto& cluster : clusters) {
+                if (cluster.empty()) continue;
+                std::map<std::string, int> type_counts;
+                for (int idx : cluster) {
+                    type_counts[classifyType(pool.candidates[idx].type)]++;
                 }
+                int max_count = 0;
+                for (auto& [t, c] : type_counts) {
+                    max_count = std::max(max_count, c);
+                }
+                int sz = static_cast<int>(cluster.size());
+                total_purity += static_cast<float>(max_count);  // 最多タイプのメンバー数
+                total_members += sz;
             }
-            // Hit(STRONG)がある場合
-            int hit_strong_idx = -1;
-            for (int i = 0; i < static_cast<int>(pool.candidates.size()); i++) {
-                if (pool.candidates[i].type == ShotType::HIT && pool.candidates[i].param == 3) { hit_strong_idx = i; break; }
+            float weighted_purity = total_members > 0 ? total_purity / total_members : 0.0f;
+
+            // === 歩の最良手がDCの選んだ手と同じクラスタにいるか ===
+            int pool_best_cluster = -1;
+            int dc_best_cluster = -1;
+            for (int ci = 0; ci < static_cast<int>(clusters.size()); ci++) {
+                if (clusters[ci].count(best_pool_idx)) pool_best_cluster = ci;
+                if (clusters[ci].count(best_dc_idx)) dc_best_cluster = ci;
             }
-            if (draw_idx >= 0 && hit_strong_idx >= 0)
-                std::cout << "    Draw-HitSTR: " << dist_orig[draw_idx][hit_strong_idx]
-                          << " / " << dist_delta[draw_idx][hit_strong_idx]
-                          << "  [" << pool.candidates[draw_idx].label << " vs " << pool.candidates[hit_strong_idx].label << "]" << std::endl;
-        }
+            bool pool_best_in_same_cluster = (pool_best_cluster == dc_best_cluster && pool_best_cluster >= 0);
 
-        for (int k : k_values) {
-            if (k >= static_cast<int>(pool.candidates.size())) continue;
+            // === 方式2: GreedyFPS（貪欲最遠点サンプリング）===
+            auto fps_selected = greedyFarthestPointSampling(state, pool.result_states, k);
 
-            // --- Original distance ---
-            auto clusters_orig = runClustering(dist_orig, k);
-            auto medoids_orig = calculateMedoids(dist_orig, clusters_orig);
-            auto result_orig = analyzeClusterComposition(state_names[s], pool, clusters_orig, medoids_orig);
+            int best_fps_idx = -1;
+            float best_fps_score = -std::numeric_limits<float>::max();
+            for (int idx : fps_selected) {
+                float score = evaluateBoard(pool.result_states[idx]);
+                if (score > best_fps_score) { best_fps_score = score; best_fps_idx = idx; }
+            }
 
-            // --- Delta distance ---
-            auto clusters_delta = runClustering(dist_delta, k);
-            auto medoids_delta = calculateMedoids(dist_delta, clusters_delta);
-            auto result_delta = analyzeClusterComposition(state_names[s], pool, clusters_delta, medoids_delta);
+            // 結果蓄積
+            auto makeRow = [&](const std::string& method, int best_idx, float best_score, int dist_comp,
+                               float purity, bool in_same_cluster) {
+                ResultRow row;
+                row.state = state_names[s]; row.total_candidates = n;
+                row.ratio = ratio; row.k = k; row.method = method;
+                row.pool_best_label = best_pool_label; row.pool_best_type = best_pool_type;
+                row.pool_best_score = best_pool_score;
+                row.sel_best_label = (best_idx >= 0) ? pool.candidates[best_idx].label : "N/A";
+                row.sel_best_type = (best_idx >= 0) ? classifyType(pool.candidates[best_idx].type) : "N/A";
+                row.sel_best_score = best_score;
+                row.same_shot = (best_idx == best_pool_idx);
+                row.same_type = (row.sel_best_type == best_pool_type);
+                row.score_diff = best_score - best_pool_score;
+                row.dist_computations = dist_comp;
+                row.weighted_purity = purity;
+                row.pool_best_in_same_cluster = in_same_cluster;
+                return row;
+            };
 
-            // 最大クラスタサイズ
-            int max_orig = 0, max_delta = 0;
-            for (auto& c : result_orig.clusters) max_orig = std::max(max_orig, static_cast<int>(c.member_indices.size()));
-            for (auto& c : result_delta.clusters) max_delta = std::max(max_delta, static_cast<int>(c.member_indices.size()));
+            int dc_dist_comp = n * (n - 1) / 2;
+            int fps_dist_comp = n * (k - 1);
+            results.push_back(makeRow("DeltaClustered", best_dc_idx, best_dc_score, dc_dist_comp,
+                                      weighted_purity, pool_best_in_same_cluster));
+            results.push_back(makeRow("GreedyFPS", best_fps_idx, best_fps_score, fps_dist_comp,
+                                      0.0f, false));
 
-            // 出力
-            std::cout << "\n  --- K=" << k << " ---" << std::endl;
-            std::cout << "  [Original] Purity=" << std::setprecision(3) << result_orig.weightedPurity()
-                      << "  Coverage=" << result_orig.typeCoverage()
-                      << "  MaxCluster=" << max_orig << "/" << pool.candidates.size() << std::endl;
-            std::cout << "  [Delta]    Purity=" << std::setprecision(3) << result_delta.weightedPurity()
-                      << "  Coverage=" << result_delta.typeCoverage()
-                      << "  MaxCluster=" << max_delta << "/" << pool.candidates.size() << std::endl;
+            int ratio_pct = static_cast<int>(std::round(ratio * 100));
+            auto dcLabel = (best_dc_idx >= 0) ? pool.candidates[best_dc_idx].label : "N/A";
+            auto fpsLabel = (best_fps_idx >= 0) ? pool.candidates[best_fps_idx].label : "N/A";
+            std::cout << "  " << ratio_pct << "%(K=" << k << ")"
+                      << "  DC:" << (best_dc_idx == best_pool_idx ? "EXACT" : (classifyType(pool.candidates[best_dc_idx >= 0 ? best_dc_idx : 0].type) == best_pool_type ? "Same" : "DIFF"))
+                      << "(diff=" << std::showpos << std::setprecision(0) << (best_dc_score - best_pool_score) << std::noshowpos << ")"
+                      << "  FPS:" << (best_fps_idx == best_pool_idx ? "EXACT" : (classifyType(pool.candidates[best_fps_idx >= 0 ? best_fps_idx : 0].type) == best_pool_type ? "Same" : "DIFF"))
+                      << "(diff=" << std::showpos << (best_fps_score - best_pool_score) << std::noshowpos << ")"
+                      << std::endl;
 
-            // Delta距離のクラスタ詳細を表示
-            printResult(result_delta);
+            // === 詳細JSON出力（特定盤面・特定保持率のみ）===
+            if (state_names[s] == "opp2_my1" && ratio_pct == 20) {
+                std::string json_path = output_dir + "/detail_" + state_names[s] + "_r" + std::to_string(ratio_pct) + ".json";
+                std::ofstream jf(json_path);
+                jf << std::fixed << std::setprecision(4);
+                jf << "{\n";
 
-            // サマリー蓄積
-            summary.push_back({
-                state_names[s], k,
-                result_orig.weightedPurity(), result_orig.typeCoverage(),
-                result_delta.weightedPurity(), result_delta.typeCoverage(),
-                max_orig, max_delta
-            });
-
-            // Delta距離のCSVエクスポート
-            {
-                std::string csv = output_dir + "/delta_" + state_names[s]
-                                + "_k" + std::to_string(k) + ".csv";
-                std::ofstream ofs(csv);
-                ofs << "candidate_index,cluster_id,shot_type,shot_type_name,label,is_medoid,"
-                    << "spin,target_index,param,vx,vy,rot";
+                // 初期盤面
+                jf << "  \"state_name\": \"" << state_names[s] << "\",\n";
+                jf << "  \"retention_ratio\": " << ratio << ",\n";
+                jf << "  \"k\": " << k << ",\n";
+                jf << "  \"n_candidates\": " << n << ",\n";
+                jf << "  \"initial_stones\": [\n";
+                bool first_stone = true;
                 for (int t = 0; t < 2; t++) {
-                    for (int i = 0; i < 8; i++) {
-                        ofs << ",team" << t << "_stone" << i << "_x"
-                            << ",team" << t << "_stone" << i << "_y"
-                            << ",team" << t << "_stone" << i << "_active";
+                    for (int idx = 0; idx < 8; idx++) {
+                        if (!state.stones[t][idx]) continue;
+                        if (!first_stone) jf << ",\n";
+                        first_stone = false;
+                        jf << "    {\"team\":" << t << ",\"index\":" << idx
+                           << ",\"x\":" << state.stones[t][idx]->position.x
+                           << ",\"y\":" << state.stones[t][idx]->position.y << "}";
                     }
                 }
-                ofs << "\n";
+                jf << "\n  ],\n";
 
-                for (size_t ci = 0; ci < clusters_delta.size(); ci++) {
-                    for (int idx : clusters_delta[ci]) {
-                        auto& cand = pool.candidates[idx];
-                        auto& rs = pool.result_states[idx];
-                        ofs << idx << ","
-                            << ci << ","
-                            << static_cast<int>(cand.type) << ","
-                            << typeToName(cand.type) << ","
-                            << "\"" << cand.label << "\","
-                            << (idx == medoids_delta[ci] ? 1 : 0) << ","
-                            << cand.spin << ","
-                            << cand.target_index << ","
-                            << cand.param << ","
-                            << std::fixed << std::setprecision(6)
-                            << cand.shot.vx << ","
-                            << cand.shot.vy << ","
-                            << cand.shot.rot;
+                // 全候補手 + クラスタ割当 + 結果盤面の新石位置
+                jf << "  \"candidates\": [\n";
+                for (int ci = 0; ci < n; ci++) {
+                    auto& cand = pool.candidates[ci];
+                    auto& res = pool.result_states[ci];
 
-                        for (int t = 0; t < 2; t++) {
-                            for (int i = 0; i < 8; i++) {
-                                if (rs.stones[t][i].has_value()) {
-                                    ofs << "," << rs.stones[t][i]->position.x
-                                        << "," << rs.stones[t][i]->position.y
-                                        << ",1";
-                                } else {
-                                    ofs << ",0,0,0";
-                                }
+                    // クラスタID検索
+                    int cluster_id = -1;
+                    for (int cj = 0; cj < static_cast<int>(clusters.size()); cj++) {
+                        if (clusters[cj].count(ci)) { cluster_id = cj; break; }
+                    }
+
+                    // 新石の位置（入力に無かった石）
+                    float new_x = 0.0f, new_y = 0.0f;
+                    bool found_new = false;
+                    for (int t = 0; t < 2; t++) {
+                        for (int idx = 0; idx < 8; idx++) {
+                            if (!state.stones[t][idx] && res.stones[t][idx]) {
+                                new_x = res.stones[t][idx]->position.x;
+                                new_y = res.stones[t][idx]->position.y;
+                                found_new = true;
                             }
                         }
-                        ofs << "\n";
                     }
+
+                    // 結果盤面の全ストーン
+                    jf << "    {\"index\":" << ci
+                       << ",\"type\":\"" << classifyType(cand.type) << "\""
+                       << ",\"label\":\"" << cand.label << "\""
+                       << ",\"vx\":" << cand.shot.vx << ",\"vy\":" << cand.shot.vy
+                       << ",\"rot\":" << cand.shot.rot
+                       << ",\"cluster_id\":" << cluster_id
+                       << ",\"is_medoid\":" << (std::find(medoids.begin(), medoids.end(), ci) != medoids.end() ? 1 : 0)
+                       << ",\"score\":" << evaluateBoard(res)
+                       << ",\"new_stone_x\":" << (found_new ? new_x : 0.0f)
+                       << ",\"new_stone_y\":" << (found_new ? new_y : 0.0f)
+                       << ",\"new_stone_found\":" << (found_new ? 1 : 0)
+                       << ",\"result_stones\":[";
+
+                    bool first_rs = true;
+                    for (int t = 0; t < 2; t++) {
+                        for (int idx = 0; idx < 8; idx++) {
+                            if (!res.stones[t][idx]) continue;
+                            if (!first_rs) jf << ",";
+                            first_rs = false;
+                            jf << "{\"team\":" << t << ",\"index\":" << idx
+                               << ",\"x\":" << res.stones[t][idx]->position.x
+                               << ",\"y\":" << res.stones[t][idx]->position.y << "}";
+                        }
+                    }
+                    jf << "]}";
+                    if (ci < n - 1) jf << ",";
+                    jf << "\n";
                 }
-                std::cout << "  Exported: " << csv << std::endl;
+                jf << "  ],\n";
+
+                // 最良手インデックス
+                jf << "  \"pool_best_idx\": " << best_pool_idx << ",\n";
+                jf << "  \"dc_best_idx\": " << best_dc_idx << ",\n";
+                jf << "  \"pool_best_score\": " << best_pool_score << ",\n";
+                jf << "  \"dc_best_score\": " << best_dc_score << "\n";
+                jf << "}\n";
+                jf.close();
+                std::cout << "  >> Detail JSON exported: " << json_path << std::endl;
             }
         }
     }
 
-    // 比較サマリー表
-    std::cout << "\n================================================================" << std::endl;
-    std::cout << "  Comparison Summary: Original vs Delta Distance" << std::endl;
-    std::cout << "================================================================" << std::endl;
-    std::cout << std::setw(12) << "State"
-              << std::setw(4) << "K"
-              << "  | " << std::setw(8) << "Purity" << std::setw(8) << "Cover" << std::setw(8) << "MaxCl"
-              << "  | " << std::setw(8) << "Purity" << std::setw(8) << "Cover" << std::setw(8) << "MaxCl"
-              << "  | " << std::setw(8) << "Improv" << std::endl;
-    std::cout << std::setw(16) << ""
-              << "  | " << std::setw(24) << "--- Original ---"
-              << "  | " << std::setw(24) << "--- Delta ---"
-              << "  |" << std::endl;
-    std::cout << std::string(90, '-') << std::endl;
+    // ========== サマリーテーブル ==========
+    std::cout << "\n========================================================================" << std::endl;
+    std::cout << "  Best Shot Agreement by Retention Ratio & Method" << std::endl;
+    std::cout << "========================================================================" << std::endl;
 
-    for (auto& row : summary) {
-        float improvement = row.purity_delta - row.purity_orig;
-        std::cout << std::setw(12) << row.state
-                  << std::setw(4) << row.k
-                  << "  | " << std::setw(8) << std::fixed << std::setprecision(3) << row.purity_orig
-                  << std::setw(8) << row.coverage_orig
-                  << std::setw(8) << row.max_cluster_orig
-                  << "  | " << std::setw(8) << row.purity_delta
-                  << std::setw(8) << row.coverage_delta
-                  << std::setw(8) << row.max_cluster_delta
-                  << "  | " << std::setw(7) << std::showpos << improvement << std::noshowpos
+    // 保持率 × 手法 別の集計
+    struct AggKey {
+        int ratio_pct;
+        std::string method;
+        bool operator<(const AggKey& o) const {
+            if (ratio_pct != o.ratio_pct) return ratio_pct < o.ratio_pct;
+            return method < o.method;
+        }
+    };
+    std::map<AggKey, int> agg_count, agg_exact, agg_same_type;
+    std::map<AggKey, float> agg_score_diff_sum;
+    std::map<AggKey, long long> agg_dist_comp_sum;
+    // DeltaClustered専用集計
+    std::map<int, float> dc_purity_sum;
+    std::map<int, int> dc_same_cluster_count, dc_count;
+
+    for (auto& row : results) {
+        AggKey key{static_cast<int>(std::round(row.ratio * 100)), row.method};
+        agg_count[key]++;
+        if (row.same_shot) agg_exact[key]++;
+        if (row.same_type) agg_same_type[key]++;
+        agg_score_diff_sum[key] += std::abs(row.score_diff);
+        agg_dist_comp_sum[key] += row.dist_computations;
+
+        if (row.method == "DeltaClustered") {
+            int rp = static_cast<int>(std::round(row.ratio * 100));
+            dc_purity_sum[rp] += row.weighted_purity;
+            if (row.pool_best_in_same_cluster) dc_same_cluster_count[rp]++;
+            dc_count[rp]++;
+        }
+    }
+
+    std::cout << std::setw(8) << "Ratio"
+              << std::setw(16) << "Method"
+              << std::setw(16) << "Exact Match"
+              << std::setw(16) << "Same Type"
+              << std::setw(14) << "Avg|SDiff|"
+              << std::setw(14) << "AvgDistComp" << std::endl;
+    std::cout << std::string(84, '-') << std::endl;
+
+    for (auto& [key, cnt] : agg_count) {
+        int exact = agg_exact[key];
+        int same = agg_same_type[key];
+        float avg_diff = agg_score_diff_sum[key] / cnt;
+        long long avg_dist = agg_dist_comp_sum[key] / cnt;
+        std::cout << std::setw(6) << key.ratio_pct << "%"
+                  << std::setw(16) << key.method
+                  << std::setw(6) << exact << "/" << cnt
+                  << " (" << std::setw(3) << std::fixed << std::setprecision(0)
+                  << (100.0f * exact / cnt) << "%)"
+                  << std::setw(6) << same << "/" << cnt
+                  << " (" << std::setw(3) << (100.0f * same / cnt) << "%)"
+                  << std::setw(10) << std::setprecision(2) << avg_diff
+                  << std::setw(14) << avg_dist
                   << std::endl;
     }
 
-    std::cout << "\n================================================" << std::endl;
-    std::cout << "  Pool Clustering Experiment Complete" << std::endl;
-    std::cout << "================================================" << std::endl;
+    // ========== DeltaClustered: Purity & Same Cluster分析 ==========
+    std::cout << "\n========================================================================" << std::endl;
+    std::cout << "  DeltaClustered: Cluster Purity & Same Cluster Analysis" << std::endl;
+    std::cout << "========================================================================" << std::endl;
+    std::cout << "  Purity: クラスタ内の最多タイプの割合（1.0=全メンバーが同一タイプ）" << std::endl;
+    std::cout << "  Same Cluster: 歩の最良手とDCの最良手が同じクラスタ内にある割合" << std::endl;
+    std::cout << std::endl;
+    std::cout << std::setw(8) << "Ratio"
+              << std::setw(16) << "Avg Purity"
+              << std::setw(20) << "Same Cluster"
+              << std::setw(16) << "Exact Match" << std::endl;
+    std::cout << std::string(60, '-') << std::endl;
+    for (auto& [rp, cnt] : dc_count) {
+        float avg_purity = dc_purity_sum[rp] / cnt;
+        int same_cl = dc_same_cluster_count[rp];
+        AggKey dc_key{rp, "DeltaClustered"};
+        int exact = agg_exact[dc_key];
+        std::cout << std::setw(6) << rp << "%"
+                  << std::setw(14) << std::fixed << std::setprecision(2) << avg_purity
+                  << std::setw(10) << same_cl << "/" << cnt
+                  << " (" << std::setw(3) << std::setprecision(0) << (100.0f * same_cl / cnt) << "%)"
+                  << std::setw(7) << exact << "/" << cnt
+                  << " (" << std::setw(3) << (100.0f * exact / cnt) << "%)"
+                  << std::endl;
+    }
+    std::cout << "\n  解釈:" << std::endl;
+    std::cout << "  - Purity≈1.0: クラスタ≒タイプ分類 → クラスタリング不要" << std::endl;
+    std::cout << "  - Purity<1.0: クラスタがタイプを横断 → クラスタリングに独自の価値あり" << std::endl;
+    std::cout << "  - Same Cluster > Exact Match: 歩の手を含むクラスタの代表を選べている" << std::endl;
+
+    // CSVエクスポート
+    {
+        std::string csv_path = output_dir + "/three_method_comparison.csv";
+        std::ofstream ofs(csv_path);
+        ofs << "state,total,ratio,k,method,"
+            << "pool_best_label,pool_best_type,pool_best_score,"
+            << "sel_best_label,sel_best_type,sel_best_score,"
+            << "same_shot,same_type,score_diff,dist_computations,"
+            << "weighted_purity,pool_best_in_same_cluster" << std::endl;
+        for (auto& row : results) {
+            ofs << row.state << "," << row.total_candidates << ","
+                << std::fixed << std::setprecision(2) << row.ratio << "," << row.k << ","
+                << row.method << ","
+                << "\"" << row.pool_best_label << "\"," << row.pool_best_type << ","
+                << std::setprecision(1) << row.pool_best_score << ","
+                << "\"" << row.sel_best_label << "\"," << row.sel_best_type << ","
+                << row.sel_best_score << ","
+                << (row.same_shot ? 1 : 0) << "," << (row.same_type ? 1 : 0) << ","
+                << row.score_diff << "," << row.dist_computations << ","
+                << std::setprecision(4) << row.weighted_purity << ","
+                << (row.pool_best_in_same_cluster ? 1 : 0) << std::endl;
+        }
+        std::cout << "\nCSV exported to: " << csv_path << std::endl;
+    }
+
+    std::cout << "\n================================================================" << std::endl;
+    std::cout << "  3-Method Comparison Complete" << std::endl;
+    std::cout << "  Total test states: " << test_states.size() << std::endl;
+    std::cout << "================================================================" << std::endl;
 }

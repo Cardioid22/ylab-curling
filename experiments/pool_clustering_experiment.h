@@ -53,6 +53,7 @@ public:
 
 private:
     dc::GameSetting game_setting_;
+    std::vector<std::string> test_state_names_;  // テスト盤面名のリスト
 
     static constexpr float kHouseCenterX = 0.0f;
     static constexpr float kHouseCenterY = 38.405f;
@@ -89,6 +90,13 @@ private:
     std::vector<int> calculateMedoids(
         const std::vector<std::vector<float>>& dist_table,
         const std::vector<std::set<int>>& clusters
+    );
+
+    // 貪欲最遠点サンプリング（距離テーブル不要、O(N*K)）
+    std::vector<int> greedyFarthestPointSampling(
+        const dc::GameState& input_state,
+        const std::vector<dc::GameState>& result_states,
+        int k
     );
 
     // クラスタ分析

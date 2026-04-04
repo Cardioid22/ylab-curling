@@ -22,6 +22,7 @@
 #include "experiments/timing_benchmark.h"
 #include "experiments/pool_experiment.h"
 #include "experiments/pool_clustering_experiment.h"
+#include "experiments/depth1_mcts_experiment.h"
 #define DBL_EPSILON 2.2204460492503131e-016
 
 namespace dc = digitalcurling3;
@@ -49,6 +50,7 @@ std::unordered_map<int, ShotInfo> state_to_shot_table;
 std::vector<dc::GameState> grid_states;
 std::shared_ptr<SimulatorWrapper> simWrapper;
 std::shared_ptr<SimulatorWrapper> simWrapper_allgrid;
+std::shared_ptr<SimulatorWrapper> simWrapper_delta;
 
 std::vector<Position> MakeGrid(const int m, const int n) {
     const float x_min = -HouseRadius;
@@ -301,6 +303,7 @@ void OnInit(
     }
     simWrapper = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
     simWrapper_allgrid = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
+    simWrapper_delta = std::make_unique<SimulatorWrapper>(g_team, g_game_setting);
     std::cout << "CurlingAI Initialize Begin.\n";
     int S = GridSize_M * GridSize_N;
     grid.resize(S);
@@ -317,6 +320,7 @@ void OnInit(
         shotData[i] = shotinfo;
         simWrapper->initialShotData.push_back(shotinfo);
         simWrapper_allgrid->initialShotData.push_back(shotinfo);
+        simWrapper_delta->initialShotData.push_back(shotinfo);
         state_to_shot_table[i] = shotinfo;
     }
     outFile.close();
@@ -376,12 +380,18 @@ dc::Move OnMyTurn(dc::GameState const& game_state)
     mcts_clustered.grow_tree(mcts_iter, 86400.0);
     mcts_clustered.export_rollout_result_to_csv("root_children_score_clustered", shot_num, GridSize_M, GridSize_N, shotData);
 
+    std::cout << "------DeltaClustered Tree------" << '\n';
+
+    MCTS mcts_delta(current_state, NodeSource::DeltaClustered, grid_states, state_to_shot_table, simWrapper_delta, GridSize_M, GridSize_N, cluster_num_for_game, num_rollout_simulations);
+    mcts_delta.grow_tree(mcts_iter, 86400.0);
+    mcts_delta.export_rollout_result_to_csv("root_children_score_delta_clustered", shot_num, GridSize_M, GridSize_N, shotData);
+
     std::cout << "------AllGrid Tree------" << '\n';
 
     MCTS mcts_allgrid(current_state, NodeSource::AllGrid, grid_states, state_to_shot_table, simWrapper_allgrid, GridSize_M, GridSize_N, cluster_num_for_game, num_rollout_simulations);
     mcts_allgrid.grow_tree(cluster_iter, 86400.0);
     mcts_allgrid.export_rollout_result_to_csv("root_children_score_allgrid", shot_num, GridSize_M, GridSize_N, shotData);
-    ShotInfo best = mcts_clustered.get_best_shot();
+    ShotInfo best = mcts_delta.get_best_shot();  // Use DeltaClustered as primary
     ShotInfo best_allgrid = mcts_allgrid.get_best_shot();
     ////mcts_clustered.report_rollout_result(); // output on terminal
     ////mcts_allgrid.report_rollout_result(); // output on terminal
@@ -661,6 +671,7 @@ int main(int argc, char const* argv[])
         bool timing_benchmark_mode = false;
         bool pool_experiment_mode = false;
         bool pool_clustering_mode = false;
+        bool depth1_mcts_mode = false;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -691,6 +702,9 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--pool-clustering") {
                 pool_clustering_mode = true;
+            }
+            if (std::string(argv[i]) == "--depth1-mcts") {
+                depth1_mcts_mode = true;
             }
             if (std::string(argv[i]) == "--cn" && i + 1 < argc) {
                 cluster_num_arg = std::atoi(argv[i + 1]);
@@ -1040,6 +1054,19 @@ int main(int argc, char const* argv[])
 
             PoolExperiment pool_exp(game_setting);
             pool_exp.runPoolGeneration();
+            return 0;
+        }
+
+        // Depth-1 MCTS モード
+        if (depth1_mcts_mode) {
+            std::cout << "Running Depth-1 Flat MC experiment..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 10;
+            game_setting.sheet_width = 4.75f;
+
+            Depth1MctsExperiment exp(game_setting);
+            exp.run();
             return 0;
         }
 
