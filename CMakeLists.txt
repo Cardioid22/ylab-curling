@@ -65,6 +65,8 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     experiments/agreement_experiment.cpp
     experiments/simulation_reliability.h
     experiments/simulation_reliability.cpp
+    experiments/timing_benchmark.h
+    experiments/timing_benchmark.cpp
     experiments/pool_experiment.h
     experiments/pool_experiment.cpp
     experiments/pool_clustering_experiment.h
