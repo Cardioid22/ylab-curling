@@ -216,7 +216,7 @@ class CurlingSheet:
         """Save the plot to a file."""
         self.draw_sheet()
         self.draw_stones()
-        self.draw_title()
+        # self.draw_title()  # Disabled title for thesis images
         plt.tight_layout()
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         print(f"Saved to: {filename}")

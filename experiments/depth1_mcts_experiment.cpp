@@ -61,37 +61,63 @@ double Depth1MctsExperiment::rollout(
     const ShotInfo& shot,
     int remaining_shots
 ) {
+    const uint8_t starting_end = state.end;
+
     // 1. 候補手を適用
     dc::GameState sim_state = sim.run_single_simulation(state, shot);
     int shots_played = 1;
 
-    // 2. 残りショットをShotGeneratorポリシーで消化
-    //    各手番でShotGeneratorで候補を生成し、ランダムに1つ選ぶ
+    // 2. 残りショットをε-greedyグリッドポリシーで消化
     std::random_device rd;
     std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> grid_dist(0, static_cast<int>(sim.initialShotData.size()) - 1);
+    std::uniform_real_distribution<double> prob(0.0, 1.0);
+    constexpr double EPSILON = 0.3;
 
-    while (shots_played < remaining_shots && !sim_state.IsGameOver()) {
-        // 現在の手番のチーム
-        dc::Team current_team = (sim_state.shot % 2 == 0) ? dc::Team::k0 : dc::Team::k1;
+    // エンド終了（石リセット）でループを抜ける
+    while (shots_played < remaining_shots && !sim_state.IsGameOver()
+           && sim_state.end == starting_end) {
+        // 現在の手番チーム
+        bool is_team1_turn = (sim_state.shot % 2 == 1);
 
-        // ShotGeneratorで盤面に応じた候補手を生成（シミュレーションなし）
-        auto candidates = rollout_generator_->generateCandidates(sim_state, current_team, rollout_grid_);
-
-        ShotInfo chosen_shot;
-        if (candidates.empty()) {
-            // 候補がない場合はグリッドからランダム
-            std::uniform_int_distribution<int> grid_dist(0, static_cast<int>(sim.initialShotData.size()) - 1);
-            chosen_shot = sim.initialShotData[grid_dist(gen)];
+        ShotInfo chosen;
+        if (prob(gen) < EPSILON) {
+            chosen = sim.initialShotData[grid_dist(gen)];
         } else {
-            std::uniform_int_distribution<int> cand_dist(0, static_cast<int>(candidates.size()) - 1);
-            chosen_shot = candidates[cand_dist(gen)].shot;
+            double best_score = -1e9;
+            chosen = sim.initialShotData[0];
+            for (auto& grid_shot : sim.initialShotData) {
+                dc::GameState next = sim.run_single_simulation(sim_state, grid_shot);
+                double score;
+                if (next.end > starting_end || next.IsGameOver()) {
+                    // エンド終了: scoresから読む
+                    int t0 = next.scores[0][starting_end].value_or(0);
+                    int t1 = next.scores[1][starting_end].value_or(0);
+                    score = static_cast<double>(t0 - t1);
+                } else {
+                    score = static_cast<double>(evaluateEndScore(next, dc::Team::k0));
+                }
+                // 相手ターンでは符号反転（相手は自分に不利な手を選ぶ）
+                if (is_team1_turn) score = -score;
+                if (score > best_score) {
+                    best_score = score;
+                    chosen = grid_shot;
+                }
+            }
         }
-
-        sim_state = sim.run_single_simulation(sim_state, chosen_shot);
+        sim_state = sim.run_single_simulation(sim_state, chosen);
         shots_played++;
     }
 
-    // 3. エンドスコアで評価（連続値）
+    // 3. エンドスコアで評価
+    // エンド終了後は石がリセットされているのでscores配列から読む
+    if (sim_state.end > starting_end || sim_state.IsGameOver()) {
+        if (starting_end < static_cast<uint8_t>(sim_state.scores[0].size())) {
+            int t0 = sim_state.scores[0][starting_end].value_or(0);
+            int t1 = sim_state.scores[1][starting_end].value_or(0);
+            return static_cast<double>(t0 - t1);
+        }
+    }
     return static_cast<double>(evaluateEndScore(sim_state, dc::Team::k0));
 }
 
@@ -330,15 +356,16 @@ std::vector<dc::GameState> Depth1MctsExperiment::createTestStates() {
         return (seed % 2001 - 1000) / 1000.0f;
     };
 
-    // 石がある3盤面のみ
-    // 1. 自分1+相手2
-    { dc::GameState s(game_setting_); s.stones[0][0].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY+0.3f), 0.f)); s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY-0.2f), 0.f)); s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.1f, kHouseCenterY+0.8f), 0.f)); s.shot = calcShot(s); states.push_back(s); test_state_names_.push_back("opp2_my1"); }
+    // 最終ショット付近のテスト盤面のみ（速度重視）
 
-    // 2. 3v3密集
-    { dc::GameState s(game_setting_); s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY), 0.f)); s.stones[0][1].emplace(dc::Transform(dc::Vector2(-1.0f, kHouseCenterY-0.5f), 0.f)); s.stones[0][2].emplace(dc::Transform(dc::Vector2(0.5f, kHouseCenterY+1.0f), 0.f)); s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.2f, kHouseCenterY+0.1f), 0.f)); s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.3f, kHouseCenterY+1.5f), 0.f)); s.stones[1][2].emplace(dc::Transform(dc::Vector2(0.8f, kHouseCenterY-0.8f), 0.f)); s.shot = calcShot(s); states.push_back(s); test_state_names_.push_back("crowded_3v3"); }
+    // 1. 最終ショット（残り1手）: 自分1+相手2 → 最後の1手
+    { dc::GameState s(game_setting_); s.stones[0][0].emplace(dc::Transform(dc::Vector2(-0.3f, kHouseCenterY+0.2f), 0.f)); s.stones[0][1].emplace(dc::Transform(dc::Vector2(0.5f, kHouseCenterY-0.3f), 0.f)); s.stones[0][2].emplace(dc::Transform(dc::Vector2(-0.1f, kHouseCenterY+1.0f), 0.f)); s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY-0.05f), 0.f)); s.stones[1][1].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY+0.5f), 0.f)); s.stones[1][2].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY-0.8f), 0.f)); s.stones[1][3].emplace(dc::Transform(dc::Vector2(0.2f, kHouseCenterY+1.2f), 0.f)); s.shot = 15; states.push_back(s); test_state_names_.push_back("last_shot"); }
 
-    // 3. ボタン争い
-    { dc::GameState s(game_setting_); s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.15f, kHouseCenterY+0.1f), 0.f)); s.stones[1][0].emplace(dc::Transform(dc::Vector2(-0.1f, kHouseCenterY-0.05f), 0.f)); s.shot = calcShot(s); states.push_back(s); test_state_names_.push_back("button_fight"); }
+    // 5. 残り2手: 終盤接戦
+    { dc::GameState s(game_setting_); s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.1f, kHouseCenterY+0.1f), 0.f)); s.stones[0][1].emplace(dc::Transform(dc::Vector2(-0.4f, kHouseCenterY+0.7f), 0.f)); s.stones[0][2].emplace(dc::Transform(dc::Vector2(0.6f, kHouseCenterY-0.4f), 0.f)); s.stones[1][0].emplace(dc::Transform(dc::Vector2(-0.05f, kHouseCenterY-0.02f), 0.f)); s.stones[1][1].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY+0.3f), 0.f)); s.stones[1][2].emplace(dc::Transform(dc::Vector2(-0.2f, kHouseCenterY-0.6f), 0.f)); s.shot = 14; states.push_back(s); test_state_names_.push_back("last_2shots"); }
+
+    // 6. 残り3手
+    { dc::GameState s(game_setting_); s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY), 0.f)); s.stones[0][1].emplace(dc::Transform(dc::Vector2(-0.8f, kHouseCenterY+0.5f), 0.f)); s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.2f, kHouseCenterY+0.15f), 0.f)); s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.3f, kHouseCenterY+1.0f), 0.f)); s.stones[1][2].emplace(dc::Transform(dc::Vector2(0.5f, kHouseCenterY-0.5f), 0.f)); s.shot = 13; states.push_back(s); test_state_names_.push_back("last_3shots"); }
 
     // プログラム生成は省略（時間短縮のため）
     for (int i = 0; i < 0; i++) {
@@ -367,8 +394,7 @@ std::vector<dc::GameState> Depth1MctsExperiment::createTestStates() {
 
 void Depth1MctsExperiment::run() {
     std::cout << "================================================================" << std::endl;
-    std::cout << "  Depth-1 Flat MC Experiment (Ayumu-style)" << std::endl;
-    std::cout << "  UCB1 adaptive sampling, continuous evaluation" << std::endl;
+    std::cout << "  1-shot-ahead vs End-of-end Evaluation Comparison" << std::endl;
     std::cout << "================================================================" << std::endl;
 
     auto test_states = createTestStates();
@@ -380,16 +406,9 @@ void Depth1MctsExperiment::run() {
     ShotGenerator generator(game_setting_);
     auto grid = PoolExperiment(game_setting_).makeGrid(4, 4);
 
-    // ロールアウト用ShotGenerator + グリッド
-    rollout_generator_ = std::make_unique<ShotGenerator>(game_setting_);
-    rollout_grid_ = grid;
-
-    // SimulatorWrapper（ロールアウト用）
     SimulatorWrapper sim(dc::Team::k0, game_setting_);
-    // グリッドショットをinitialShotDataに設定（フォールバック用）
     for (auto& pos : grid) {
-        ShotInfo shot = sim.FindShot(pos);
-        sim.initialShotData.push_back(shot);
+        sim.initialShotData.push_back(sim.FindShot(pos));
     }
 
     auto classifyType = [](ShotType t) -> std::string {
@@ -404,21 +423,31 @@ void Depth1MctsExperiment::run() {
     };
 
     // 実験パラメータ
-    std::vector<int> budgets = {500, 1000};
-    std::vector<float> retention_ratios = {0.2f, 0.3f, 0.5f};
+    int n_rollouts = 3;  // 候補あたりのロールアウト回数
+    std::vector<float> retention_ratios = {0.1f, 0.2f, 0.3f, 0.5f, 0.7f};
 
     struct ResultRow {
         std::string state;
         int n_candidates;
-        int budget;
-        std::string method;  // "FullPool" or "Clustered_XX%"
-        int n_arms;
-        std::string best_label;
-        std::string best_type;
-        double best_mean_reward;
-        double best_variance;
-        int best_visits;
-        double elapsed_ms;
+        float ratio;
+        int k;
+        // 1手先評価（静的）
+        std::string static_best_label;
+        std::string static_best_type;
+        float static_best_score;
+        // エンド終了評価（ロールアウト）
+        std::string rollout_best_label;
+        std::string rollout_best_type;
+        double rollout_best_mean;
+        // DCクラスタリング後の最良手
+        std::string dc_static_best_label;
+        std::string dc_rollout_best_label;
+        // 一致度
+        bool static_vs_rollout_exact;  // 1手先とエンド終了で同じ手を選んだか
+        bool dc_static_same_cluster;   // DC(静的)の手が歩(静的)と同じクラスタか
+        bool dc_rollout_same_cluster;  // DC(ロールアウト)の手が歩(ロールアウト)と同じクラスタか
+        float static_score_diff;
+        double rollout_score_diff;
     };
     std::vector<ResultRow> results;
 
@@ -432,143 +461,184 @@ void Depth1MctsExperiment::run() {
 
         int remaining_shots = 16 - state.shot;
 
-        // 距離テーブル + クラスタリング（全保持率で共有）
-        auto dist_delta = makeDistanceTableDelta(state, pool.result_states);
-
         std::cout << "\n[" << (s+1) << "/" << test_states.size() << "] "
                   << test_state_names_[s] << " (N=" << n
                   << ", remaining=" << remaining_shots << ")" << std::endl;
 
-        for (int budget : budgets) {
-            // === FullPool: 全候補にロールアウト ===
-            {
-                std::vector<Arm> arms(n);
-                for (int i = 0; i < n; i++) {
-                    arms[i].candidate_idx = i;
-                    arms[i].label = pool.candidates[i].label;
-                    arms[i].type = classifyType(pool.candidates[i].type);
-                    arms[i].shot = pool.candidates[i].shot;
+        // === 全候補の評価 ===
+        // (A) 1手先の静的評価（前回の実験と同じ）
+        std::vector<float> static_scores(n);
+        for (int i = 0; i < n; i++) {
+            static_scores[i] = evaluateBoard(pool.result_states[i]);
+        }
+        int static_best_idx = std::max_element(static_scores.begin(), static_scores.end()) - static_scores.begin();
+
+        // (B) エンド終了までロールアウトした評価
+        std::vector<double> rollout_scores(n, 0.0);
+        auto t0 = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < n; i++) {
+            for (int r = 0; r < n_rollouts; r++) {
+                rollout_scores[i] += rollout(sim, state, pool.candidates[i].shot, remaining_shots);
+            }
+            rollout_scores[i] /= n_rollouts;
+        }
+        auto t1 = std::chrono::high_resolution_clock::now();
+        double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+        int rollout_best_idx = std::max_element(rollout_scores.begin(), rollout_scores.end()) - rollout_scores.begin();
+
+        bool static_vs_rollout = (static_best_idx == rollout_best_idx);
+        std::cout << "  Static best: " << pool.candidates[static_best_idx].label
+                  << " (score=" << static_scores[static_best_idx] << ")" << std::endl;
+        std::cout << "  Rollout best: " << pool.candidates[rollout_best_idx].label
+                  << " (mean=" << std::fixed << std::setprecision(2) << rollout_scores[rollout_best_idx] << ")"
+                  << " [" << std::setprecision(0) << ms << "ms]"
+                  << (static_vs_rollout ? " SAME" : " DIFFERENT") << std::endl;
+
+        // === クラスタリング + 各保持率 ===
+        auto dist_delta = makeDistanceTableDelta(state, pool.result_states);
+
+        for (float ratio : retention_ratios) {
+            int k = std::max(2, static_cast<int>(std::round(n * ratio)));
+            if (k >= n) continue;
+
+            auto clusters = runClustering(dist_delta, k);
+            auto medoids = calculateMedoids(dist_delta, clusters);
+
+            // DC: 静的評価での最良メドイド
+            int dc_static_best = -1;
+            float dc_static_best_score = -1e9f;
+            for (int m : medoids) {
+                if (m < 0) continue;
+                if (static_scores[m] > dc_static_best_score) {
+                    dc_static_best_score = static_scores[m];
+                    dc_static_best = m;
                 }
-
-                auto t0 = std::chrono::high_resolution_clock::now();
-                int best = runFlatMC(arms, sim, state, budget, remaining_shots);
-                auto t1 = std::chrono::high_resolution_clock::now();
-                double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-
-                results.push_back({
-                    test_state_names_[s], n, budget, "FullPool", n,
-                    arms[best].label, arms[best].type,
-                    arms[best].mean(), arms[best].variance(), arms[best].visits, ms
-                });
-
-                std::cout << "  B=" << budget << " Full(" << n << "arms): "
-                          << arms[best].label << " mean=" << std::fixed << std::setprecision(2)
-                          << arms[best].mean() << " visits=" << arms[best].visits
-                          << " [" << std::setprecision(0) << ms << "ms]" << std::endl;
             }
 
-            // === Clustered: クラスタリングで絞った候補にロールアウト ===
-            for (float ratio : retention_ratios) {
-                int k = std::max(2, static_cast<int>(std::round(n * ratio)));
-                if (k >= n) continue;
-
-                auto clusters = runClustering(dist_delta, k);
-                auto medoids = calculateMedoids(dist_delta, clusters);
-
-                std::vector<Arm> arms;
-                for (int m : medoids) {
-                    if (m < 0) continue;
-                    Arm arm;
-                    arm.candidate_idx = m;
-                    arm.label = pool.candidates[m].label;
-                    arm.type = classifyType(pool.candidates[m].type);
-                    arm.shot = pool.candidates[m].shot;
-                    arms.push_back(arm);
+            // DC: ロールアウト評価での最良メドイド（既に計算済みのrollout_scoresを使う）
+            int dc_rollout_best = -1;
+            double dc_rollout_best_score = -1e9;
+            for (int m : medoids) {
+                if (m < 0) continue;
+                if (rollout_scores[m] > dc_rollout_best_score) {
+                    dc_rollout_best_score = rollout_scores[m];
+                    dc_rollout_best = m;
                 }
-
-                auto t0 = std::chrono::high_resolution_clock::now();
-                int best = runFlatMC(arms, sim, state, budget, remaining_shots);
-                auto t1 = std::chrono::high_resolution_clock::now();
-                double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-
-                int ratio_pct = static_cast<int>(std::round(ratio * 100));
-                std::string method = "Clustered_" + std::to_string(ratio_pct) + "%";
-
-                results.push_back({
-                    test_state_names_[s], n, budget, method,
-                    static_cast<int>(arms.size()),
-                    arms[best].label, arms[best].type,
-                    arms[best].mean(), arms[best].variance(), arms[best].visits, ms
-                });
-
-                std::cout << "  B=" << budget << " C" << ratio_pct << "%("
-                          << arms.size() << "arms): "
-                          << arms[best].label << " mean=" << std::fixed << std::setprecision(2)
-                          << arms[best].mean() << " visits=" << arms[best].visits
-                          << " [" << std::setprecision(0) << ms << "ms]" << std::endl;
             }
+
+            // Same Cluster判定
+            auto findCluster = [&](int idx) -> int {
+                for (int ci = 0; ci < static_cast<int>(clusters.size()); ci++) {
+                    if (clusters[ci].count(idx)) return ci;
+                }
+                return -1;
+            };
+
+            int static_best_cl = findCluster(static_best_idx);
+            int rollout_best_cl = findCluster(rollout_best_idx);
+            int dc_static_cl = findCluster(dc_static_best);
+            int dc_rollout_cl = findCluster(dc_rollout_best);
+
+            int ratio_pct = static_cast<int>(std::round(ratio * 100));
+            std::cout << "  " << ratio_pct << "%(K=" << k << ")"
+                      << "  DC_static:" << pool.candidates[dc_static_best].label
+                      << (dc_static_best == static_best_idx ? " EXACT" : (dc_static_cl == static_best_cl ? " SameCluster" : " MISS"))
+                      << "  DC_rollout:" << pool.candidates[dc_rollout_best].label
+                      << (dc_rollout_best == rollout_best_idx ? " EXACT" : (dc_rollout_cl == rollout_best_cl ? " SameCluster" : " MISS"))
+                      << std::endl;
+
+            ResultRow row;
+            row.state = test_state_names_[s];
+            row.n_candidates = n; row.ratio = ratio; row.k = k;
+            row.static_best_label = pool.candidates[static_best_idx].label;
+            row.static_best_type = classifyType(pool.candidates[static_best_idx].type);
+            row.static_best_score = static_scores[static_best_idx];
+            row.rollout_best_label = pool.candidates[rollout_best_idx].label;
+            row.rollout_best_type = classifyType(pool.candidates[rollout_best_idx].type);
+            row.rollout_best_mean = rollout_scores[rollout_best_idx];
+            row.dc_static_best_label = pool.candidates[dc_static_best].label;
+            row.dc_rollout_best_label = pool.candidates[dc_rollout_best].label;
+            row.static_vs_rollout_exact = static_vs_rollout;
+            row.dc_static_same_cluster = (dc_static_cl == static_best_cl);
+            row.dc_rollout_same_cluster = (dc_rollout_cl == rollout_best_cl);
+            row.static_score_diff = dc_static_best_score - static_scores[static_best_idx];
+            row.rollout_score_diff = dc_rollout_best_score - rollout_scores[rollout_best_idx];
+            results.push_back(row);
         }
     }
 
     // ========== サマリー ==========
     std::cout << "\n================================================================" << std::endl;
-    std::cout << "  Summary: Flat MC Best Shot by Method & Budget" << std::endl;
+    std::cout << "  Summary" << std::endl;
     std::cout << "================================================================" << std::endl;
 
-    // method × budget 別の平均報酬
-    struct AggKey {
-        std::string method;
-        int budget;
-        bool operator<(const AggKey& o) const {
-            if (budget != o.budget) return budget < o.budget;
-            return method < o.method;
-        }
-    };
-    std::map<AggKey, std::vector<double>> agg_rewards;
-    std::map<AggKey, std::vector<double>> agg_times;
-    std::map<AggKey, std::vector<int>> agg_visits;
-
+    // 1. 静的評価 vs ロールアウト評価で最良手は変わるか
+    int n_same = 0, n_total = 0;
     for (auto& row : results) {
-        AggKey key{row.method, row.budget};
-        agg_rewards[key].push_back(row.best_mean_reward);
-        agg_times[key].push_back(row.elapsed_ms);
-        agg_visits[key].push_back(row.best_visits);
+        if (row.ratio == retention_ratios[0]) {  // 重複カウント防止
+            n_total++;
+            if (row.static_vs_rollout_exact) n_same++;
+        }
     }
+    std::cout << "\n  [Static vs Rollout] Same best shot: " << n_same << "/" << n_total
+              << " (" << std::fixed << std::setprecision(0)
+              << (n_total > 0 ? 100.0f * n_same / n_total : 0) << "%)" << std::endl;
 
-    std::cout << std::setw(18) << "Method" << std::setw(8) << "Budget"
-              << std::setw(12) << "AvgReward" << std::setw(12) << "AvgVisits"
-              << std::setw(12) << "AvgTime(ms)" << std::setw(6) << "N" << std::endl;
-    std::cout << std::string(68, '-') << std::endl;
+    // 2. 保持率別のSame Cluster率比較
+    std::cout << "\n  [DC Same Cluster by Retention Ratio]" << std::endl;
+    std::cout << std::setw(8) << "Ratio"
+              << std::setw(22) << "DC_Static SameClust"
+              << std::setw(22) << "DC_Rollout SameClust" << std::endl;
+    std::cout << std::string(52, '-') << std::endl;
 
-    for (auto& [key, rewards] : agg_rewards) {
-        double avg_r = 0; for (double r : rewards) avg_r += r; avg_r /= rewards.size();
-        double avg_t = 0; for (double t : agg_times[key]) avg_t += t; avg_t /= agg_times[key].size();
-        double avg_v = 0; for (int v : agg_visits[key]) avg_v += v; avg_v /= agg_visits[key].size();
-        std::cout << std::setw(18) << key.method << std::setw(8) << key.budget
-                  << std::setw(12) << std::fixed << std::setprecision(2) << avg_r
-                  << std::setw(12) << std::setprecision(0) << avg_v
-                  << std::setw(12) << std::setprecision(0) << avg_t
-                  << std::setw(6) << rewards.size() << std::endl;
+    for (float ratio : retention_ratios) {
+        int rp = static_cast<int>(std::round(ratio * 100));
+        int count = 0, sc_static = 0, sc_rollout = 0;
+        for (auto& row : results) {
+            if (static_cast<int>(std::round(row.ratio * 100)) == rp) {
+                count++;
+                if (row.dc_static_same_cluster) sc_static++;
+                if (row.dc_rollout_same_cluster) sc_rollout++;
+            }
+        }
+        if (count == 0) continue;
+        std::cout << std::setw(6) << rp << "%"
+                  << std::setw(10) << sc_static << "/" << count
+                  << " (" << std::setw(3) << std::setprecision(0) << (100.0f * sc_static / count) << "%)"
+                  << std::setw(10) << sc_rollout << "/" << count
+                  << " (" << std::setw(3) << (100.0f * sc_rollout / count) << "%)"
+                  << std::endl;
     }
 
     // CSVエクスポート
     {
-        std::string csv_path = output_dir + "/depth1_mcts_results.csv";
+        std::string csv_path = output_dir + "/static_vs_rollout.csv";
         std::ofstream ofs(csv_path);
-        ofs << "state,n_candidates,budget,method,n_arms,best_label,best_type,"
-            << "best_mean_reward,best_variance,best_visits,elapsed_ms" << std::endl;
+        ofs << "state,n_candidates,ratio,k,"
+            << "static_best_label,static_best_type,static_best_score,"
+            << "rollout_best_label,rollout_best_type,rollout_best_mean,"
+            << "dc_static_best_label,dc_rollout_best_label,"
+            << "static_vs_rollout_exact,dc_static_same_cluster,dc_rollout_same_cluster,"
+            << "static_score_diff,rollout_score_diff" << std::endl;
         for (auto& row : results) {
-            ofs << row.state << "," << row.n_candidates << "," << row.budget << ","
-                << row.method << "," << row.n_arms << ","
-                << "\"" << row.best_label << "\"," << row.best_type << ","
-                << std::fixed << std::setprecision(4) << row.best_mean_reward << ","
-                << row.best_variance << "," << row.best_visits << ","
-                << std::setprecision(1) << row.elapsed_ms << std::endl;
+            ofs << row.state << "," << row.n_candidates << ","
+                << std::fixed << std::setprecision(2) << row.ratio << "," << row.k << ","
+                << "\"" << row.static_best_label << "\"," << row.static_best_type << ","
+                << std::setprecision(1) << row.static_best_score << ","
+                << "\"" << row.rollout_best_label << "\"," << row.rollout_best_type << ","
+                << std::setprecision(4) << row.rollout_best_mean << ","
+                << "\"" << row.dc_static_best_label << "\","
+                << "\"" << row.dc_rollout_best_label << "\","
+                << (row.static_vs_rollout_exact ? 1 : 0) << ","
+                << (row.dc_static_same_cluster ? 1 : 0) << ","
+                << (row.dc_rollout_same_cluster ? 1 : 0) << ","
+                << std::setprecision(2) << row.static_score_diff << ","
+                << row.rollout_score_diff << std::endl;
         }
         std::cout << "\nCSV exported to: " << csv_path << std::endl;
     }
 
     std::cout << "\n================================================================" << std::endl;
-    std::cout << "  Depth-1 Flat MC Experiment Complete" << std::endl;
+    std::cout << "  Experiment Complete (n_rollouts=" << n_rollouts << " per candidate)" << std::endl;
     std::cout << "================================================================" << std::endl;
 }

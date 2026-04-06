@@ -62,6 +62,15 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     std::vector<dc::GameState> states;
     test_state_names_.clear();
 
+    // shot番号を配置済み石数から自動計算（偶数=team0の手番）
+    auto calcShot = [](const dc::GameState& s) -> int {
+        int total = 0;
+        for (int t = 0; t < 2; t++)
+            for (int i = 0; i < 8; i++)
+                if (s.stones[t][i].has_value()) total++;
+        return (total % 2 == 0) ? total : total + 1;
+    };
+
     // テスト盤面1: 空場（第1投）
     {
         dc::GameState s(game_setting_);
@@ -73,8 +82,8 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面2: 相手石がティー近くに1個
     {
         dc::GameState s(game_setting_);
-        s.shot = 2;
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.2f, kHouseCenterY), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("opp1_tee");
     }
@@ -82,10 +91,10 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面3: 相手石2個 + 自分石1個
     {
         dc::GameState s(game_setting_);
-        s.shot = 4;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY + 0.3f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY - 0.2f), 0.f));
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.1f, kHouseCenterY + 0.8f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("opp2_my1");
     }
@@ -93,13 +102,13 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面4: 混雑した盤面（3対3）
     {
         dc::GameState s(game_setting_);
-        s.shot = 10;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY), 0.f));
         s.stones[0][1].emplace(dc::Transform(dc::Vector2(-1.0f, kHouseCenterY - 0.5f), 0.f));
         s.stones[0][2].emplace(dc::Transform(dc::Vector2(0.5f, kHouseCenterY + 1.0f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.2f, kHouseCenterY + 0.1f), 0.f));
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.3f, kHouseCenterY + 1.5f), 0.f));
         s.stones[1][2].emplace(dc::Transform(dc::Vector2(0.8f, kHouseCenterY - 0.8f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("crowded_3v3");
     }
@@ -107,8 +116,8 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面5: センターガード（相手石がガードゾーンに1個）
     {
         dc::GameState s(game_setting_);
-        s.shot = 2;
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY - 2.5f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("center_guard");
     }
@@ -116,10 +125,10 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面6: ダブルガード（ガードゾーンに2個）
     {
         dc::GameState s(game_setting_);
-        s.shot = 4;
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.1f, kHouseCenterY - 2.0f), 0.f));
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.1f, kHouseCenterY - 3.0f), 0.f));
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.5f, kHouseCenterY + 0.5f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("double_guard");
     }
@@ -127,9 +136,9 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面7: ボタン争い（両チームがティー付近に1個ずつ）
     {
         dc::GameState s(game_setting_);
-        s.shot = 4;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(-0.15f, kHouseCenterY + 0.1f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.1f, kHouseCenterY - 0.05f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("button_fight");
     }
@@ -137,8 +146,8 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面8: フリーズ狙い（相手石がハウス中心、自分石なし）
     {
         dc::GameState s(game_setting_);
-        s.shot = 2;
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY + 0.05f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("freeze_target");
     }
@@ -146,11 +155,11 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面9: 相手3点取り状態（自分不利）
     {
         dc::GameState s(game_setting_);
-        s.shot = 8;
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY), 0.f));
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY + 0.2f), 0.f));
         s.stones[1][2].emplace(dc::Transform(dc::Vector2(-0.2f, kHouseCenterY - 0.1f), 0.f));
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(1.5f, kHouseCenterY + 0.8f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("opp_scoring_3");
     }
@@ -158,10 +167,10 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面10: コーナーガード（左右のガード）
     {
         dc::GameState s(game_setting_);
-        s.shot = 6;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(-1.5f, kHouseCenterY - 1.0f), 0.f));
         s.stones[0][1].emplace(dc::Transform(dc::Vector2(1.5f, kHouseCenterY - 1.2f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY + 0.3f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("corner_guards");
     }
@@ -169,9 +178,9 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面11: ブランクエンド狙い（終盤、石が少ない）
     {
         dc::GameState s(game_setting_);
-        s.shot = 14;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY - 0.3f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(-0.8f, kHouseCenterY + 1.2f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("blank_end");
     }
@@ -179,10 +188,10 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面12: 左寄り配置
     {
         dc::GameState s(game_setting_);
-        s.shot = 6;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(-1.0f, kHouseCenterY + 0.5f), 0.f));
         s.stones[0][1].emplace(dc::Transform(dc::Vector2(-0.8f, kHouseCenterY - 0.3f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(-1.2f, kHouseCenterY + 0.1f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("left_heavy");
     }
@@ -190,10 +199,10 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面13: 自分有利（自分2点状態）
     {
         dc::GameState s(game_setting_);
-        s.shot = 6;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.05f, kHouseCenterY + 0.05f), 0.f));
         s.stones[0][1].emplace(dc::Transform(dc::Vector2(-0.3f, kHouseCenterY + 0.4f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.8f, kHouseCenterY - 0.6f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("my_scoring_2");
     }
@@ -201,7 +210,6 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面14: 密集ハウス（4対4、終盤）
     {
         dc::GameState s(game_setting_);
-        s.shot = 14;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.1f, kHouseCenterY + 0.1f), 0.f));
         s.stones[0][1].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY + 0.8f), 0.f));
         s.stones[0][2].emplace(dc::Transform(dc::Vector2(0.7f, kHouseCenterY - 0.4f), 0.f));
@@ -210,6 +218,7 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(0.4f, kHouseCenterY + 0.5f), 0.f));
         s.stones[1][2].emplace(dc::Transform(dc::Vector2(-0.8f, kHouseCenterY - 0.3f), 0.f));
         s.stones[1][3].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY + 1.5f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("packed_house_4v4");
     }
@@ -217,10 +226,10 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面15: ガード+ドロー混在
     {
         dc::GameState s(game_setting_);
-        s.shot = 6;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(0.0f, kHouseCenterY - 2.5f), 0.f));  // ガード
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(0.3f, kHouseCenterY + 0.2f), 0.f));  // ハウス内
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(-0.5f, kHouseCenterY - 2.0f), 0.f)); // ガード
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("guard_and_draw");
     }
@@ -228,11 +237,11 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
     // テスト盤面16: スプリット配置（左右に分散）
     {
         dc::GameState s(game_setting_);
-        s.shot = 8;
         s.stones[0][0].emplace(dc::Transform(dc::Vector2(-1.5f, kHouseCenterY + 0.5f), 0.f));
         s.stones[0][1].emplace(dc::Transform(dc::Vector2(1.5f, kHouseCenterY + 0.3f), 0.f));
         s.stones[1][0].emplace(dc::Transform(dc::Vector2(-1.2f, kHouseCenterY - 0.2f), 0.f));
         s.stones[1][1].emplace(dc::Transform(dc::Vector2(1.0f, kHouseCenterY - 0.5f), 0.f));
+        s.shot = calcShot(s);
         states.push_back(s);
         test_state_names_.push_back("split_lr");
     }
@@ -245,16 +254,7 @@ std::vector<dc::GameState> PoolClusteringExperiment::createTestStates() {
         return (seed % 2001 - 1000) / 1000.0f;
     };
 
-    // shot番号を配置済み石数から自動計算するヘルパー
-    // shot = 配置済み石の合計数（team0がshot/2投、team1がshot/2投 済みで、次はteam0の手番）
-    auto calcShot = [](const dc::GameState& s) -> int {
-        int total = 0;
-        for (int t = 0; t < 2; t++)
-            for (int i = 0; i < 8; i++)
-                if (s.stones[t][i].has_value()) total++;
-        // 偶数にして自チーム（team0）の手番にする
-        return (total % 2 == 0) ? total : total + 1;
-    };
+    // calcShotは上で定義済み
 
     // カテゴリ1: 相手石1個（様々な位置）(17-26)
     for (int i = 0; i < 10; i++) {
@@ -1287,8 +1287,8 @@ void PoolClusteringExperiment::run() {
                       << "(diff=" << std::showpos << (best_fps_score - best_pool_score) << std::noshowpos << ")"
                       << std::endl;
 
-            // === 詳細JSON出力（特定盤面・特定保持率のみ）===
-            if (state_names[s] == "opp2_my1" && ratio_pct == 20) {
+            // === 詳細JSON出力（全盤面、保持率20%のみ）===
+            if (ratio_pct == 20) {
                 std::string json_path = output_dir + "/detail_" + state_names[s] + "_r" + std::to_string(ratio_pct) + ".json";
                 std::ofstream jf(json_path);
                 jf << std::fixed << std::setprecision(4);
