@@ -23,6 +23,8 @@
 #include "experiments/pool_experiment.h"
 #include "experiments/pool_clustering_experiment.h"
 #include "experiments/depth1_mcts_experiment.h"
+#include "src/policy.h"
+#include "src/shot_generator.h"
 #define DBL_EPSILON 2.2204460492503131e-016
 
 namespace dc = digitalcurling3;
@@ -672,6 +674,7 @@ int main(int argc, char const* argv[])
         bool pool_experiment_mode = false;
         bool pool_clustering_mode = false;
         bool depth1_mcts_mode = false;
+        bool test_policy_mode = false;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -705,6 +708,9 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--depth1-mcts") {
                 depth1_mcts_mode = true;
+            }
+            if (std::string(argv[i]) == "--test-policy") {
+                test_policy_mode = true;
             }
             if (std::string(argv[i]) == "--cn" && i + 1 < argc) {
                 cluster_num_arg = std::atoi(argv[i + 1]);
@@ -1054,6 +1060,137 @@ int main(int argc, char const* argv[])
 
             PoolExperiment pool_exp(game_setting);
             pool_exp.runPoolGeneration();
+            return 0;
+        }
+
+        // gPolicy テストモード
+        if (test_policy_mode) {
+            std::cout << "=== gPolicy Test ===" << std::endl;
+
+            // ポリシー読み込み
+            RolloutPolicy policy;
+            if (!policy.load("data/policy_param.dat")) {
+                std::cerr << "Failed to load policy_param.dat" << std::endl;
+                return 1;
+            }
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 10;
+            game_setting.sheet_width = 4.75f;
+
+            ShotGenerator gen(game_setting);
+
+            // --- テスト1: 空盤面 ---
+            {
+                std::cout << "\n--- Test 1: Empty board (shot 0, first team) ---" << std::endl;
+                dc::GameState state;
+                state.shot = 0;
+                state.end = 0;
+                auto candidates = gen.generateCandidates(state, dc::Team::k0);
+                std::cout << "Candidates: " << candidates.size() << std::endl;
+
+                auto scores = policy.scoreCandidates(state, candidates, 0, dc::Team::k0, 0, 0);
+                // 上位5手を表示
+                std::vector<int> idx(scores.size());
+                std::iota(idx.begin(), idx.end(), 0);
+                std::partial_sort(idx.begin(), idx.begin() + std::min(5, (int)idx.size()), idx.end(),
+                    [&](int a, int b) { return scores[a] > scores[b]; });
+                for (int i = 0; i < std::min(5, (int)idx.size()); ++i) {
+                    int j = idx[i];
+                    std::cout << "  " << i+1 << ". " << candidates[j].label
+                              << " score=" << scores[j] << std::endl;
+                }
+
+                // サンプリング10回テスト
+                std::cout << "  Sampling 10 times:" << std::endl;
+                for (int t = 0; t < 10; ++t) {
+                    int sel = policy.selectShot(state, candidates, 0, dc::Team::k0, 0, 0);
+                    std::cout << "    -> " << candidates[sel].label << std::endl;
+                }
+            }
+
+            // --- テスト2: ハウス内に石がある盤面 ---
+            {
+                std::cout << "\n--- Test 2: Stones in house (shot 4, first team) ---" << std::endl;
+                dc::GameState state;
+                state.shot = 4;
+                state.end = 0;
+                // Team0 の石: ティー付近
+                state.stones[0][0].emplace(dc::Vector2(0.0f, 38.4f), 0.f);
+                // Team1 の石: ハウス左
+                state.stones[1][0].emplace(dc::Vector2(-0.5f, 38.0f), 0.f);
+                // Team0 の石: ガード
+                state.stones[0][1].emplace(dc::Vector2(0.0f, 36.5f), 0.f);
+                // Team1 の石: ハウス右
+                state.stones[1][1].emplace(dc::Vector2(0.8f, 38.3f), 0.f);
+
+                auto candidates = gen.generateCandidates(state, dc::Team::k0);
+                std::cout << "Candidates: " << candidates.size() << std::endl;
+
+                auto scores = policy.scoreCandidates(state, candidates, 4, dc::Team::k0, 0, 0);
+
+                // 全スコアの統計
+                double min_s = *std::min_element(scores.begin(), scores.end());
+                double max_s = *std::max_element(scores.begin(), scores.end());
+                double sum_s = std::accumulate(scores.begin(), scores.end(), 0.0);
+                std::cout << "  Score stats: min=" << min_s << " max=" << max_s
+                          << " mean=" << sum_s / scores.size() << std::endl;
+
+                // タイプ別の平均スコア
+                std::map<std::string, std::pair<double,int>> type_scores;
+                for (size_t i = 0; i < candidates.size(); ++i) {
+                    std::string tname;
+                    switch (candidates[i].type) {
+                        case ShotType::DRAW: tname = "Draw"; break;
+                        case ShotType::HIT: tname = "Hit"; break;
+                        case ShotType::FREEZE: tname = "Freeze"; break;
+                        case ShotType::PREGUARD: tname = "PreGuard"; break;
+                        case ShotType::POSTGUARD: tname = "PostGuard"; break;
+                        case ShotType::COMEAROUND: tname = "ComeAround"; break;
+                        case ShotType::PEEL: tname = "Peel"; break;
+                        case ShotType::PASS: tname = "Pass"; break;
+                        default: tname = "Other"; break;
+                    }
+                    type_scores[tname].first += scores[i];
+                    type_scores[tname].second++;
+                }
+                std::cout << "  Avg score by type:" << std::endl;
+                for (auto& [name, val] : type_scores) {
+                    std::cout << "    " << name << ": " << val.first / val.second
+                              << " (n=" << val.second << ")" << std::endl;
+                }
+
+                // 上位5手
+                std::vector<int> idx(scores.size());
+                std::iota(idx.begin(), idx.end(), 0);
+                std::partial_sort(idx.begin(), idx.begin() + std::min(5, (int)idx.size()), idx.end(),
+                    [&](int a, int b) { return scores[a] > scores[b]; });
+                std::cout << "  Top 5:" << std::endl;
+                for (int i = 0; i < std::min(5, (int)idx.size()); ++i) {
+                    int j = idx[i];
+                    std::cout << "    " << i+1 << ". " << candidates[j].label
+                              << " score=" << scores[j] << std::endl;
+                }
+
+                // Hit候補の個別スコア
+                std::cout << "  Hit candidates detail:" << std::endl;
+                for (size_t i = 0; i < candidates.size(); ++i) {
+                    if (candidates[i].type == ShotType::HIT) {
+                        std::cout << "    " << candidates[i].label
+                                  << " target=" << candidates[i].target_index
+                                  << " score=" << scores[i] << std::endl;
+                    }
+                }
+
+                // サンプリング10回
+                std::cout << "  Sampling 10 times:" << std::endl;
+                for (int t = 0; t < 10; ++t) {
+                    int sel = policy.selectShot(state, candidates, 4, dc::Team::k0, 0, 0);
+                    std::cout << "    -> " << candidates[sel].label << std::endl;
+                }
+            }
+
+            std::cout << "\n=== gPolicy Test Complete ===" << std::endl;
             return 0;
         }
 

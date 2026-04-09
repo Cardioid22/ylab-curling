@@ -1,4 +1,6 @@
 ﻿#include "simulator.h"
+#include "policy.h"
+#include "shot_generator.h"
 #include "digitalcurling3/digitalcurling3.hpp"
 #include "structure.h"
 #include <iostream>
@@ -392,5 +394,82 @@ double SimulatorWrapper::run_multiple_simulations_with_random_policy(
     }
 
     // Return average score
+    return total_score / num_simulations;
+}
+
+// gPolicy を使ったロールアウト
+// first_shot を打った後、エンド終了 (or ゲーム終了) まで
+// ShotGenerator + gPolicy でショット選択
+double SimulatorWrapper::run_policy_rollout(
+    dc::GameState const& state,
+    const ShotInfo& first_shot,
+    RolloutPolicy& policy,
+    ShotGenerator& shot_gen,
+    int num_simulations)
+{
+    if (num_simulations <= 0) num_simulations = 1;
+
+    double total_score = 0.0;
+
+    for (int sim = 0; sim < num_simulations; ++sim) {
+        dc::GameState sim_state = state;
+        int shot_counter = 0;
+
+        while (!sim_state.IsGameOver() &&
+               (max_rollout_shots < 0 || shot_counter < max_rollout_shots)) {
+            ShotInfo current_shot;
+
+            if (shot_counter == 0) {
+                current_shot = first_shot;
+            } else {
+                // gPolicy で手を選択
+                // 現在のチーム判定
+                int current_end = static_cast<int>(sim_state.end);
+                int current_shot_num = static_cast<int>(sim_state.shot);
+                dc::Team current_team = (current_shot_num % 2 == 0)
+                    ? g_team : static_cast<dc::Team>(1 - static_cast<int>(g_team));
+
+                // ShotGenerator で候補手生成 (シミュレーションなし)
+                auto candidates = shot_gen.generateCandidates(
+                    sim_state, current_team);
+
+                // Pass を除外 (石がある場面では非合理的)
+                std::vector<CandidateShot> filtered;
+                filtered.reserve(candidates.size());
+                for (auto& c : candidates) {
+                    if (c.type != ShotType::PASS) {
+                        filtered.push_back(c);
+                    }
+                }
+
+                if (filtered.empty()) {
+                    // 候補がない場合はランダムグリッド
+                    if (!initialShotData.empty()) {
+                        std::uniform_int_distribution<int> dist(0, initialShotData.size() - 1);
+                        static std::mt19937 rng(std::random_device{}());
+                        current_shot = initialShotData[dist(rng)];
+                    } else {
+                        break;
+                    }
+                } else {
+                    // スコア差の簡易計算
+                    int rel_score = 0;  // 簡易版: 0 とする
+
+                    int sel = policy.selectShot(
+                        sim_state, filtered,
+                        current_shot_num, current_team,
+                        current_end, rel_score);
+                    current_shot = filtered[sel].shot;
+                }
+            }
+
+            sim_state = run_single_simulation(sim_state, current_shot);
+            shot_counter++;
+        }
+
+        double score = evaluate(sim_state);
+        total_score += score;
+    }
+
     return total_score / num_simulations;
 }

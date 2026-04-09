@@ -4,6 +4,10 @@
 #include "digitalcurling3/digitalcurling3.hpp"
 #include "structure.h"
 
+// Forward declarations
+class RolloutPolicy;
+class ShotGenerator;
+
 namespace dc = digitalcurling3;
 
 class SimulatorWrapper {
@@ -33,6 +37,16 @@ public:
 
     // Multiple simulations with random grid policy for MCTS rollout
     double run_multiple_simulations_with_random_policy(dc::GameState const& state, const ShotInfo& first_shot, int num_simulations);
+
+    // gPolicy を使ったロールアウト (ShotGenerator + gPolicy でショット選択)
+    // エンド終了まで実行し、評価値を返す
+    double run_policy_rollout(
+        dc::GameState const& state,
+        const ShotInfo& first_shot,
+        RolloutPolicy& policy,
+        ShotGenerator& shot_gen,
+        int num_simulations
+    );
 
     float evaluate(dc::GameState& game_state) const;
     dc::Vector2 EstimateShotVelocityFCV1(dc::Vector2 const& target_position, float target_speed, dc::moves::Shot::Rotation rotation);

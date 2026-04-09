@@ -169,7 +169,7 @@ void PoolExperiment::runPoolGeneration() {
 
         // 候補手生成のみの時間計測
         auto t0 = std::chrono::high_resolution_clock::now();
-        auto candidates = generator.generateCandidates(state, my_team, grid);
+        auto candidates = generator.generateCandidates(state, my_team);
         auto t1 = std::chrono::high_resolution_clock::now();
         double gen_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
 
@@ -194,7 +194,7 @@ void PoolExperiment::runPoolGeneration() {
 
         // シミュレーション付きプール生成
         auto t2 = std::chrono::high_resolution_clock::now();
-        auto pool = generator.generatePool(state, my_team, grid);
+        auto pool = generator.generatePool(state, my_team);
         auto t3 = std::chrono::high_resolution_clock::now();
         double pool_ms = std::chrono::duration<double, std::milli>(t3 - t2).count();
 

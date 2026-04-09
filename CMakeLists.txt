@@ -56,6 +56,8 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     src/analysis.h
     src/shot_generator.h
     src/shot_generator.cpp
+    src/policy.h
+    src/policy.cpp
     # 実験用ファイル
     experiments/simple_experiment.h
     experiments/simple_experiment.cpp

@@ -455,7 +455,7 @@ void Depth1MctsExperiment::run() {
         auto& state = test_states[s];
         dc::Team my_team = dc::Team::k0;
 
-        auto pool = generator.generatePool(state, my_team, grid);
+        auto pool = generator.generatePool(state, my_team);
         int n = static_cast<int>(pool.candidates.size());
         if (n <= 2) continue;
 

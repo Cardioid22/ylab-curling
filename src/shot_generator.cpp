@@ -277,32 +277,71 @@ dc::GameState ShotGenerator::simulateNoRand(
     return new_state;
 }
 
+// ========== 戦略的位置の取得 ==========
+
+std::vector<Position> ShotGenerator::getStrategicPositions() {
+    // 歩の DrawPos に基づく戦略的ドロー位置 (TEE + S0-S6 + L0-L7 = 13箇所)
+    ShotGenerator temp_gen(dc::GameSetting{});
+    std::vector<Position> positions;
+    DrawPos draw_positions[] = {
+        DrawPos::TEE,
+        DrawPos::S0, DrawPos::S2, DrawPos::S4, DrawPos::S6,
+        DrawPos::L0, DrawPos::L1, DrawPos::L2, DrawPos::L3,
+        DrawPos::L4, DrawPos::L5, DrawPos::L6, DrawPos::L7,
+    };
+    for (auto dp : draw_positions) {
+        positions.push_back(temp_gen.getDrawPosition(dp));
+    }
+    return positions;
+}
+
+// DrawPos → 名前文字列
+static std::string drawPosName(DrawPos dp) {
+    switch (dp) {
+        case DrawPos::TEE: return "TEE";
+        case DrawPos::S0: return "S0"; case DrawPos::S2: return "S2";
+        case DrawPos::S4: return "S4"; case DrawPos::S6: return "S6";
+        case DrawPos::L0: return "L0"; case DrawPos::L1: return "L1";
+        case DrawPos::L2: return "L2"; case DrawPos::L3: return "L3";
+        case DrawPos::L4: return "L4"; case DrawPos::L5: return "L5";
+        case DrawPos::L6: return "L6"; case DrawPos::L7: return "L7";
+        case DrawPos::G3: return "G3"; case DrawPos::G4: return "G4";
+        case DrawPos::G5: return "G5";
+        default: return "?";
+    }
+}
+
 // ========== 候補手生成 ==========
 
 std::vector<CandidateShot> ShotGenerator::generateCandidates(
     const dc::GameState& state,
-    dc::Team my_team,
-    const std::vector<Position>& grid_positions
+    dc::Team my_team
 ) {
     std::vector<CandidateShot> candidates;
     dc::Team opp_team = dc::GetOpponentTeam(my_team);
 
-    // --- 1. グリッドドロー (既存方式) ---
-    for (size_t i = 0; i < grid_positions.size(); ++i) {
+    // --- 1. 戦略的ドロー (歩の DrawPos: TEE + S0-S6 + L0-L7 = 13箇所) ---
+    DrawPos draw_positions[] = {
+        DrawPos::TEE,
+        DrawPos::S0, DrawPos::S2, DrawPos::S4, DrawPos::S6,
+        DrawPos::L0, DrawPos::L1, DrawPos::L2, DrawPos::L3,
+        DrawPos::L4, DrawPos::L5, DrawPos::L6, DrawPos::L7,
+    };
+    for (auto dp : draw_positions) {
+        Position pos = getDrawPosition(dp);
         for (int spin : {1, 0}) {
             CandidateShot c;
             c.type = ShotType::DRAW;
             c.spin = spin;
             c.target_index = -1;
-            c.param = static_cast<int>(i);
-            c.shot = calcDrawShot(grid_positions[i], spin);
-            c.label = "Draw(" + std::string(spin == 1 ? "CW" : "CCW") + ",grid" + std::to_string(i) + ")";
+            c.param = static_cast<int>(dp);
+            c.shot = calcDrawShot(pos, spin);
+            c.label = "Draw(" + std::string(spin == 1 ? "CW" : "CCW") + "," + drawPosName(dp) + ")";
             candidates.push_back(c);
         }
     }
 
-    // --- 2. DrawPos名前付き位置 (歩の16位置のうちグリッドと重複しにくいもの) ---
-    // ガード位置は固定グリッドに含まれないため明示的に追加
+    // --- 2. プレガード (G3, G4, G5) ---
     DrawPos guard_positions[] = { DrawPos::G3, DrawPos::G4, DrawPos::G5 };
     for (auto dp : guard_positions) {
         for (int spin : {1, 0}) {
@@ -417,11 +456,10 @@ std::vector<CandidateShot> ShotGenerator::generateCandidates(
 
 CandidatePool ShotGenerator::generatePool(
     const dc::GameState& state,
-    dc::Team my_team,
-    const std::vector<Position>& grid_positions
+    dc::Team my_team
 ) {
     CandidatePool pool;
-    pool.candidates = generateCandidates(state, my_team, grid_positions);
+    pool.candidates = generateCandidates(state, my_team);
 
     // 全候補手をノイズなしシミュレーション
     pool.result_states.reserve(pool.candidates.size());

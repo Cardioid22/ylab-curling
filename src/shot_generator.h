@@ -80,16 +80,17 @@ public:
     // 候補手プールを生成 (シミュレーション結果付き)
     CandidatePool generatePool(
         const dc::GameState& state,
-        dc::Team my_team,
-        const std::vector<Position>& grid_positions
+        dc::Team my_team
     );
 
     // 候補手のみ生成 (シミュレーションなし)
     std::vector<CandidateShot> generateCandidates(
         const dc::GameState& state,
-        dc::Team my_team,
-        const std::vector<Position>& grid_positions
+        dc::Team my_team
     );
+
+    // DrawPos 戦略的位置を取得 (TEE, S0-S6, L0-L7)
+    static std::vector<Position> getStrategicPositions();
 
     // ノイズなしシミュレーション (歩の makeMoveNoRand 相当)
     dc::GameState simulateNoRand(
