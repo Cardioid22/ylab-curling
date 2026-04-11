@@ -23,6 +23,7 @@
 #include "experiments/pool_experiment.h"
 #include "experiments/pool_clustering_experiment.h"
 #include "experiments/depth1_mcts_experiment.h"
+#include "experiments/clustering_effectiveness_experiment.h"
 #include "src/policy.h"
 #include "src/shot_generator.h"
 #define DBL_EPSILON 2.2204460492503131e-016
@@ -675,6 +676,9 @@ int main(int argc, char const* argv[])
         bool pool_clustering_mode = false;
         bool depth1_mcts_mode = false;
         bool test_policy_mode = false;
+        bool clustering_experiment_mode = false;
+        int rollout_arg = 1;
+        std::string retention_arg = "10,20";
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -711,6 +715,18 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--test-policy") {
                 test_policy_mode = true;
+            }
+            if (std::string(argv[i]) == "--clustering-experiment") {
+                clustering_experiment_mode = true;
+            }
+            if (std::string(argv[i]) == "--rollout" && i + 1 < argc) {
+                rollout_arg = std::atoi(argv[i + 1]);
+                if (rollout_arg < 1) rollout_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--retention" && i + 1 < argc) {
+                retention_arg = argv[i + 1];
+                i++;
             }
             if (std::string(argv[i]) == "--cn" && i + 1 < argc) {
                 cluster_num_arg = std::atoi(argv[i + 1]);
@@ -1060,6 +1076,42 @@ int main(int argc, char const* argv[])
 
             PoolExperiment pool_exp(game_setting);
             pool_exp.runPoolGeneration();
+            return 0;
+        }
+
+        // クラスタリング有効性実験モード
+        if (clustering_experiment_mode) {
+            std::cout << "Running Clustering Effectiveness Experiment..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 8;
+            game_setting.sheet_width = 4.75f;
+            game_setting.thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.thinking_time[1] = std::chrono::seconds(86400);
+
+            ClusteringEffectivenessExperiment exp(game_setting);
+
+            // テスト盤面数
+            int test_num = (test_patterns_arg > 0) ? test_patterns_arg : 10;
+            exp.setTestNum(test_num);
+
+            // ロールアウト回数
+            exp.setRolloutCount(rollout_arg);
+
+            // 保持率のパース ("10,20" → {10, 20})
+            std::vector<int> rates;
+            std::stringstream ss(retention_arg);
+            std::string token;
+            while (std::getline(ss, token, ',')) {
+                rates.push_back(std::atoi(token.c_str()));
+            }
+            exp.setRetentionRates(rates);
+
+            std::cout << "  Config: test_num=" << test_num
+                      << " rollout=" << rollout_arg
+                      << " retention=" << retention_arg << std::endl;
+
+            exp.run();
             return 0;
         }
 
