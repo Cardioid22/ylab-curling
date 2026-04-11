@@ -26,3 +26,4 @@ experiments/**/*.pyc
 
 # Parallel agreement experiment results
 experiments/parallel_agreement_results/
+data/policy_param.dat
