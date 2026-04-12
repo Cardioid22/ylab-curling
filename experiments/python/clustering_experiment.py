@@ -281,7 +281,7 @@ def dist_delta(input_stones, result_a, result_b):
     MOVED_W = 2.0
     PEN_INTERACT = 15.0
     INTERACT_TH = 0.03
-    SCORE_W = 8.0
+    SCORE_W = 20.0      # 8→20: スコア差をより重視
     PROX_W = 5.0
 
     # 入力石のindexセット
@@ -367,7 +367,7 @@ def dist_delta(input_stones, result_a, result_b):
     ta = closest_team(result_a)
     tb = closest_team(result_b)
     if ta >= 0 and tb >= 0 and ta != tb:
-        distance += 10.0
+        distance += 25.0  # 10→25: No.1石チームが変わるのは決定的な差
 
     return distance
 

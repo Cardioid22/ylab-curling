@@ -92,6 +92,13 @@ public:
     // DrawPos 戦略的位置を取得 (TEE, S0-S6, L0-L7)
     static std::vector<Position> getStrategicPositions();
 
+    // ロールアウト用簡易候補生成 (大渡さんの genSimpleVMove 相当)
+    // 4-6手のみ生成。速度はキャッシュ済みで高速。
+    std::vector<CandidateShot> generateRolloutCandidates(
+        const dc::GameState& state,
+        dc::Team my_team
+    );
+
     // ノイズなしシミュレーション (歩の makeMoveNoRand 相当)
     dc::GameState simulateNoRand(
         const dc::GameState& state,
@@ -124,6 +131,14 @@ private:
 
     // 石の位置を取得するヘルパー
     Position getStonePosition(const dc::GameState& state, int stone_index) const;
+
+    // 速度キャッシュ (DrawPos 13箇所 × 2スピン、起動時に1回だけ計算)
+    struct VelocityCache {
+        ShotInfo draw[13][2];  // [DrawPos index][0=CW, 1=CCW]
+        bool initialized = false;
+    };
+    VelocityCache velocity_cache_;
+    void initVelocityCache();
 
     // 文字列変換
     static std::string shotTypeToString(ShotType type);

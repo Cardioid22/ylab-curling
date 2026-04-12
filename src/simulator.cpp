@@ -429,8 +429,8 @@ double SimulatorWrapper::run_policy_rollout(
                 dc::Team current_team = (current_shot_num % 2 == 0)
                     ? g_team : static_cast<dc::Team>(1 - static_cast<int>(g_team));
 
-                // ShotGenerator で候補手生成 (シミュレーションなし)
-                auto candidates = shot_gen.generateCandidates(
+                // ロールアウト用簡易候補生成 (4-6手、高速)
+                auto candidates = shot_gen.generateRolloutCandidates(
                     sim_state, current_team);
 
                 // Pass を除外 (石がある場面では非合理的)
@@ -467,7 +467,38 @@ double SimulatorWrapper::run_policy_rollout(
             shot_counter++;
         }
 
-        double score = evaluate(sim_state);
+        double score;
+        if (sim_state.IsGameOver()) {
+            score = evaluate(sim_state);
+        } else {
+            // エンド途中で打ち切り → 盤面スコア（ハウス内の石を数える）
+            constexpr float house_r = 1.829f + 0.145f;
+            constexpr float tee_y = 38.405f;
+            struct SE { float dist; int team; };
+            std::vector<SE> in_house;
+            for (int t = 0; t < 2; t++)
+                for (int s = 0; s < 8; s++) {
+                    if (!sim_state.stones[t][s]) continue;
+                    float dx = sim_state.stones[t][s]->position.x;
+                    float dy = sim_state.stones[t][s]->position.y - tee_y;
+                    float d = std::sqrt(dx*dx + dy*dy);
+                    if (d <= house_r) in_house.push_back({d, t});
+                }
+            if (in_house.empty()) {
+                score = 0.0;
+            } else {
+                std::sort(in_house.begin(), in_house.end(),
+                    [](auto& a, auto& b){ return a.dist < b.dist; });
+                int scoring_team = in_house[0].team;
+                int pts = 0;
+                for (auto& e : in_house) {
+                    if (e.team == scoring_team) pts++;
+                    else break;
+                }
+                int my_team = static_cast<int>(g_team);
+                score = (scoring_team == my_team) ? pts : -pts;
+            }
+        }
         total_score += score;
     }
 

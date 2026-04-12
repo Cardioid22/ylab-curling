@@ -36,8 +36,24 @@ ShotGenerator::ShotGenerator(dc::GameSetting const& game_setting)
 {
     simulator_ = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
     simulator_storage_ = simulator_->CreateStorage();
-    // ノイズなしプレイヤー (歩の makeMoveNoRand に相当)
     player_no_rand_ = dc::players::PlayerIdenticalFactory().CreatePlayer();
+    initVelocityCache();
+}
+
+// ========== 速度キャッシュ初期化 ==========
+
+void ShotGenerator::initVelocityCache() {
+    DrawPos positions[] = {
+        DrawPos::TEE, DrawPos::S0, DrawPos::S2, DrawPos::S4, DrawPos::S6,
+        DrawPos::L0, DrawPos::L1, DrawPos::L2, DrawPos::L3,
+        DrawPos::L4, DrawPos::L5, DrawPos::L6, DrawPos::L7,
+    };
+    for (int i = 0; i < 13; ++i) {
+        Position pos = getDrawPosition(positions[i]);
+        velocity_cache_.draw[i][0] = calcDrawShot(pos, 1);  // CW
+        velocity_cache_.draw[i][1] = calcDrawShot(pos, 0);  // CCW
+    }
+    velocity_cache_.initialized = true;
 }
 
 // ========== DrawPos座標 ==========
@@ -469,6 +485,110 @@ CandidatePool ShotGenerator::generatePool(
     }
 
     return pool;
+}
+
+// ========== ロールアウト用簡易候補生成 (genSimpleVMove相当) ==========
+
+std::vector<CandidateShot> ShotGenerator::generateRolloutCandidates(
+    const dc::GameState& state,
+    dc::Team my_team
+) {
+    std::vector<CandidateShot> candidates;
+    dc::Team opp_team = dc::GetOpponentTeam(my_team);
+
+    // ① TEE ドロー × CW/CCW (キャッシュ済み速度、0ms)
+    {
+        CandidateShot cw, ccw;
+        cw.type = ShotType::DRAW;
+        cw.spin = 1; cw.target_index = -1; cw.param = 0;
+        cw.shot = velocity_cache_.draw[0][0];  // TEE, CW
+        cw.label = "Draw(CW,TEE)";
+        ccw.type = ShotType::DRAW;
+        ccw.spin = 0; ccw.target_index = -1; ccw.param = 0;
+        ccw.shot = velocity_cache_.draw[0][1];  // TEE, CCW
+        ccw.label = "Draw(CCW,TEE)";
+        candidates.push_back(cw);
+        candidates.push_back(ccw);
+    }
+
+    // ② 相手No.1石へのHit × CW/CCW (都度速度計算、2回のみ)
+    // No.1石 = ハウス中心に最も近い相手石を探す
+    {
+        float best_dist = 1e9f;
+        int best_idx = -1;
+        Position best_pos = {0, 0};
+        for (int s = 0; s < 8; ++s) {
+            auto& stone = state.stones[static_cast<int>(opp_team)][s];
+            if (!stone) continue;
+            float dx = stone->position.x - kHouseCenterX;
+            float dy = stone->position.y - kHouseCenterY;
+            float dist = std::sqrt(dx * dx + dy * dy);
+            if (dist < best_dist) {
+                best_dist = dist;
+                best_idx = s * 2 + static_cast<int>(opp_team);
+                best_pos = { stone->position.x, stone->position.y };
+            }
+        }
+        if (best_idx >= 0) {
+            for (int spin : {1, 0}) {
+                CandidateShot c;
+                c.type = ShotType::HIT;
+                c.spin = spin;
+                c.target_index = best_idx;
+                c.param = static_cast<int>(HitWeight::MIDDLE);
+                c.shot = calcHitShot(best_pos, HitWeight::MIDDLE, spin);
+                c.label = "Hit(" + std::string(spin == 1 ? "CW" : "CCW") + "," +
+                          std::to_string(best_idx) + ",MIDDLE)";
+                candidates.push_back(c);
+            }
+        }
+    }
+
+    // ③ 自分No.1石がある場合: 相手No.1石へのSTRONG Hit も追加
+    {
+        float my_best_dist = 1e9f;
+        float opp_best_dist = 1e9f;
+        Position opp_pos = {0, 0};
+        int opp_idx = -1;
+
+        for (int s = 0; s < 8; ++s) {
+            auto& stone = state.stones[static_cast<int>(my_team)][s];
+            if (!stone) continue;
+            float dx = stone->position.x - kHouseCenterX;
+            float dy = stone->position.y - kHouseCenterY;
+            float dist = std::sqrt(dx * dx + dy * dy);
+            if (dist < my_best_dist) my_best_dist = dist;
+        }
+        for (int s = 0; s < 8; ++s) {
+            auto& stone = state.stones[static_cast<int>(opp_team)][s];
+            if (!stone) continue;
+            float dx = stone->position.x - kHouseCenterX;
+            float dy = stone->position.y - kHouseCenterY;
+            float dist = std::sqrt(dx * dx + dy * dy);
+            if (dist < opp_best_dist) {
+                opp_best_dist = dist;
+                opp_idx = s * 2 + static_cast<int>(opp_team);
+                opp_pos = { stone->position.x, stone->position.y };
+            }
+        }
+
+        // 自分がNo.1で相手石もある場合: STRONG Hit を追加
+        if (my_best_dist < opp_best_dist && opp_idx >= 0) {
+            for (int spin : {1, 0}) {
+                CandidateShot c;
+                c.type = ShotType::HIT;
+                c.spin = spin;
+                c.target_index = opp_idx;
+                c.param = static_cast<int>(HitWeight::STRONG);
+                c.shot = calcHitShot(opp_pos, HitWeight::STRONG, spin);
+                c.label = "Hit(" + std::string(spin == 1 ? "CW" : "CCW") + "," +
+                          std::to_string(opp_idx) + ",STRONG)";
+                candidates.push_back(c);
+            }
+        }
+    }
+
+    return candidates;  // 4-6手
 }
 
 // ========== 文字列変換 ==========
