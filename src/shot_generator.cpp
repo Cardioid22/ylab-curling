@@ -511,8 +511,8 @@ std::vector<CandidateShot> ShotGenerator::generateRolloutCandidates(
         candidates.push_back(ccw);
     }
 
-    // ② 相手No.1石へのHit × CW/CCW (都度速度計算、2回のみ)
-    // No.1石 = ハウス中心に最も近い相手石を探す
+    // ② 相手No.1石へのHit × CW/CCW
+    // 速度は estimateVelocity 1回のみ（estimatePassThroughVelocityを避けて高速化）
     {
         float best_dist = 1e9f;
         int best_idx = -1;
@@ -530,59 +530,19 @@ std::vector<CandidateShot> ShotGenerator::generateRolloutCandidates(
             }
         }
         if (best_idx >= 0) {
+            dc::Vector2 hit_target(best_pos.x, best_pos.y);
             for (int spin : {1, 0}) {
+                auto rotation = spin == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+                // 直接 estimateVelocity(target, speed=3.0) で1回のみ（高速）
+                dc::Vector2 vel = estimateVelocity(hit_target, 3.0f, rotation);
                 CandidateShot c;
                 c.type = ShotType::HIT;
                 c.spin = spin;
                 c.target_index = best_idx;
-                c.param = static_cast<int>(HitWeight::MIDDLE);
-                c.shot = calcHitShot(best_pos, HitWeight::MIDDLE, spin);
-                c.label = "Hit(" + std::string(spin == 1 ? "CW" : "CCW") + "," +
-                          std::to_string(best_idx) + ",MIDDLE)";
-                candidates.push_back(c);
-            }
-        }
-    }
-
-    // ③ 自分No.1石がある場合: 相手No.1石へのSTRONG Hit も追加
-    {
-        float my_best_dist = 1e9f;
-        float opp_best_dist = 1e9f;
-        Position opp_pos = {0, 0};
-        int opp_idx = -1;
-
-        for (int s = 0; s < 8; ++s) {
-            auto& stone = state.stones[static_cast<int>(my_team)][s];
-            if (!stone) continue;
-            float dx = stone->position.x - kHouseCenterX;
-            float dy = stone->position.y - kHouseCenterY;
-            float dist = std::sqrt(dx * dx + dy * dy);
-            if (dist < my_best_dist) my_best_dist = dist;
-        }
-        for (int s = 0; s < 8; ++s) {
-            auto& stone = state.stones[static_cast<int>(opp_team)][s];
-            if (!stone) continue;
-            float dx = stone->position.x - kHouseCenterX;
-            float dy = stone->position.y - kHouseCenterY;
-            float dist = std::sqrt(dx * dx + dy * dy);
-            if (dist < opp_best_dist) {
-                opp_best_dist = dist;
-                opp_idx = s * 2 + static_cast<int>(opp_team);
-                opp_pos = { stone->position.x, stone->position.y };
-            }
-        }
-
-        // 自分がNo.1で相手石もある場合: STRONG Hit を追加
-        if (my_best_dist < opp_best_dist && opp_idx >= 0) {
-            for (int spin : {1, 0}) {
-                CandidateShot c;
-                c.type = ShotType::HIT;
-                c.spin = spin;
-                c.target_index = opp_idx;
                 c.param = static_cast<int>(HitWeight::STRONG);
-                c.shot = calcHitShot(opp_pos, HitWeight::STRONG, spin);
+                c.shot = { vel.x, vel.y, spin };
                 c.label = "Hit(" + std::string(spin == 1 ? "CW" : "CCW") + "," +
-                          std::to_string(opp_idx) + ",STRONG)";
+                          std::to_string(best_idx) + ")";
                 candidates.push_back(c);
             }
         }

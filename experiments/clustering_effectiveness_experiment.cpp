@@ -290,7 +290,7 @@ float ClusteringEffectivenessExperiment::distDelta(
     constexpr float MOVED_STONE_WEIGHT = 2.0f;
     constexpr float PENALTY_INTERACTION = 15.0f;
     constexpr float INTERACTION_THRESHOLD = 0.03f;
-    constexpr float SCORE_WEIGHT = 8.0f;
+    constexpr float SCORE_WEIGHT = 20.0f;            // 8→20: スコア差をより重視
     constexpr float PROXIMITY_WEIGHT = 5.0f;
 
     float distance = 0.0f;
@@ -357,7 +357,7 @@ float ClusteringEffectivenessExperiment::distDelta(
         if (a.stones[t][i]) { float d=std::sqrt(std::pow(a.stones[t][i]->position.x,2)+std::pow(a.stones[t][i]->position.y-kHouseCenterY,2)); if(d<ca){ca=d;ta=t;} }
         if (b.stones[t][i]) { float d=std::sqrt(std::pow(b.stones[t][i]->position.x,2)+std::pow(b.stones[t][i]->position.y-kHouseCenterY,2)); if(d<cb){cb=d;tb=t;} }
     }
-    if (ta>=0 && tb>=0 && ta!=tb) distance += 10.0f;
+    if (ta>=0 && tb>=0 && ta!=tb) distance += 25.0f;  // 10→25: No.1石チーム差を重視
     return distance;
 }
 
