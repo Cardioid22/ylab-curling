@@ -14,6 +14,7 @@
 #include <set>
 #include <string>
 #include <chrono>
+#include <random>
 
 namespace dc = digitalcurling3;
 
@@ -49,6 +50,17 @@ struct TestCaseResult {
     double silhouette_score;
     int allgrid_cluster_id;    // AllGrid最良手が属するクラスタ
     int clustered_cluster_id;  // Clustered最良手が属するクラスタ
+
+    // ランダムクラスタリング (ベースライン)
+    int random_best_idx;
+    std::string random_best_label;
+    ShotType random_best_type;
+    double random_best_score;
+    double random_time_sec;
+    bool random_exact_match;
+    bool random_same_type;
+    double random_score_diff;  // AllGrid - Random
+    double random_silhouette_score;
 };
 
 class ClusteringEffectivenessExperiment {
@@ -114,6 +126,11 @@ private:
     std::vector<std::set<int>> runClustering(
         const std::vector<std::vector<float>>& dist_table,
         int n_desired_clusters);
+
+    // ランダムクラスタリング (ベースライン)
+    std::vector<std::set<int>> runRandomClustering(
+        int n_items, int n_desired_clusters, std::mt19937& rng);
+
     std::vector<int> calculateMedoids(
         const std::vector<std::vector<float>>& dist_table,
         const std::vector<std::set<int>>& clusters);
