@@ -700,7 +700,10 @@ class ClusteringExperiment:
 
     def _export_csv(self, results, ret):
         os.makedirs('experiment_results', exist_ok=True)
-        path = f'experiment_results/clustering_python_ret{ret}.csv'
+        # タイムスタンプ付きファイル名（上書き防止）
+        from datetime import datetime
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        path = f'experiment_results/clustering_python_ret{ret}_{ts}.csv'
         with open(path, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=results[0].keys())
             writer.writeheader()
