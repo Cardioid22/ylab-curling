@@ -411,8 +411,38 @@ double SimulatorWrapper::run_policy_rollout(
 
     double total_score = 0.0;
 
+    // 盤面スコア計算用のヘルパー
+    auto calcBoardScore = [this](const dc::GameState& s) -> double {
+        constexpr float house_r = 1.829f + 0.145f;
+        constexpr float tee_y = 38.405f;
+        struct SE { float dist; int team; };
+        std::vector<SE> in_house;
+        for (int t = 0; t < 2; t++)
+            for (int s2 = 0; s2 < 8; s2++) {
+                if (!s.stones[t][s2]) continue;
+                float dx = s.stones[t][s2]->position.x;
+                float dy = s.stones[t][s2]->position.y - tee_y;
+                float d = std::sqrt(dx*dx + dy*dy);
+                if (d <= house_r) in_house.push_back({d, t});
+            }
+        if (in_house.empty()) return 0.0;
+        std::sort(in_house.begin(), in_house.end(),
+            [](auto& a, auto& b){ return a.dist < b.dist; });
+        int scoring_team = in_house[0].team;
+        int pts = 0;
+        for (auto& e : in_house) {
+            if (e.team == scoring_team) pts++;
+            else break;
+        }
+        int my_team = static_cast<int>(g_team);
+        return (scoring_team == my_team) ? pts : -pts;
+    };
+
+    int initial_end = static_cast<int>(state.end);
+
     for (int sim = 0; sim < num_simulations; ++sim) {
         dc::GameState sim_state = state;
+        dc::GameState last_state = state;  // エンド終了前の盤面を保持
         int shot_counter = 0;
 
         while (!sim_state.IsGameOver() &&
@@ -422,28 +452,19 @@ double SimulatorWrapper::run_policy_rollout(
             if (shot_counter == 0) {
                 current_shot = first_shot;
             } else {
-                // gPolicy で手を選択
-                // 現在のチーム判定
                 int current_end = static_cast<int>(sim_state.end);
                 int current_shot_num = static_cast<int>(sim_state.shot);
                 dc::Team current_team = (current_shot_num % 2 == 0)
                     ? g_team : static_cast<dc::Team>(1 - static_cast<int>(g_team));
 
-                // ロールアウト用簡易候補生成 (4-6手、高速)
-                auto candidates = shot_gen.generateRolloutCandidates(
-                    sim_state, current_team);
+                auto candidates = shot_gen.generateRolloutCandidates(sim_state, current_team);
 
-                // Pass を除外 (石がある場面では非合理的)
                 std::vector<CandidateShot> filtered;
-                filtered.reserve(candidates.size());
                 for (auto& c : candidates) {
-                    if (c.type != ShotType::PASS) {
-                        filtered.push_back(c);
-                    }
+                    if (c.type != ShotType::PASS) filtered.push_back(c);
                 }
 
                 if (filtered.empty()) {
-                    // 候補がない場合はランダムグリッド
                     if (!initialShotData.empty()) {
                         std::uniform_int_distribution<int> dist(0, initialShotData.size() - 1);
                         static std::mt19937 rng(std::random_device{}());
@@ -452,52 +473,32 @@ double SimulatorWrapper::run_policy_rollout(
                         break;
                     }
                 } else {
-                    // スコア差の簡易計算
-                    int rel_score = 0;  // 簡易版: 0 とする
-
-                    int sel = policy.selectShot(
-                        sim_state, filtered,
-                        current_shot_num, current_team,
-                        current_end, rel_score);
+                    int sel = policy.selectShot(sim_state, filtered,
+                        current_shot_num, current_team, current_end, 0);
                     current_shot = filtered[sel].shot;
                 }
             }
 
+            last_state = sim_state;  // シミュレーション前の盤面を保存
             sim_state = run_single_simulation(sim_state, current_shot);
             shot_counter++;
+
+            // エンドが進んだら即終了（石がクリアされる前のlast_stateで評価）
+            if (static_cast<int>(sim_state.end) != initial_end) {
+                break;
+            }
         }
 
+        // 評価: エンドが進んだ場合はlast_state（石クリア前）で評価
         double score;
         if (sim_state.IsGameOver()) {
             score = evaluate(sim_state);
+        } else if (static_cast<int>(sim_state.end) != initial_end) {
+            // エンド終了 → 直前の盤面（石あり）で評価
+            score = calcBoardScore(last_state);
         } else {
-            // エンド途中で打ち切り → 盤面スコア（ハウス内の石を数える）
-            constexpr float house_r = 1.829f + 0.145f;
-            constexpr float tee_y = 38.405f;
-            struct SE { float dist; int team; };
-            std::vector<SE> in_house;
-            for (int t = 0; t < 2; t++)
-                for (int s = 0; s < 8; s++) {
-                    if (!sim_state.stones[t][s]) continue;
-                    float dx = sim_state.stones[t][s]->position.x;
-                    float dy = sim_state.stones[t][s]->position.y - tee_y;
-                    float d = std::sqrt(dx*dx + dy*dy);
-                    if (d <= house_r) in_house.push_back({d, t});
-                }
-            if (in_house.empty()) {
-                score = 0.0;
-            } else {
-                std::sort(in_house.begin(), in_house.end(),
-                    [](auto& a, auto& b){ return a.dist < b.dist; });
-                int scoring_team = in_house[0].team;
-                int pts = 0;
-                for (auto& e : in_house) {
-                    if (e.team == scoring_team) pts++;
-                    else break;
-                }
-                int my_team = static_cast<int>(g_team);
-                score = (scoring_team == my_team) ? pts : -pts;
-            }
+            // max_rollout_shotsで打ち切り → 現在の盤面で評価
+            score = calcBoardScore(sim_state);
         }
         total_score += score;
     }
