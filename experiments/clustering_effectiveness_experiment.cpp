@@ -219,72 +219,62 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
     result.same_type = (result.allgrid_best_type == result.clustered_best_type);
     result.score_diff = result.allgrid_best_score - result.clustered_best_score;
 
-    // --- Spatial Clustering (ベースライン): 結果盤面の石座標距離のみ ---
-    auto t_sp0 = std::chrono::high_resolution_clock::now();
+    // --- Simple Clustering (ベースライン): 速度ベクトルのグリッド分割 ---
+    // 「打つ瞬間の情報で似ているものを削る」ポリシー
+    auto t_si0 = std::chrono::high_resolution_clock::now();
 
-    auto spatial_dist_table = makeDistanceTableSpatial(result_states);
-    auto spatial_clusters = runClustering(spatial_dist_table, n_clusters);
-    auto spatial_medoids = calculateMedoids(spatial_dist_table, spatial_clusters);
+    auto simple_selected = selectByVelocityGrid(candidates, n_clusters);
 
-    result.spatial_silhouette_score = calcSilhouetteScore(spatial_dist_table, spatial_clusters);
-
-    // クラスタ構成を記録 (spatial)
-    for (int c = 0; c < static_cast<int>(spatial_clusters.size()); ++c) {
+    // Simple用のクラスタ構成を記録
+    for (int c = 0; c < static_cast<int>(simple_selected.size()); ++c) {
         ClusterInfo ci;
         ci.game_id = record.game_id;
         ci.end = record.end;
         ci.shot_num = record.shot_num;
         ci.n_candidates = n;
-        ci.method = "spatial";
+        ci.method = "simple";
         ci.cluster_id = c;
-        ci.cluster_size = static_cast<int>(spatial_clusters[c].size());
-        ci.medoid_idx = spatial_medoids[c];
-        ci.medoid_label = (spatial_medoids[c] >= 0 && spatial_medoids[c] < n) ? candidates[spatial_medoids[c]].label : "N/A";
+        ci.cluster_size = 1;  // グリッド分割なので各セル1手
+        ci.medoid_idx = simple_selected[c];
+        ci.medoid_label = candidates[simple_selected[c]].label;
         cluster_details_.push_back(ci);
     }
 
-    double spatial_best_score = -1e9;
-    int spatial_best_medoid_idx = -1;
-    int spatial_best_cluster = -1;
+    double simple_best_score = -1e9;
+    int simple_best_idx = -1;
 
-    for (int c = 0; c < static_cast<int>(spatial_medoids.size()); ++c) {
-        int m = spatial_medoids[c];
-        if (m < 0 || m >= n) continue;
-        double score = evaluateCandidate(record.state, candidates[m], sim);
-        if (score > spatial_best_score) {
-            spatial_best_score = score;
-            spatial_best_medoid_idx = m;
-            spatial_best_cluster = c;
+    for (int idx : simple_selected) {
+        double score = evaluateCandidate(record.state, candidates[idx], sim);
+        if (score > simple_best_score) {
+            simple_best_score = score;
+            simple_best_idx = idx;
         }
     }
 
-    auto t_sp1 = std::chrono::high_resolution_clock::now();
-    result.spatial_time_sec = std::chrono::duration<double>(t_sp1 - t_sp0).count();
-    result.spatial_best_idx = spatial_best_medoid_idx;
-    result.spatial_best_label = (spatial_best_medoid_idx >= 0) ?
-        candidates[spatial_best_medoid_idx].label : "N/A";
-    result.spatial_best_type = (spatial_best_medoid_idx >= 0) ?
-        candidates[spatial_best_medoid_idx].type : ShotType::PASS;
-    result.spatial_best_score = spatial_best_score;
+    auto t_si1 = std::chrono::high_resolution_clock::now();
+    result.simple_time_sec = std::chrono::duration<double>(t_si1 - t_si0).count();
+    result.simple_best_idx = simple_best_idx;
+    result.simple_best_label = (simple_best_idx >= 0) ?
+        candidates[simple_best_idx].label : "N/A";
+    result.simple_best_type = (simple_best_idx >= 0) ?
+        candidates[simple_best_idx].type : ShotType::PASS;
+    result.simple_best_score = simple_best_score;
 
-    result.spatial_exact_match = (allgrid_best == spatial_best_medoid_idx);
-    int allgrid_spatial_cluster_id = -1;
-    for (int c = 0; c < static_cast<int>(spatial_clusters.size()); ++c) {
-        if (spatial_clusters[c].count(allgrid_best)) { allgrid_spatial_cluster_id = c; break; }
-    }
-    result.spatial_same_cluster = (allgrid_spatial_cluster_id == spatial_best_cluster);
-    result.spatial_same_type = (result.allgrid_best_type == result.spatial_best_type);
-    result.spatial_score_diff = result.allgrid_best_score - spatial_best_score;
+    result.simple_exact_match = (allgrid_best == simple_best_idx);
+    // Simple のクラスタ一致: AllGrid最良手と同じグリッドセルから選ばれたか
+    result.simple_same_cluster = false;
+    // (グリッド分割では厳密なクラスタはないが、同じグリッドセルかどうかで判定)
+    result.simple_same_type = (result.allgrid_best_type == result.simple_best_type);
+    result.simple_score_diff = result.allgrid_best_score - simple_best_score;
 
-    // --- Random Clustering (ベースライン): ランダムにクラスタ割り当て ---
+    // --- Random (ベースライン): ランダムにK手選ぶ ---
     auto t4 = std::chrono::high_resolution_clock::now();
 
-    // シードは盤面ごとに変える（再現性のため game_id, end, shot_num を混ぜる）
     std::mt19937 rng(42 + record.game_id * 10000 + record.end * 100 + record.shot_num);
-    auto random_clusters = runRandomClustering(n, n_clusters, rng);
-    auto random_medoids = calculateMedoids(dist_table, random_clusters);
+    auto random_selected = selectRandom(n, n_clusters, rng);
 
-    result.random_silhouette_score = calcSilhouetteScore(dist_table, random_clusters);
+    // same_cluster指標用にランダムクラスタも割り当て
+    auto random_clusters = assignRandomClusters(n, n_clusters, rng);
 
     // クラスタ構成を記録 (random)
     for (int c = 0; c < static_cast<int>(random_clusters.size()); ++c) {
@@ -296,21 +286,19 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
         ci.method = "random";
         ci.cluster_id = c;
         ci.cluster_size = static_cast<int>(random_clusters[c].size());
-        ci.medoid_idx = random_medoids[c];
-        ci.medoid_label = (random_medoids[c] >= 0 && random_medoids[c] < n) ? candidates[random_medoids[c]].label : "N/A";
+        ci.medoid_idx = -1;
+        ci.medoid_label = "N/A";
         cluster_details_.push_back(ci);
     }
 
     double random_best_score = -1e9;
     int random_best_medoid_idx = -1;
 
-    for (int c = 0; c < static_cast<int>(random_medoids.size()); ++c) {
-        int m = random_medoids[c];
-        if (m < 0 || m >= n) continue;
-        double score = evaluateCandidate(record.state, candidates[m], sim);
+    for (int idx : random_selected) {
+        double score = evaluateCandidate(record.state, candidates[idx], sim);
         if (score > random_best_score) {
             random_best_score = score;
-            random_best_medoid_idx = m;
+            random_best_medoid_idx = idx;
         }
     }
 
@@ -471,41 +459,6 @@ std::vector<std::vector<float>> ClusteringEffectivenessExperiment::makeDistanceT
     return table;
 }
 
-std::vector<std::vector<float>> ClusteringEffectivenessExperiment::makeDistanceTableSpatial(
-    const std::vector<dc::GameState>& result_states)
-{
-    int n = static_cast<int>(result_states.size());
-    std::vector<std::vector<float>> table(n, std::vector<float>(n, 0.0f));
-
-    for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            float dist = 0.0f;
-            // 全石の座標差のユークリッド距離
-            for (int t = 0; t < 2; t++) {
-                for (int s = 0; s < 8; s++) {
-                    bool in_a = result_states[i].stones[t][s].has_value();
-                    bool in_b = result_states[j].stones[t][s].has_value();
-                    if (in_a && in_b) {
-                        float dx = result_states[i].stones[t][s]->position.x
-                                 - result_states[j].stones[t][s]->position.x;
-                        float dy = result_states[i].stones[t][s]->position.y
-                                 - result_states[j].stones[t][s]->position.y;
-                        dist += dx * dx + dy * dy;
-                    } else if (in_a != in_b) {
-                        // 一方にだけ石がある → 大きなペナルティ
-                        dist += 100.0f;
-                    }
-                }
-            }
-            dist = std::sqrt(dist);
-            table[i][j] = dist;
-            table[j][i] = dist;
-        }
-        table[i][i] = -1.0f;
-    }
-    return table;
-}
-
 std::vector<std::set<int>> ClusteringEffectivenessExperiment::runClustering(
     const std::vector<std::vector<float>>& dist_table, int n_desired)
 {
@@ -528,28 +481,103 @@ std::vector<std::set<int>> ClusteringEffectivenessExperiment::runClustering(
     return clusters;
 }
 
-std::vector<std::set<int>> ClusteringEffectivenessExperiment::runRandomClustering(
-    int n_items, int n_desired_clusters, std::mt19937& rng)
+// ランダムにK手を選択
+std::vector<int> ClusteringEffectivenessExperiment::selectRandom(
+    int n_items, int k, std::mt19937& rng)
 {
-    int k = std::min(n_desired_clusters, n_items);
-    std::vector<std::set<int>> clusters(k);
-
-    // 各アイテムをランダムなクラスタに割り当て
-    // まず各クラスタに最低1つは割り当てる (空クラスタを防ぐ)
+    k = std::min(k, n_items);
     std::vector<int> indices(n_items);
     std::iota(indices.begin(), indices.end(), 0);
     std::shuffle(indices.begin(), indices.end(), rng);
+    indices.resize(k);
+    return indices;
+}
 
-    for (int i = 0; i < k; ++i) {
-        clusters[i].insert(indices[i]);
-    }
-    // 残りをランダムに割り当て
+// same_cluster指標用のランダムクラスタ割り当て
+std::vector<std::set<int>> ClusteringEffectivenessExperiment::assignRandomClusters(
+    int n_items, int n_clusters, std::mt19937& rng)
+{
+    int k = std::min(n_clusters, n_items);
+    std::vector<std::set<int>> clusters(k);
+    std::vector<int> indices(n_items);
+    std::iota(indices.begin(), indices.end(), 0);
+    std::shuffle(indices.begin(), indices.end(), rng);
+    for (int i = 0; i < k; ++i) clusters[i].insert(indices[i]);
     std::uniform_int_distribution<int> dist(0, k - 1);
-    for (int i = k; i < n_items; ++i) {
-        clusters[dist(rng)].insert(indices[i]);
+    for (int i = k; i < n_items; ++i) clusters[dist(rng)].insert(indices[i]);
+    return clusters;
+}
+
+// Simple: 速度ベクトル(vx, vy, rot)のグリッド分割で代表手を選出
+// 「打つ瞬間の情報で似ているものを削る」ポリシー
+std::vector<int> ClusteringEffectivenessExperiment::selectByVelocityGrid(
+    const std::vector<CandidateShot>& candidates, int k)
+{
+    int n = static_cast<int>(candidates.size());
+    if (n <= k) {
+        std::vector<int> all(n);
+        std::iota(all.begin(), all.end(), 0);
+        return all;
     }
 
-    return clusters;
+    // 速度の範囲を調査
+    float vx_min = 1e9f, vx_max = -1e9f;
+    float vy_min = 1e9f, vy_max = -1e9f;
+    for (auto& c : candidates) {
+        vx_min = std::min(vx_min, c.shot.vx);
+        vx_max = std::max(vx_max, c.shot.vx);
+        vy_min = std::min(vy_min, c.shot.vy);
+        vy_max = std::max(vy_max, c.shot.vy);
+    }
+
+    // グリッドサイズを決定: k個のセルになるように
+    // rot(2) × vx_bins × vy_bins ≈ k → vx_bins × vy_bins ≈ k/2
+    int half_k = std::max(1, k / 2);
+    int vy_bins = std::max(1, (int)std::sqrt((double)half_k));
+    int vx_bins = std::max(1, half_k / vy_bins);
+
+    float vx_range = std::max(vx_max - vx_min, 0.01f);
+    float vy_range = std::max(vy_max - vy_min, 0.01f);
+
+    // 各候補をグリッドセルに割り当て
+    // key = rot * (vx_bins * vy_bins) + vy_bin * vx_bins + vx_bin
+    std::map<int, std::vector<int>> grid_cells;
+
+    for (int i = 0; i < n; ++i) {
+        int rot_bin = candidates[i].shot.rot;
+        int vx_bin = std::min(vx_bins - 1,
+            (int)((candidates[i].shot.vx - vx_min) / vx_range * vx_bins));
+        int vy_bin = std::min(vy_bins - 1,
+            (int)((candidates[i].shot.vy - vy_min) / vy_range * vy_bins));
+        int cell = rot_bin * (vx_bins * vy_bins) + vy_bin * vx_bins + vx_bin;
+        grid_cells[cell].push_back(i);
+    }
+
+    // 各非空セルから代表を1つ選出（セル内の中央に最も近い候補）
+    std::vector<int> selected;
+    for (auto& [cell, members] : grid_cells) {
+        if (members.empty()) continue;
+        // セル内の平均速度を計算
+        float avg_vx = 0, avg_vy = 0;
+        for (int idx : members) {
+            avg_vx += candidates[idx].shot.vx;
+            avg_vy += candidates[idx].shot.vy;
+        }
+        avg_vx /= members.size();
+        avg_vy /= members.size();
+        // 最も中央に近い候補を選出
+        int best = members[0];
+        float best_dist = 1e9f;
+        for (int idx : members) {
+            float dx = candidates[idx].shot.vx - avg_vx;
+            float dy = candidates[idx].shot.vy - avg_vy;
+            float d = dx * dx + dy * dy;
+            if (d < best_dist) { best_dist = d; best = idx; }
+        }
+        selected.push_back(best);
+    }
+
+    return selected;
 }
 
 std::vector<int> ClusteringEffectivenessExperiment::calculateMedoids(
@@ -623,8 +651,8 @@ void ClusteringEffectivenessExperiment::printSummary(
     double total_sil = 0;
     int rnd_exact = 0, rnd_same_c = 0, rnd_same_t = 0;
     double rnd_total_sdiff = 0, rnd_total_time = 0, rnd_total_sil = 0;
-    int sp_exact = 0, sp_same_c = 0, sp_same_t = 0;
-    double sp_total_sdiff = 0, sp_total_time = 0, sp_total_sil = 0;
+    int si_exact = 0, si_same_c = 0, si_same_t = 0;
+    double si_total_sdiff = 0, si_total_time = 0;
     for (auto& r : results) {
         if (r.exact_match) exact++;
         if (r.same_cluster) same_c++;
@@ -634,12 +662,12 @@ void ClusteringEffectivenessExperiment::printSummary(
         total_cl_time += r.clustered_time_sec;
         total_sil += r.silhouette_score;
         // Spatial
-        if (r.spatial_exact_match) sp_exact++;
-        if (r.spatial_same_cluster) sp_same_c++;
-        if (r.spatial_same_type) sp_same_t++;
-        sp_total_sdiff += std::abs(r.spatial_score_diff);
-        sp_total_time += r.spatial_time_sec;
-        sp_total_sil += r.spatial_silhouette_score;
+        if (r.simple_exact_match) si_exact++;
+        if (r.simple_same_cluster) si_same_c++;
+        if (r.simple_same_type) si_same_t++;
+        si_total_sdiff += std::abs(r.simple_score_diff);
+        si_total_time += r.simple_time_sec;
+        
         // Random
         if (r.random_exact_match) rnd_exact++;
         if (r.random_same_cluster) rnd_same_c++;
@@ -658,13 +686,12 @@ void ClusteringEffectivenessExperiment::printSummary(
     std::cout << "    Avg Silhouette:  " << total_sil/N << std::endl;
     std::cout << "    Time:          " << total_cl_time << "s total" << std::endl;
 
-    std::cout << "\n  ---- Spatial Clustering (Baseline) ----" << std::endl;
-    std::cout << "    Exact Match:   " << sp_exact << "/" << N << " (" << 100.0*sp_exact/N << "%)" << std::endl;
-    std::cout << "    Same Cluster:  " << sp_same_c << "/" << N << " (" << 100.0*sp_same_c/N << "%)" << std::endl;
-    std::cout << "    Same Type:     " << sp_same_t << "/" << N << " (" << 100.0*sp_same_t/N << "%)" << std::endl;
-    std::cout << "    Avg |ScoreDiff|: " << sp_total_sdiff/N << std::endl;
-    std::cout << "    Avg Silhouette:  " << sp_total_sil/N << std::endl;
-    std::cout << "    Time:          " << sp_total_time << "s total" << std::endl;
+    std::cout << "\n  ---- Simple Clustering (Baseline) ----" << std::endl;
+    std::cout << "    Exact Match:   " << si_exact << "/" << N << " (" << 100.0*si_exact/N << "%)" << std::endl;
+    std::cout << "    Same Cluster:  " << si_same_c << "/" << N << " (" << 100.0*si_same_c/N << "%)" << std::endl;
+    std::cout << "    Same Type:     " << si_same_t << "/" << N << " (" << 100.0*si_same_t/N << "%)" << std::endl;
+    std::cout << "    Avg |ScoreDiff|: " << si_total_sdiff/N << std::endl;
+    std::cout << "    Time:          " << si_total_time << "s total" << std::endl;
 
     std::cout << "\n  ---- Random Clustering (Baseline) ----" << std::endl;
     std::cout << "    Exact Match:   " << rnd_exact << "/" << N << " (" << 100.0*rnd_exact/N << "%)" << std::endl;
@@ -753,8 +780,8 @@ void ClusteringEffectivenessExperiment::exportCSV(
         << "allgrid_best_label,allgrid_best_type,allgrid_best_score,allgrid_time,"
         << "clustered_best_label,clustered_best_type,clustered_best_score,clustered_time,"
         << "exact_match,same_cluster,same_type,score_diff,silhouette,"
-        << "spatial_best_label,spatial_best_type,spatial_best_score,spatial_time,"
-        << "spatial_exact_match,spatial_same_cluster,spatial_same_type,spatial_score_diff,spatial_silhouette,"
+        << "simple_best_label,simple_best_type,simple_best_score,spatial_time,"
+        << "simple_exact_match,simple_same_cluster,simple_same_type,simple_score_diff,spatial_silhouette,"
         << "random_best_label,random_best_type,random_best_score,random_time,"
         << "random_exact_match,random_same_cluster,random_same_type,random_score_diff,random_silhouette"
         << std::endl;
@@ -768,10 +795,10 @@ void ClusteringEffectivenessExperiment::exportCSV(
             << r.clustered_best_score << "," << r.clustered_time_sec << ","
             << r.exact_match << "," << r.same_cluster << "," << r.same_type << ","
             << r.score_diff << "," << r.silhouette_score << ","
-            << "\"" << r.spatial_best_label << "\"," << static_cast<int>(r.spatial_best_type) << ","
-            << r.spatial_best_score << "," << r.spatial_time_sec << ","
-            << r.spatial_exact_match << "," << r.spatial_same_cluster << "," << r.spatial_same_type << ","
-            << r.spatial_score_diff << "," << r.spatial_silhouette_score << ","
+            << "\"" << r.simple_best_label << "\"," << static_cast<int>(r.simple_best_type) << ","
+            << r.simple_best_score << "," << r.simple_time_sec << ","
+            << r.simple_exact_match << "," << r.simple_same_cluster << "," << r.simple_same_type << ","
+            << r.simple_score_diff << ","
             << "\"" << r.random_best_label << "\"," << static_cast<int>(r.random_best_type) << ","
             << r.random_best_score << "," << r.random_time_sec << ","
             << r.random_exact_match << "," << r.random_same_cluster << "," << r.random_same_type << ","

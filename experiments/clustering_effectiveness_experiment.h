@@ -51,17 +51,17 @@ struct TestCaseResult {
     int allgrid_cluster_id;    // AllGrid最良手が属するクラスタ
     int clustered_cluster_id;  // Clustered最良手が属するクラスタ
 
-    // Spatial クラスタリング (ベースライン: 結果盤面の座標距離のみ)
-    int spatial_best_idx;
-    std::string spatial_best_label;
-    ShotType spatial_best_type;
-    double spatial_best_score;
-    double spatial_time_sec;
-    bool spatial_exact_match;
-    bool spatial_same_cluster;
-    bool spatial_same_type;
-    double spatial_score_diff;   // AllGrid - Spatial
-    double spatial_silhouette_score;
+    // Simple クラスタリング (ベースライン: 速度ベクトルのグリッド分割)
+    // 「打つ瞬間の情報で似ているものを削る」ポリシー
+    int simple_best_idx;
+    std::string simple_best_label;
+    ShotType simple_best_type;
+    double simple_best_score;
+    double simple_time_sec;
+    bool simple_exact_match;
+    bool simple_same_cluster;
+    bool simple_same_type;
+    double simple_score_diff;   // AllGrid - Simple
 
     // ランダムクラスタリング (ベースライン)
     int random_best_idx;
@@ -140,13 +140,16 @@ private:
         const std::vector<std::vector<float>>& dist_table,
         int n_desired_clusters);
 
-    // ランダムクラスタリング (ベースライン)
-    std::vector<std::set<int>> runRandomClustering(
-        int n_items, int n_desired_clusters, std::mt19937& rng);
+    // ランダム選択 (ベースライン: ランダムにK手選ぶ)
+    std::vector<int> selectRandom(int n_items, int k, std::mt19937& rng);
+    // ランダムクラスタ割り当て (same_cluster指標用)
+    std::vector<std::set<int>> assignRandomClusters(
+        int n_items, int n_clusters, std::mt19937& rng);
 
-    // Spatial距離テーブル (結果盤面の全石座標のユークリッド距離)
-    std::vector<std::vector<float>> makeDistanceTableSpatial(
-        const std::vector<dc::GameState>& result_states);
+    // Simple クラスタリング: 速度ベクトル(vx,vy,rot)のグリッド分割
+    // 「打つ瞬間の情報で似ているものを削る」
+    std::vector<int> selectByVelocityGrid(
+        const std::vector<CandidateShot>& candidates, int k);
 
     std::vector<int> calculateMedoids(
         const std::vector<std::vector<float>>& dist_table,
