@@ -510,6 +510,12 @@ std::vector<std::set<int>> ClusteringEffectivenessExperiment::assignRandomCluste
 
 // Simple: 速度ベクトル(vx, vy, rot)のグリッド分割で代表手を選出
 // 「打つ瞬間の情報で似ているものを削る」ポリシー
+// Simple: 速度ベクトル(vx, vy, rot)の固定グリッド分割で代表手を選出
+// カーリングの物理に基づいた固定境界:
+//   vy: ガード / ドロー / ヒット弱 / ヒット強
+//   vx: 左 / 中央 / 右
+//   rot: CW / CCW
+// 合計: 4 × 3 × 2 = 24 セル（非空セルのみ代表を選出）
 std::vector<int> ClusteringEffectivenessExperiment::selectByVelocityGrid(
     const std::vector<CandidateShot>& candidates, int k)
 {
@@ -520,36 +526,38 @@ std::vector<int> ClusteringEffectivenessExperiment::selectByVelocityGrid(
         return all;
     }
 
-    // 速度の範囲を調査
-    float vx_min = 1e9f, vx_max = -1e9f;
-    float vy_min = 1e9f, vy_max = -1e9f;
-    for (auto& c : candidates) {
-        vx_min = std::min(vx_min, c.shot.vx);
-        vx_max = std::max(vx_max, c.shot.vx);
-        vy_min = std::min(vy_min, c.shot.vy);
-        vy_max = std::max(vy_max, c.shot.vy);
-    }
+    // 固定グリッド境界（カーリングの物理に基づく）
+    // vy: 投擲方向の速度（大きいほど強い）
+    constexpr float vy_bounds[] = { 2.0f, 2.5f, 3.2f };  // 4区間
+    constexpr int n_vy = 4;  // [0,2.0), [2.0,2.5), [2.5,3.2), [3.2,∞)
 
-    // グリッドサイズを決定: k個のセルになるように
-    // rot(2) × vx_bins × vy_bins ≈ k → vx_bins × vy_bins ≈ k/2
-    int half_k = std::max(1, k / 2);
-    int vy_bins = std::max(1, (int)std::sqrt((double)half_k));
-    int vx_bins = std::max(1, half_k / vy_bins);
+    // vx: 横方向の速度
+    constexpr float vx_bounds[] = { -0.05f, 0.05f };  // 3区間
+    constexpr int n_vx = 3;  // (-∞,-0.05), [-0.05,0.05], (0.05,∞)
 
-    float vx_range = std::max(vx_max - vx_min, 0.01f);
-    float vy_range = std::max(vy_max - vy_min, 0.01f);
+    // rot: 2区間 (CW=1, CCW=0)
+    constexpr int n_rot = 2;
+
+    auto getVyBin = [](float vy) -> int {
+        if (vy < 2.0f) return 0;       // ガード・弱ドロー
+        if (vy < 2.5f) return 1;       // ドロー
+        if (vy < 3.2f) return 2;       // ヒット弱〜中
+        return 3;                       // ヒット強
+    };
+
+    auto getVxBin = [](float vx) -> int {
+        if (vx < -0.05f) return 0;     // 左
+        if (vx <= 0.05f) return 1;     // 中央
+        return 2;                       // 右
+    };
 
     // 各候補をグリッドセルに割り当て
-    // key = rot * (vx_bins * vy_bins) + vy_bin * vx_bins + vx_bin
     std::map<int, std::vector<int>> grid_cells;
-
     for (int i = 0; i < n; ++i) {
-        int rot_bin = candidates[i].shot.rot;
-        int vx_bin = std::min(vx_bins - 1,
-            (int)((candidates[i].shot.vx - vx_min) / vx_range * vx_bins));
-        int vy_bin = std::min(vy_bins - 1,
-            (int)((candidates[i].shot.vy - vy_min) / vy_range * vy_bins));
-        int cell = rot_bin * (vx_bins * vy_bins) + vy_bin * vx_bins + vx_bin;
+        int rot_bin = candidates[i].shot.rot;  // 0 or 1
+        int vx_bin = getVxBin(candidates[i].shot.vx);
+        int vy_bin = getVyBin(candidates[i].shot.vy);
+        int cell = rot_bin * (n_vx * n_vy) + vy_bin * n_vx + vx_bin;
         grid_cells[cell].push_back(i);
     }
 
@@ -557,7 +565,6 @@ std::vector<int> ClusteringEffectivenessExperiment::selectByVelocityGrid(
     std::vector<int> selected;
     for (auto& [cell, members] : grid_cells) {
         if (members.empty()) continue;
-        // セル内の平均速度を計算
         float avg_vx = 0, avg_vy = 0;
         for (int idx : members) {
             avg_vx += candidates[idx].shot.vx;
@@ -565,7 +572,6 @@ std::vector<int> ClusteringEffectivenessExperiment::selectByVelocityGrid(
         }
         avg_vx /= members.size();
         avg_vy /= members.size();
-        // 最も中央に近い候補を選出
         int best = members[0];
         float best_dist = 1e9f;
         for (int idx : members) {
