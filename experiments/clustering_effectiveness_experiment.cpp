@@ -133,9 +133,18 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
         return result;
     }
 
+    // --- 予算計算 ---
+    // AllGrid: 全N候補 × B_ag回 = 総予算
+    // Proposed/Simple/Random: K候補 × B_sub回 = 同じ総予算
+    int B_allgrid = rollout_count_;
+    int n_clusters = std::max(1, n * retention_pct / 100);
+    int B_sub = std::max(1, (n * B_allgrid) / n_clusters);  // 予算公平: B_sub = N/K * B_ag
+
     // --- AllGrid: 全候補をロールアウト評価 ---
     auto t0 = std::chrono::high_resolution_clock::now();
 
+    int saved_rollout = rollout_count_;
+    rollout_count_ = B_allgrid;
     std::vector<double> allgrid_scores(n);
     for (int i = 0; i < n; ++i) {
         allgrid_scores[i] = evaluateCandidate(record.state, candidates[i], sim);
@@ -153,7 +162,7 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
     // --- クラスタリング ---
     auto t2 = std::chrono::high_resolution_clock::now();
 
-    int n_clusters = std::max(1, n * retention_pct / 100);
+    // n_clusters は上で計算済み
     result.n_clustered = n_clusters;
 
     auto dist_table = makeDistanceTableDelta(record.state, result_states);
@@ -187,7 +196,8 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
         cluster_details_.push_back(ci);
     }
 
-    // --- Clustered: メドイドのみ評価 ---
+    // --- Clustered: メドイドのみ評価 (B_sub回、予算公平) ---
+    rollout_count_ = B_sub;
     double clustered_best_score = -1e9;
     int clustered_best_medoid_idx = -1;
     int clustered_best_cluster = -1;
@@ -240,6 +250,10 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
         cluster_details_.push_back(ci);
     }
 
+    // Simple も B_sub 回（予算公平）
+    // ただし simple_selected の数は n_clusters と異なる場合がある
+    int B_simple = std::max(1, (n * B_allgrid) / std::max(1, (int)simple_selected.size()));
+    rollout_count_ = B_simple;
     double simple_best_score = -1e9;
     int simple_best_idx = -1;
 
@@ -293,6 +307,9 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
         cluster_details_.push_back(ci);
     }
 
+    // Random も B_sub 回（予算公平）
+    int B_random = std::max(1, (n * B_allgrid) / std::max(1, (int)random_selected.size()));
+    rollout_count_ = B_random;
     double random_best_score = -1e9;
     int random_best_medoid_idx = -1;
 
@@ -325,6 +342,7 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
     result.random_same_type = (result.allgrid_best_type == result.random_best_type);
     result.random_score_diff = result.allgrid_best_score - random_best_score;
 
+    rollout_count_ = saved_rollout;  // 元に戻す
     return result;
 }
 
@@ -883,10 +901,12 @@ void ClusteringEffectivenessExperiment::run() {
             results.push_back(result);
 
             std::cout << "P:" << (result.exact_match ? "EXACT" : (result.same_cluster ? "SameClus" : "DIFF"))
+                      << " S:" << (result.simple_exact_match ? "EXACT" : "DIFF")
                       << " R:" << (result.random_exact_match ? "EXACT" : "DIFF")
                       << " | AG=" << result.allgrid_best_label
+                      << "(" << std::fixed << std::setprecision(2) << result.allgrid_best_score << ")"
                       << " CL=" << result.clustered_best_label
-                      << " RD=" << result.random_best_label
+                      << "(" << result.clustered_best_score << ")"
                       << std::endl;
         }
 
