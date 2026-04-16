@@ -141,9 +141,22 @@ private:
         const std::vector<std::vector<float>>& dist_table,
         const std::vector<std::set<int>>& clusters);
 
+    // クラスタ構成情報（1ポジションあたり）
+    struct ClusterInfo {
+        int game_id, end, shot_num;
+        int n_candidates;
+        std::string method;  // "proposed" or "random"
+        int cluster_id;
+        int cluster_size;
+        int medoid_idx;
+        std::string medoid_label;
+    };
+    std::vector<ClusterInfo> cluster_details_;
+
     // 結果出力
     void printSummary(const std::vector<TestCaseResult>& results, int retention_pct);
     void exportCSV(const std::vector<TestCaseResult>& results, int retention_pct);
+    void exportClusterDetailsCSV(int retention_pct);
 };
 
 #endif

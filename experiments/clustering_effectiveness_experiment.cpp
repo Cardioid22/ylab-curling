@@ -172,6 +172,21 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
         }
     }
 
+    // クラスタ構成を記録 (proposed)
+    for (int c = 0; c < static_cast<int>(clusters.size()); ++c) {
+        ClusterInfo ci;
+        ci.game_id = record.game_id;
+        ci.end = record.end;
+        ci.shot_num = record.shot_num;
+        ci.n_candidates = n;
+        ci.method = "proposed";
+        ci.cluster_id = c;
+        ci.cluster_size = static_cast<int>(clusters[c].size());
+        ci.medoid_idx = medoids[c];
+        ci.medoid_label = (medoids[c] >= 0 && medoids[c] < n) ? candidates[medoids[c]].label : "N/A";
+        cluster_details_.push_back(ci);
+    }
+
     // --- Clustered: メドイドのみ評価 ---
     double clustered_best_score = -1e9;
     int clustered_best_medoid_idx = -1;
@@ -213,6 +228,21 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
     auto random_medoids = calculateMedoids(dist_table, random_clusters);
 
     result.random_silhouette_score = calcSilhouetteScore(dist_table, random_clusters);
+
+    // クラスタ構成を記録 (random)
+    for (int c = 0; c < static_cast<int>(random_clusters.size()); ++c) {
+        ClusterInfo ci;
+        ci.game_id = record.game_id;
+        ci.end = record.end;
+        ci.shot_num = record.shot_num;
+        ci.n_candidates = n;
+        ci.method = "random";
+        ci.cluster_id = c;
+        ci.cluster_size = static_cast<int>(random_clusters[c].size());
+        ci.medoid_idx = random_medoids[c];
+        ci.medoid_label = (random_medoids[c] >= 0 && random_medoids[c] < n) ? candidates[random_medoids[c]].label : "N/A";
+        cluster_details_.push_back(ci);
+    }
 
     double random_best_score = -1e9;
     int random_best_medoid_idx = -1;
@@ -636,6 +666,38 @@ void ClusteringEffectivenessExperiment::exportCSV(
     std::cout << "  Exported: " << path << std::endl;
 }
 
+void ClusteringEffectivenessExperiment::exportClusterDetailsCSV(int retention_pct) {
+    std::string dir = "experiment_results";
+    std::filesystem::create_directories(dir);
+
+    auto now = std::chrono::system_clock::now();
+    auto t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm_buf;
+#ifdef _WIN32
+    localtime_s(&tm_buf, &t);
+#else
+    localtime_r(&t, &tm_buf);
+#endif
+    char ts[20];
+    std::strftime(ts, sizeof(ts), "%Y%m%d_%H%M%S", &tm_buf);
+
+    std::string path = dir + "/cluster_details_ret" + std::to_string(retention_pct)
+                     + "_B" + std::to_string(rollout_count_)
+                     + "_" + std::string(ts) + ".csv";
+
+    std::ofstream ofs(path);
+    ofs << "game_id,end,shot_num,n_candidates,method,cluster_id,cluster_size,medoid_idx,medoid_label"
+        << std::endl;
+
+    for (auto& ci : cluster_details_) {
+        ofs << ci.game_id << "," << ci.end << "," << ci.shot_num << ","
+            << ci.n_candidates << "," << ci.method << "," << ci.cluster_id << ","
+            << ci.cluster_size << "," << ci.medoid_idx << ","
+            << "\"" << ci.medoid_label << "\"" << std::endl;
+    }
+    std::cout << "  Exported cluster details: " << path << std::endl;
+}
+
 // ============================================================
 // メイン実行
 // ============================================================
@@ -683,6 +745,8 @@ void ClusteringEffectivenessExperiment::run() {
 
         printSummary(results, ret);
         exportCSV(results, ret);
+        exportClusterDetailsCSV(ret);
+        cluster_details_.clear();  // 次の保持率用にリセット
 
         std::cout << "\n  Total experiment time: " << total_time << "s" << std::endl;
     }
