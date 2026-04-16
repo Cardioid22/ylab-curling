@@ -58,6 +58,7 @@ struct TestCaseResult {
     double random_best_score;
     double random_time_sec;
     bool random_exact_match;
+    bool random_same_cluster;      // AllGrid最良手と同じランダムクラスタ内
     bool random_same_type;
     double random_score_diff;  // AllGrid - Random
     double random_silhouette_score;

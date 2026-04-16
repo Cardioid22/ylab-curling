@@ -237,6 +237,14 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
     result.random_best_score = random_best_score;
 
     result.random_exact_match = (allgrid_best == random_best_medoid_idx);
+    // AllGrid最良手が属するランダムクラスタを特定
+    int allgrid_random_cluster_id = -1;
+    int random_best_cluster_id = -1;
+    for (int c = 0; c < static_cast<int>(random_clusters.size()); ++c) {
+        if (random_clusters[c].count(allgrid_best)) allgrid_random_cluster_id = c;
+        if (random_clusters[c].count(random_best_medoid_idx)) random_best_cluster_id = c;
+    }
+    result.random_same_cluster = (allgrid_random_cluster_id == random_best_cluster_id);
     result.random_same_type = (result.allgrid_best_type == result.random_best_type);
     result.random_score_diff = result.allgrid_best_score - random_best_score;
 
@@ -491,7 +499,7 @@ void ClusteringEffectivenessExperiment::printSummary(
     int exact = 0, same_c = 0, same_t = 0;
     double total_sdiff = 0, total_ag_time = 0, total_cl_time = 0;
     double total_sil = 0;
-    int rnd_exact = 0, rnd_same_t = 0;
+    int rnd_exact = 0, rnd_same_c = 0, rnd_same_t = 0;
     double rnd_total_sdiff = 0, rnd_total_time = 0, rnd_total_sil = 0;
     for (auto& r : results) {
         if (r.exact_match) exact++;
@@ -503,6 +511,7 @@ void ClusteringEffectivenessExperiment::printSummary(
         total_sil += r.silhouette_score;
         // Random
         if (r.random_exact_match) rnd_exact++;
+        if (r.random_same_cluster) rnd_same_c++;
         if (r.random_same_type) rnd_same_t++;
         rnd_total_sdiff += std::abs(r.random_score_diff);
         rnd_total_time += r.random_time_sec;
@@ -520,6 +529,7 @@ void ClusteringEffectivenessExperiment::printSummary(
 
     std::cout << "\n  ---- Random Clustering (Baseline) ----" << std::endl;
     std::cout << "    Exact Match:   " << rnd_exact << "/" << N << " (" << 100.0*rnd_exact/N << "%)" << std::endl;
+    std::cout << "    Same Cluster:  " << rnd_same_c << "/" << N << " (" << 100.0*rnd_same_c/N << "%)" << std::endl;
     std::cout << "    Same Type:     " << rnd_same_t << "/" << N << " (" << 100.0*rnd_same_t/N << "%)" << std::endl;
     std::cout << "    Avg |ScoreDiff|: " << rnd_total_sdiff/N << std::endl;
     std::cout << "    Avg Silhouette:  " << rnd_total_sil/N << std::endl;
@@ -605,7 +615,7 @@ void ClusteringEffectivenessExperiment::exportCSV(
         << "clustered_best_label,clustered_best_type,clustered_best_score,clustered_time,"
         << "exact_match,same_cluster,same_type,score_diff,silhouette,"
         << "random_best_label,random_best_type,random_best_score,random_time,"
-        << "random_exact_match,random_same_type,random_score_diff,random_silhouette"
+        << "random_exact_match,random_same_cluster,random_same_type,random_score_diff,random_silhouette"
         << std::endl;
 
     for (auto& r : results) {
@@ -619,7 +629,7 @@ void ClusteringEffectivenessExperiment::exportCSV(
             << r.score_diff << "," << r.silhouette_score << ","
             << "\"" << r.random_best_label << "\"," << static_cast<int>(r.random_best_type) << ","
             << r.random_best_score << "," << r.random_time_sec << ","
-            << r.random_exact_match << "," << r.random_same_type << ","
+            << r.random_exact_match << "," << r.random_same_cluster << "," << r.random_same_type << ","
             << r.random_score_diff << "," << r.random_silhouette_score
             << std::endl;
     }
