@@ -51,6 +51,18 @@ struct TestCaseResult {
     int allgrid_cluster_id;    // AllGrid最良手が属するクラスタ
     int clustered_cluster_id;  // Clustered最良手が属するクラスタ
 
+    // Spatial クラスタリング (ベースライン: 結果盤面の座標距離のみ)
+    int spatial_best_idx;
+    std::string spatial_best_label;
+    ShotType spatial_best_type;
+    double spatial_best_score;
+    double spatial_time_sec;
+    bool spatial_exact_match;
+    bool spatial_same_cluster;
+    bool spatial_same_type;
+    double spatial_score_diff;   // AllGrid - Spatial
+    double spatial_silhouette_score;
+
     // ランダムクラスタリング (ベースライン)
     int random_best_idx;
     std::string random_best_label;
@@ -131,6 +143,10 @@ private:
     // ランダムクラスタリング (ベースライン)
     std::vector<std::set<int>> runRandomClustering(
         int n_items, int n_desired_clusters, std::mt19937& rng);
+
+    // Spatial距離テーブル (結果盤面の全石座標のユークリッド距離)
+    std::vector<std::vector<float>> makeDistanceTableSpatial(
+        const std::vector<dc::GameState>& result_states);
 
     std::vector<int> calculateMedoids(
         const std::vector<std::vector<float>>& dist_table,

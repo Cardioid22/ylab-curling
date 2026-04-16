@@ -219,6 +219,63 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
     result.same_type = (result.allgrid_best_type == result.clustered_best_type);
     result.score_diff = result.allgrid_best_score - result.clustered_best_score;
 
+    // --- Spatial Clustering (ベースライン): 結果盤面の石座標距離のみ ---
+    auto t_sp0 = std::chrono::high_resolution_clock::now();
+
+    auto spatial_dist_table = makeDistanceTableSpatial(result_states);
+    auto spatial_clusters = runClustering(spatial_dist_table, n_clusters);
+    auto spatial_medoids = calculateMedoids(spatial_dist_table, spatial_clusters);
+
+    result.spatial_silhouette_score = calcSilhouetteScore(spatial_dist_table, spatial_clusters);
+
+    // クラスタ構成を記録 (spatial)
+    for (int c = 0; c < static_cast<int>(spatial_clusters.size()); ++c) {
+        ClusterInfo ci;
+        ci.game_id = record.game_id;
+        ci.end = record.end;
+        ci.shot_num = record.shot_num;
+        ci.n_candidates = n;
+        ci.method = "spatial";
+        ci.cluster_id = c;
+        ci.cluster_size = static_cast<int>(spatial_clusters[c].size());
+        ci.medoid_idx = spatial_medoids[c];
+        ci.medoid_label = (spatial_medoids[c] >= 0 && spatial_medoids[c] < n) ? candidates[spatial_medoids[c]].label : "N/A";
+        cluster_details_.push_back(ci);
+    }
+
+    double spatial_best_score = -1e9;
+    int spatial_best_medoid_idx = -1;
+    int spatial_best_cluster = -1;
+
+    for (int c = 0; c < static_cast<int>(spatial_medoids.size()); ++c) {
+        int m = spatial_medoids[c];
+        if (m < 0 || m >= n) continue;
+        double score = evaluateCandidate(record.state, candidates[m], sim);
+        if (score > spatial_best_score) {
+            spatial_best_score = score;
+            spatial_best_medoid_idx = m;
+            spatial_best_cluster = c;
+        }
+    }
+
+    auto t_sp1 = std::chrono::high_resolution_clock::now();
+    result.spatial_time_sec = std::chrono::duration<double>(t_sp1 - t_sp0).count();
+    result.spatial_best_idx = spatial_best_medoid_idx;
+    result.spatial_best_label = (spatial_best_medoid_idx >= 0) ?
+        candidates[spatial_best_medoid_idx].label : "N/A";
+    result.spatial_best_type = (spatial_best_medoid_idx >= 0) ?
+        candidates[spatial_best_medoid_idx].type : ShotType::PASS;
+    result.spatial_best_score = spatial_best_score;
+
+    result.spatial_exact_match = (allgrid_best == spatial_best_medoid_idx);
+    int allgrid_spatial_cluster_id = -1;
+    for (int c = 0; c < static_cast<int>(spatial_clusters.size()); ++c) {
+        if (spatial_clusters[c].count(allgrid_best)) { allgrid_spatial_cluster_id = c; break; }
+    }
+    result.spatial_same_cluster = (allgrid_spatial_cluster_id == spatial_best_cluster);
+    result.spatial_same_type = (result.allgrid_best_type == result.spatial_best_type);
+    result.spatial_score_diff = result.allgrid_best_score - spatial_best_score;
+
     // --- Random Clustering (ベースライン): ランダムにクラスタ割り当て ---
     auto t4 = std::chrono::high_resolution_clock::now();
 
@@ -414,6 +471,41 @@ std::vector<std::vector<float>> ClusteringEffectivenessExperiment::makeDistanceT
     return table;
 }
 
+std::vector<std::vector<float>> ClusteringEffectivenessExperiment::makeDistanceTableSpatial(
+    const std::vector<dc::GameState>& result_states)
+{
+    int n = static_cast<int>(result_states.size());
+    std::vector<std::vector<float>> table(n, std::vector<float>(n, 0.0f));
+
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            float dist = 0.0f;
+            // 全石の座標差のユークリッド距離
+            for (int t = 0; t < 2; t++) {
+                for (int s = 0; s < 8; s++) {
+                    bool in_a = result_states[i].stones[t][s].has_value();
+                    bool in_b = result_states[j].stones[t][s].has_value();
+                    if (in_a && in_b) {
+                        float dx = result_states[i].stones[t][s]->position.x
+                                 - result_states[j].stones[t][s]->position.x;
+                        float dy = result_states[i].stones[t][s]->position.y
+                                 - result_states[j].stones[t][s]->position.y;
+                        dist += dx * dx + dy * dy;
+                    } else if (in_a != in_b) {
+                        // 一方にだけ石がある → 大きなペナルティ
+                        dist += 100.0f;
+                    }
+                }
+            }
+            dist = std::sqrt(dist);
+            table[i][j] = dist;
+            table[j][i] = dist;
+        }
+        table[i][i] = -1.0f;
+    }
+    return table;
+}
+
 std::vector<std::set<int>> ClusteringEffectivenessExperiment::runClustering(
     const std::vector<std::vector<float>>& dist_table, int n_desired)
 {
@@ -531,6 +623,8 @@ void ClusteringEffectivenessExperiment::printSummary(
     double total_sil = 0;
     int rnd_exact = 0, rnd_same_c = 0, rnd_same_t = 0;
     double rnd_total_sdiff = 0, rnd_total_time = 0, rnd_total_sil = 0;
+    int sp_exact = 0, sp_same_c = 0, sp_same_t = 0;
+    double sp_total_sdiff = 0, sp_total_time = 0, sp_total_sil = 0;
     for (auto& r : results) {
         if (r.exact_match) exact++;
         if (r.same_cluster) same_c++;
@@ -539,6 +633,13 @@ void ClusteringEffectivenessExperiment::printSummary(
         total_ag_time += r.allgrid_time_sec;
         total_cl_time += r.clustered_time_sec;
         total_sil += r.silhouette_score;
+        // Spatial
+        if (r.spatial_exact_match) sp_exact++;
+        if (r.spatial_same_cluster) sp_same_c++;
+        if (r.spatial_same_type) sp_same_t++;
+        sp_total_sdiff += std::abs(r.spatial_score_diff);
+        sp_total_time += r.spatial_time_sec;
+        sp_total_sil += r.spatial_silhouette_score;
         // Random
         if (r.random_exact_match) rnd_exact++;
         if (r.random_same_cluster) rnd_same_c++;
@@ -556,6 +657,14 @@ void ClusteringEffectivenessExperiment::printSummary(
     std::cout << "    Avg |ScoreDiff|: " << total_sdiff/N << std::endl;
     std::cout << "    Avg Silhouette:  " << total_sil/N << std::endl;
     std::cout << "    Time:          " << total_cl_time << "s total" << std::endl;
+
+    std::cout << "\n  ---- Spatial Clustering (Baseline) ----" << std::endl;
+    std::cout << "    Exact Match:   " << sp_exact << "/" << N << " (" << 100.0*sp_exact/N << "%)" << std::endl;
+    std::cout << "    Same Cluster:  " << sp_same_c << "/" << N << " (" << 100.0*sp_same_c/N << "%)" << std::endl;
+    std::cout << "    Same Type:     " << sp_same_t << "/" << N << " (" << 100.0*sp_same_t/N << "%)" << std::endl;
+    std::cout << "    Avg |ScoreDiff|: " << sp_total_sdiff/N << std::endl;
+    std::cout << "    Avg Silhouette:  " << sp_total_sil/N << std::endl;
+    std::cout << "    Time:          " << sp_total_time << "s total" << std::endl;
 
     std::cout << "\n  ---- Random Clustering (Baseline) ----" << std::endl;
     std::cout << "    Exact Match:   " << rnd_exact << "/" << N << " (" << 100.0*rnd_exact/N << "%)" << std::endl;
@@ -644,6 +753,8 @@ void ClusteringEffectivenessExperiment::exportCSV(
         << "allgrid_best_label,allgrid_best_type,allgrid_best_score,allgrid_time,"
         << "clustered_best_label,clustered_best_type,clustered_best_score,clustered_time,"
         << "exact_match,same_cluster,same_type,score_diff,silhouette,"
+        << "spatial_best_label,spatial_best_type,spatial_best_score,spatial_time,"
+        << "spatial_exact_match,spatial_same_cluster,spatial_same_type,spatial_score_diff,spatial_silhouette,"
         << "random_best_label,random_best_type,random_best_score,random_time,"
         << "random_exact_match,random_same_cluster,random_same_type,random_score_diff,random_silhouette"
         << std::endl;
@@ -657,6 +768,10 @@ void ClusteringEffectivenessExperiment::exportCSV(
             << r.clustered_best_score << "," << r.clustered_time_sec << ","
             << r.exact_match << "," << r.same_cluster << "," << r.same_type << ","
             << r.score_diff << "," << r.silhouette_score << ","
+            << "\"" << r.spatial_best_label << "\"," << static_cast<int>(r.spatial_best_type) << ","
+            << r.spatial_best_score << "," << r.spatial_time_sec << ","
+            << r.spatial_exact_match << "," << r.spatial_same_cluster << "," << r.spatial_same_type << ","
+            << r.spatial_score_diff << "," << r.spatial_silhouette_score << ","
             << "\"" << r.random_best_label << "\"," << static_cast<int>(r.random_best_type) << ","
             << r.random_best_score << "," << r.random_time_sec << ","
             << r.random_exact_match << "," << r.random_same_cluster << "," << r.random_same_type << ","
