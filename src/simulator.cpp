@@ -412,6 +412,9 @@ double SimulatorWrapper::run_policy_rollout(
     double total_score = 0.0;
 
     // 盤面スコア計算用のヘルパー
+    // 盤面評価: 整数得点 + 石のティーからの距離による連続値ボーナス
+    // 例: 自チーム2点で No.1石がティーに近い → 2.8
+    //     自チーム2点で No.1石がハウス端   → 2.2
     auto calcBoardScore = [this](const dc::GameState& s) -> double {
         constexpr float house_r = 1.829f + 0.145f;
         constexpr float tee_y = 38.405f;
@@ -434,8 +437,19 @@ double SimulatorWrapper::run_policy_rollout(
             if (e.team == scoring_team) pts++;
             else break;
         }
+
+        // 連続値ボーナス: 得点石がティーに近いほど高評価
+        // 各得点石の距離を0-1に正規化して加算 (近い=1, ハウス端=0)
+        double bonus = 0.0;
+        for (auto& e : in_house) {
+            if (e.team != scoring_team) break;
+            bonus += (1.0 - e.dist / house_r) * 0.1;  // 最大0.1/石
+        }
+
         int my_team = static_cast<int>(g_team);
-        return (scoring_team == my_team) ? pts : -pts;
+        double base = (scoring_team == my_team) ? pts : -pts;
+        // 自チームが得点: 正のボーナス、相手チーム: 負のボーナス
+        return (scoring_team == my_team) ? base + bonus : base - bonus;
     };
 
     int initial_end = static_cast<int>(state.end);
