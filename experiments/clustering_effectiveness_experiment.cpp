@@ -261,9 +261,11 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
     result.simple_best_score = simple_best_score;
 
     result.simple_exact_match = (allgrid_best == simple_best_idx);
-    // Simple のクラスタ一致: AllGrid最良手と同じグリッドセルから選ばれたか
+    // Simple のクラスタ一致: AllGrid最良手がSimple選出手に含まれているか
     result.simple_same_cluster = false;
-    // (グリッド分割では厳密なクラスタはないが、同じグリッドセルかどうかで判定)
+    for (int idx : simple_selected) {
+        if (idx == allgrid_best) { result.simple_same_cluster = true; break; }
+    }
     result.simple_same_type = (result.allgrid_best_type == result.simple_best_type);
     result.simple_score_diff = result.allgrid_best_score - simple_best_score;
 
@@ -786,8 +788,8 @@ void ClusteringEffectivenessExperiment::exportCSV(
         << "allgrid_best_label,allgrid_best_type,allgrid_best_score,allgrid_time,"
         << "clustered_best_label,clustered_best_type,clustered_best_score,clustered_time,"
         << "exact_match,same_cluster,same_type,score_diff,silhouette,"
-        << "simple_best_label,simple_best_type,simple_best_score,spatial_time,"
-        << "simple_exact_match,simple_same_cluster,simple_same_type,simple_score_diff,spatial_silhouette,"
+        << "simple_best_label,simple_best_type,simple_best_score,simple_time,"
+        << "simple_exact_match,simple_same_cluster,simple_same_type,simple_score_diff,"
         << "random_best_label,random_best_type,random_best_score,random_time,"
         << "random_exact_match,random_same_cluster,random_same_type,random_score_diff,random_silhouette"
         << std::endl;
