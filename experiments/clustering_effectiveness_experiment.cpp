@@ -97,12 +97,15 @@ double ClusteringEffectivenessExperiment::evaluateCandidate(
     int remaining = 16 - static_cast<int>(state.shot);
     sim.max_rollout_shots = remaining;
 
-    double total = 0.0;
+    // B回ロールアウトし、最大値を採用 (AllGridが最大値で候補を選ぶのと同じポリシー)
+    // 「この候補の上振れポテンシャル」で評価する
+    double max_score = -1e9;
     for (int r = 0; r < rollout_count_; ++r) {
-        total += sim.run_policy_rollout(
+        double s = sim.run_policy_rollout(
             state, candidate.shot, *policy_, *shot_gen_, 1);
+        if (s > max_score) max_score = s;
     }
-    return total / rollout_count_;
+    return max_score;
 }
 
 // ============================================================
