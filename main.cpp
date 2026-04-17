@@ -24,6 +24,7 @@
 #include "experiments/pool_clustering_experiment.h"
 #include "experiments/depth1_mcts_experiment.h"
 #include "experiments/clustering_effectiveness_experiment.h"
+#include "experiments/generate_test_positions.h"
 #include "src/policy.h"
 #include "src/shot_generator.h"
 #define DBL_EPSILON 2.2204460492503131e-016
@@ -54,6 +55,12 @@ std::vector<dc::GameState> grid_states;
 std::shared_ptr<SimulatorWrapper> simWrapper;
 std::shared_ptr<SimulatorWrapper> simWrapper_allgrid;
 std::shared_ptr<SimulatorWrapper> simWrapper_delta;
+
+// Clustered + gPolicy 用コンポーネント
+bool g_use_clustered = false;
+std::unique_ptr<RolloutPolicy> g_policy;
+std::unique_ptr<ShotGenerator> g_shot_gen;
+std::shared_ptr<SimulatorWrapper> g_sim_clustered;
 
 std::vector<Position> MakeGrid(const int m, const int n) {
     const float x_min = -HouseRadius;
@@ -327,26 +334,156 @@ void OnInit(
         state_to_shot_table[i] = shotinfo;
     }
     outFile.close();
+
+    // Clustered + gPolicy 初期化
+    if (g_use_clustered) {
+        std::cout << "Initializing Clustered + gPolicy mode..." << std::endl;
+        g_policy = std::make_unique<RolloutPolicy>();
+        if (!g_policy->load("data/policy_param.dat")) {
+            std::cerr << "WARNING: Failed to load gPolicy. Falling back to old MCTS." << std::endl;
+            g_use_clustered = false;
+        } else {
+            g_shot_gen = std::make_unique<ShotGenerator>(g_game_setting);
+            g_sim_clustered = std::make_shared<SimulatorWrapper>(g_team, g_game_setting);
+            std::cout << "Clustered + gPolicy mode ready." << std::endl;
+        }
+    }
     std::cout << "CurlingAI Initialize Done.\n";
 }
 dc::Move OnMyTurn(dc::GameState const& game_state)
 {
-    //dc::moves::Shot shot;
-    //shot.velocity.x = shotData[static_cast<int>(game_state.shot)].vx;
-    //shot.velocity.y = shotData[static_cast<int>(game_state.shot)].vy;
-    //shot.rotation = shotData[static_cast<int>(game_state.shot)].rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-    //return shot;
-    //if (game_state.shot < 6) {
-    //    dc::moves::Shot test_shot = test(game_state);
-    //    return test_shot;
-    //}
-    //if (game_state.hammer == g_team) {
-    //    dc::moves::Shot shot;
-    //    shot.velocity.x = 0.1;
-    //    shot.velocity.y = 2.5;
-    //    shot.rotation = dc::moves::Shot::Rotation::kCCW;
-    //    return shot;
-    //}
+    // ========== Clustered + gPolicy 方式 ==========
+    if (g_use_clustered && g_policy && g_shot_gen && g_sim_clustered) {
+        auto t_start = std::chrono::high_resolution_clock::now();
+
+        int shot_num = static_cast<int>(game_state.shot);
+        int end_num = static_cast<int>(game_state.end);
+        std::cout << "\n[Clustered] End " << end_num << " Shot " << shot_num << std::endl;
+
+        // 1. 候補手生成 + シミュレーション
+        auto pool = g_shot_gen->generatePool(game_state, g_team);
+        auto& candidates = pool.candidates;
+        auto& result_states = pool.result_states;
+        int n = static_cast<int>(candidates.size());
+        std::cout << "  Candidates: " << n << std::endl;
+
+        if (n == 0) {
+            dc::moves::Shot pass;
+            pass.velocity = {0.0f, 0.01f};
+            pass.rotation = dc::moves::Shot::Rotation::kCCW;
+            return pass;
+        }
+
+        // 2. デルタ距離テーブル
+        // (pool_clustering_experiment の distDelta と同じロジック)
+        auto evaluateBoard = [](const dc::GameState& state) -> float {
+            struct SI { float dist; int team; };
+            std::vector<SI> in_house;
+            for (int t = 0; t < 2; t++)
+                for (int i = 0; i < 8; i++) {
+                    if (!state.stones[t][i]) continue;
+                    float dx = state.stones[t][i]->position.x;
+                    float dy = state.stones[t][i]->position.y - 38.405f;
+                    float d = std::sqrt(dx*dx + dy*dy);
+                    if (d <= 1.829f + 0.145f) in_house.push_back({d, t});
+                }
+            if (in_house.empty()) return 0.0f;
+            std::sort(in_house.begin(), in_house.end(), [](auto& a, auto& b){ return a.dist < b.dist; });
+            int scoring = in_house[0].team;
+            int score = 0;
+            for (auto& s : in_house) { if (s.team == scoring) score++; else break; }
+            return scoring == 0 ? (float)score : -(float)score;
+        };
+
+        // 3. クラスタリング (保持率20%)
+        int n_clusters = std::max(1, n * 20 / 100);
+
+        // 距離テーブル構築 (簡易版: スコア差 + 新石位置差)
+        std::vector<std::vector<float>> dist_table(n, std::vector<float>(n, 0.0f));
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++) {
+                float d = 0.0f;
+                // スコア差
+                d += 20.0f * std::abs(evaluateBoard(result_states[i]) - evaluateBoard(result_states[j]));
+                // 新石の位置差
+                for (int t = 0; t < 2; t++)
+                    for (int s = 0; s < 8; s++) {
+                        bool in_inp = game_state.stones[t][s].has_value();
+                        bool in_a = result_states[i].stones[t][s].has_value();
+                        bool in_b = result_states[j].stones[t][s].has_value();
+                        if (!in_inp && in_a && in_b) {
+                            float dx = result_states[i].stones[t][s]->position.x - result_states[j].stones[t][s]->position.x;
+                            float dy = result_states[i].stones[t][s]->position.y - result_states[j].stones[t][s]->position.y;
+                            d += 4.0f * std::sqrt(dx*dx + dy*dy);
+                        } else if (in_inp && (in_a != in_b)) {
+                            d += 30.0f;
+                        }
+                    }
+                dist_table[i][j] = d;
+                dist_table[j][i] = d;
+            }
+
+        // 階層的クラスタリング (平均連結法)
+        std::vector<std::set<int>> clusters(n);
+        for (int i = 0; i < n; i++) clusters[i].insert(i);
+        while (static_cast<int>(clusters.size()) > n_clusters) {
+            float mn = 1e18f; int bi = -1, bj = -1;
+            for (int i = 0; i < (int)clusters.size(); i++)
+                for (int j = i + 1; j < (int)clusters.size(); j++) {
+                    float total = 0; int cnt = 0;
+                    for (int a : clusters[i]) for (int b : clusters[j]) { total += dist_table[a][b]; cnt++; }
+                    float avg = total / cnt;
+                    if (avg < mn) { mn = avg; bi = i; bj = j; }
+                }
+            if (bi == -1) break;
+            clusters[bi].insert(clusters[bj].begin(), clusters[bj].end());
+            clusters.erase(clusters.begin() + bj);
+        }
+
+        // メドイド計算
+        std::vector<int> medoids;
+        for (auto& cluster : clusters) {
+            if (cluster.size() == 1) { medoids.push_back(*cluster.begin()); continue; }
+            int best = -1; float best_sum = 1e18f;
+            for (int c : cluster) {
+                float sum = 0;
+                for (int o : cluster) if (c != o) sum += dist_table[c][o];
+                if (sum < best_sum) { best_sum = sum; best = c; }
+            }
+            medoids.push_back(best);
+        }
+        std::cout << "  Clustered: " << n << " -> " << medoids.size() << " medoids" << std::endl;
+
+        // 4. メドイドをgPolicyロールアウトで評価
+        int remaining = 16 - shot_num;
+        g_sim_clustered->max_rollout_shots = remaining;
+
+        double best_score = -1e9;
+        int best_idx = medoids[0];
+        for (int m : medoids) {
+            double score = g_sim_clustered->run_policy_rollout(
+                game_state, candidates[m].shot, *g_policy, *g_shot_gen, 1);
+            std::cout << "    Medoid " << candidates[m].label << " score=" << score << std::endl;
+            if (score > best_score) {
+                best_score = score;
+                best_idx = m;
+            }
+        }
+
+        auto t_end = std::chrono::high_resolution_clock::now();
+        double elapsed = std::chrono::duration<double>(t_end - t_start).count();
+        std::cout << "  Best: " << candidates[best_idx].label
+                  << " score=" << best_score << " time=" << elapsed << "s" << std::endl;
+
+        dc::moves::Shot final_shot;
+        final_shot.velocity.x = candidates[best_idx].shot.vx;
+        final_shot.velocity.y = candidates[best_idx].shot.vy;
+        final_shot.rotation = candidates[best_idx].shot.rot == 1
+            ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+        return final_shot;
+    }
+
+    // ========== 旧方式 MCTS ==========
     for (int i = 0; i < GridSize_M * GridSize_N; ++i) {
         ShotInfo shot = shotData[i];
         //std::cout << "shotData in My Turn. shot.vx: " << shot.vx << ", shot.vy: " << shot.vy << "\n";
@@ -677,8 +814,12 @@ int main(int argc, char const* argv[])
         bool depth1_mcts_mode = false;
         bool test_policy_mode = false;
         bool clustering_experiment_mode = false;
+        bool generate_positions_mode = false;
         int rollout_arg = 1;
         std::string retention_arg = "10,20";
+        int total_games_arg = 10000;
+        int batch_size_arg = 1000;
+        int opening_random_arg = 3;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -718,6 +859,24 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--clustering-experiment") {
                 clustering_experiment_mode = true;
+            }
+            if (std::string(argv[i]) == "--generate-positions") {
+                generate_positions_mode = true;
+            }
+            if (std::string(argv[i]) == "--total-games" && i + 1 < argc) {
+                total_games_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--batch-size" && i + 1 < argc) {
+                batch_size_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--opening-random" && i + 1 < argc) {
+                opening_random_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--use-clustered") {
+                g_use_clustered = true;
             }
             if (std::string(argv[i]) == "--rollout" && i + 1 < argc) {
                 rollout_arg = std::atoi(argv[i + 1]);
@@ -1079,6 +1238,25 @@ int main(int argc, char const* argv[])
             return 0;
         }
 
+        // テスト盤面生成モード
+        if (generate_positions_mode) {
+            std::cout << "Running Generate Test Positions mode..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 8;
+            game_setting.sheet_width = 4.75f;
+            game_setting.thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.thinking_time[1] = std::chrono::seconds(86400);
+
+            GenerateTestPositionsExperiment exp(game_setting);
+            exp.setTotalGames(total_games_arg);
+            exp.setBatchSize(batch_size_arg);
+            exp.setOpeningRandom(opening_random_arg);
+
+            exp.run();
+            return 0;
+        }
+
         // クラスタリング有効性実験モード
         if (clustering_experiment_mode) {
             std::cout << "Running Clustering Effectiveness Experiment..." << std::endl;
@@ -1279,7 +1457,7 @@ int main(int argc, char const* argv[])
             return 0;
         }
 
-        if (argc != 3) {
+        if (argc < 3) {
             std::cerr << "Usage: command <host> <port>" << std::endl;
             std::cerr << "       command --experiment                                                            (for efficiency experiment)" << std::endl;
             std::cerr << "       command --validate-clustering                                                   (for clustering validation)" << std::endl;
