@@ -1,110 +1,160 @@
 #!/bin/bash
-# 10,000局面クラスタリング効果実験 並列実行スクリプト
-# Usage: ./scripts/run_parallel_clustering_experiment.sh [num_processes]
+################################################################################
+# Parallel Clustering Effectiveness Experiment Runner
 #
-# 例: 48プロセス並列（48コア想定）
-#   ./scripts/run_parallel_clustering_experiment.sh 48
+# 10,000局面クラスタリング効果実験を並列実行する。
+# nohup でSSH切断後も継続。
 #
-# SSH切断しても継続させたい場合（推奨）:
-#   nohup ./scripts/run_parallel_clustering_experiment.sh 48 > master.log 2>&1 &
-# または tmux/screen 推奨:
+# Usage:
+#   ./scripts/run_parallel_clustering_experiment.sh [OPTIONS]
+#
+# Options:
+#   --parallel P          並列プロセス数 (default: 48)
+#   --total N             全局面数 (default: 10000)
+#   --positions-dir PATH  テスト局面ディレクトリ
+#                         (default: clustered_ayumu/test_positions_20260417_055725)
+#   --binary PATH         ylab_client バイナリパス (default: 自動検出)
+#   --policy-param PATH   policy_param.dat パス (default: data/policy_param.dat)
+#   --rollout R           ロールアウト回数 (default: 1)
+#   --retention PCT       保持率 % (default: 20)
+#   --skip-combine        最後の CSV 結合をスキップ
+#
+# Examples:
+#   # 標準実行 (48並列)
+#   ./scripts/run_parallel_clustering_experiment.sh
+#
+#   # 24並列、2000局面だけ
+#   ./scripts/run_parallel_clustering_experiment.sh --parallel 24 --total 2000
+#
+#   # パス上書き
+#   ./scripts/run_parallel_clustering_experiment.sh \
+#       --positions-dir /path/to/positions \
+#       --binary /path/to/ylab_client
+#
+# SSH切断対策（推奨）:
 #   tmux new -s exp
 #   ./scripts/run_parallel_clustering_experiment.sh 48
-#   (Ctrl-B, D で detach → 後で tmux attach -t exp で戻れる)
+#   (Ctrl-B, D で detach → 後で tmux attach -t exp)
+################################################################################
 
 set -euo pipefail
 
-# SSH切断時のSIGHUP無視 (スクリプト自体と子プロセス両方を守る)
+# SSH切断時のSIGHUP無視
 trap '' HUP
 
-# ---- 設定 ----
-NUM_PROCESSES="${1:-48}"
+# ---- デフォルト設定 ----
+NUM_PROCESSES=48
 TOTAL_POSITIONS=10000
 POSITIONS_DIR="clustered_ayumu/test_positions_20260417_055725"
+BINARY=""
+POLICY_PARAM="data/policy_param.dat"
 ROLLOUT=1
 RETENTION=20
+SKIP_COMBINE=0
 
-# プロジェクトルートを基準に実行
+# ---- 引数パース ----
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --parallel) NUM_PROCESSES="$2"; shift 2 ;;
+        --total)    TOTAL_POSITIONS="$2"; shift 2 ;;
+        --positions-dir) POSITIONS_DIR="$2"; shift 2 ;;
+        --binary)   BINARY="$2"; shift 2 ;;
+        --policy-param) POLICY_PARAM="$2"; shift 2 ;;
+        --rollout)  ROLLOUT="$2"; shift 2 ;;
+        --retention) RETENTION="$2"; shift 2 ;;
+        --skip-combine) SKIP_COMBINE=1; shift ;;
+        [0-9]*)     NUM_PROCESSES="$1"; shift ;;   # 後方互換: 第1引数でプロセス数指定
+        -h|--help)
+            grep '^#' "$0" | sed 's/^# \?//'
+            exit 0 ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--parallel N] [--total N] [--positions-dir PATH] ..."
+            exit 1 ;;
+    esac
+done
+
+# プロジェクトルートへ移動
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# ---- バイナリ自動検出 (Linux/Windows 両対応) ----
-BINARY_CANDIDATES=(
-    "./build/Release/ylab_client.exe"   # Windows (MSVC Release)
-    "./build/Debug/ylab_client.exe"     # Windows (MSVC Debug)
-    "./build/ylab_client"               # Linux (Makefile)
-    "./build/Release/ylab_client"       # Linux (multi-config)
-)
-BINARY=""
-for cand in "${BINARY_CANDIDATES[@]}"; do
-    if [ -x "$cand" ]; then
-        BINARY="$cand"
-        break
-    fi
-done
-
+# ---- バイナリ自動検出 (--binary 未指定時) ----
 if [ -z "$BINARY" ]; then
-    echo "Error: ylab_client binary not found. Checked:"
-    for cand in "${BINARY_CANDIDATES[@]}"; do
-        echo "    $cand"
+    for cand in \
+        "./build/Release/ylab_client" \
+        "./build/ylab_client" \
+        "./build/Release/ylab_client.exe" \
+        "./build/Debug/ylab_client.exe" \
+        "./ylab_client" \
+        "./ylab_client.exe"
+    do
+        if [ -x "$cand" ]; then BINARY="$cand"; break; fi
     done
-    echo "Run: cmake --build build --config Release"
+fi
+
+# ---- 事前チェック ----
+if [ -z "$BINARY" ] || [ ! -x "$BINARY" ]; then
+    echo "Error: ylab_client binary not found."
+    echo "Specify with: --binary /path/to/ylab_client"
+    echo "Or build: cmake --build build --config Release"
     exit 1
 fi
-echo "Using binary: $BINARY"
 
 if [ ! -d "$POSITIONS_DIR" ]; then
     echo "Error: positions directory not found: $POSITIONS_DIR"
+    echo "Specify with: --positions-dir /path/to/test_positions_YYYYMMDD_HHMMSS"
     exit 1
 fi
 
-if [ ! -f "data/policy_param.dat" ]; then
-    echo "Error: data/policy_param.dat not found"
+if [ ! -f "$POLICY_PARAM" ]; then
+    echo "Error: policy param file not found: $POLICY_PARAM"
+    echo "Specify with: --policy-param /path/to/policy_param.dat"
     exit 1
 fi
 
 # 1プロセスあたりの局面数（切り上げ）
 POSITIONS_PER_PROC=$(( (TOTAL_POSITIONS + NUM_PROCESSES - 1) / NUM_PROCESSES ))
 
-# ログ保存ディレクトリ
-LOG_DIR="logs/parallel_$(date +%Y%m%d_%H%M%S)"
+# ログディレクトリ
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_DIR="logs/parallel_${TIMESTAMP}"
 mkdir -p "$LOG_DIR"
 
+# ---- 設定表示 ----
 echo "========================================"
 echo "Parallel Clustering Experiment"
 echo "========================================"
+echo "  Binary:             $BINARY"
+echo "  Positions dir:      $POSITIONS_DIR"
+echo "  Policy param:       $POLICY_PARAM"
 echo "  Total positions:    $TOTAL_POSITIONS"
 echo "  Num processes:      $NUM_PROCESSES"
 echo "  Positions/process:  $POSITIONS_PER_PROC"
-echo "  Positions dir:      $POSITIONS_DIR"
 echo "  Rollout count:      $ROLLOUT"
 echo "  Retention:          $RETENTION%"
 echo "  Deterministic:      ON"
 echo "  Log dir:            $LOG_DIR"
 echo "========================================"
+echo ""
 
 # ---- プロセス起動 ----
 PIDS=()
 for i in $(seq 0 $((NUM_PROCESSES - 1))); do
     START=$((i * POSITIONS_PER_PROC))
-    # 最後のプロセスは残り全部、それ以外は POSITIONS_PER_PROC 個
+    if [ $START -ge $TOTAL_POSITIONS ]; then
+        continue
+    fi
     if [ $((START + POSITIONS_PER_PROC)) -gt $TOTAL_POSITIONS ]; then
         MAX=$((TOTAL_POSITIONS - START))
     else
         MAX=$POSITIONS_PER_PROC
     fi
 
-    # start_index が範囲外ならスキップ
-    if [ $START -ge $TOTAL_POSITIONS ]; then
-        continue
-    fi
-
     LOG_FILE="$LOG_DIR/proc_${i}_idx${START}.log"
     printf "  [%2d] start=%5d max=%4d -> %s\n" "$i" "$START" "$MAX" "$LOG_FILE"
 
-    # nohup: SIGHUP 無視、SSH 切断後も生存
-    # < /dev/null: 標準入力切り離し (端末依存を排除)
+    # nohup + stdin切断で SSH断後も生存
     nohup "$BINARY" \
         --clustering-experiment \
         --rollout "$ROLLOUT" \
@@ -119,8 +169,9 @@ for i in $(seq 0 $((NUM_PROCESSES - 1))); do
 done
 
 echo ""
-echo "Launched ${#PIDS[@]} processes. Waiting for completion..."
-echo "Tail any log with: tail -f $LOG_DIR/proc_0_idx0.log"
+echo "Launched ${#PIDS[@]} processes. PIDs: ${PIDS[*]}"
+echo "Kill all with: pkill -f ylab_client"
+echo "Monitor with : tail -f $LOG_DIR/proc_0_idx0.log"
 echo ""
 
 # ---- 完了待ち ----
@@ -140,21 +191,24 @@ else
 fi
 
 # ---- 結果集計 ----
-echo ""
-echo "Combining CSV outputs..."
-COMBINED="experiment_results/clustering_effectiveness_ret${RETENTION}_B${ROLLOUT}_combined_$(date +%Y%m%d_%H%M%S).csv"
-FILES=(experiment_results/clustering_effectiveness_ret${RETENTION}_B${ROLLOUT}_idx*.csv)
-
-if [ ${#FILES[@]} -gt 0 ] && [ -f "${FILES[0]}" ]; then
-    # ヘッダを最初のファイルから取る
-    head -1 "${FILES[0]}" > "$COMBINED"
-    for f in "${FILES[@]}"; do
-        tail -n +2 "$f" >> "$COMBINED"
-    done
-    TOTAL_ROWS=$(( $(wc -l < "$COMBINED") - 1 ))
-    echo "  Combined: $COMBINED ($TOTAL_ROWS rows)"
-else
-    echo "  No output CSVs found (no processes completed or all failed)."
+if [ $SKIP_COMBINE -eq 0 ]; then
+    echo ""
+    echo "Combining CSV outputs..."
+    COMBINED="experiment_results/clustering_effectiveness_ret${RETENTION}_B${ROLLOUT}_combined_${TIMESTAMP}.csv"
+    # 一時的に set -u を緩める（glob が空のとき配列参照でエラーになるのを回避）
+    set +u
+    FILES=(experiment_results/clustering_effectiveness_ret${RETENTION}_B${ROLLOUT}_idx*.csv)
+    set -u
+    if [ ${#FILES[@]} -gt 0 ] && [ -f "${FILES[0]}" ]; then
+        head -1 "${FILES[0]}" > "$COMBINED"
+        for f in "${FILES[@]}"; do
+            tail -n +2 "$f" >> "$COMBINED"
+        done
+        TOTAL_ROWS=$(( $(wc -l < "$COMBINED") - 1 ))
+        echo "  Combined: $COMBINED ($TOTAL_ROWS rows)"
+    else
+        echo "  No output CSVs found."
+    fi
 fi
 
 echo ""
