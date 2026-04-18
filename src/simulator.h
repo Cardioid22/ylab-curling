@@ -27,6 +27,11 @@ public:
     // Set to a small value (e.g. 16) for fast tournament play.
     int max_rollout_shots = -1;
 
+    // Deterministic mode (PlayerIdentical, no noise). Must be set before initialize
+    // or via setDeterministic() which reinitializes players.
+    bool deterministic_ = false;
+    void setDeterministic(bool d);
+
     dc::GameState run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot);
     double run_simulations(dc::GameState const& game_state, const ShotInfo& shot);  // return win/loss (deprecated - use rollout methods)
     dc::GameState run_full_simulations(dc::GameState const& state, const ShotInfo& shot);

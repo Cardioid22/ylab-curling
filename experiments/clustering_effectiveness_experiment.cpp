@@ -33,6 +33,7 @@ ClusteringEffectivenessExperiment::generateTestPositions() {
     std::cout << "  Games: " << test_games_ << std::endl;
 
     SimulatorWrapper sim(dc::Team::k0, game_setting_);
+    sim.setDeterministic(deterministic_);
 
     for (int game = 0; game < test_games_; ++game) {
         std::cout << "  Game " << game << "..." << std::flush;
@@ -484,7 +485,7 @@ float ClusteringEffectivenessExperiment::distDelta(
     constexpr float MOVED_STONE_WEIGHT = 2.0f;
     constexpr float PENALTY_INTERACTION = 15.0f;
     constexpr float INTERACTION_THRESHOLD = 0.03f;
-    constexpr float SCORE_WEIGHT = 20.0f;            // 8→20: スコア差をより重視
+    constexpr float SCORE_WEIGHT = 40.0f;            // 8→20→40: スコア差をさらに重視 (same_cluster改善)
     constexpr float PROXIMITY_WEIGHT = 5.0f;
 
     float distance = 0.0f;
@@ -888,8 +889,11 @@ void ClusteringEffectivenessExperiment::exportCSV(
     char ts[20];
     std::strftime(ts, sizeof(ts), "%Y%m%d_%H%M%S", &tm_buf);
 
+    std::string idx_suffix = (start_index_ > 0) ?
+        ("_idx" + std::to_string(start_index_)) : std::string();
     std::string path = dir + "/clustering_effectiveness_ret" + std::to_string(retention_pct)
                      + "_B" + std::to_string(rollout_count_)
+                     + idx_suffix
                      + "_" + std::string(ts) + ".csv";
 
     std::ofstream ofs(path);
@@ -940,8 +944,11 @@ void ClusteringEffectivenessExperiment::exportClusterDetailsCSV(int retention_pc
     char ts[20];
     std::strftime(ts, sizeof(ts), "%Y%m%d_%H%M%S", &tm_buf);
 
+    std::string idx_suffix = (start_index_ > 0) ?
+        ("_idx" + std::to_string(start_index_)) : std::string();
     std::string path = dir + "/cluster_details_ret" + std::to_string(retention_pct)
                      + "_B" + std::to_string(rollout_count_)
+                     + idx_suffix
                      + "_" + std::string(ts) + ".csv";
 
     std::ofstream ofs(path);
@@ -962,17 +969,31 @@ void ClusteringEffectivenessExperiment::exportClusterDetailsCSV(int retention_pc
 // ============================================================
 void ClusteringEffectivenessExperiment::run() {
     std::cout << "=== Clustering Effectiveness Experiment ===" << std::endl;
+    std::cout << "  Deterministic: " << (deterministic_ ? "ON" : "OFF") << std::endl;
 
     // gPolicy 読み込み
     if (!policy_->load("data/policy_param.dat")) {
         std::cerr << "Failed to load gPolicy. Aborting." << std::endl;
         return;
     }
+    policy_->setDeterministic(deterministic_);
 
     // テスト盤面生成 or CSV読み込み
     std::vector<GameRecord> records;
     if (!load_positions_dir_.empty()) {
-        records = loadTestPositionsFromCSV(load_positions_dir_, max_positions_);
+        // 並列実行用: start_index から max_positions 個を読み込む
+        int n_to_load = (max_positions_ > 0) ? (start_index_ + max_positions_) : -1;
+        records = loadTestPositionsFromCSV(load_positions_dir_, n_to_load);
+        if (start_index_ > 0 && static_cast<int>(records.size()) > start_index_) {
+            records.erase(records.begin(), records.begin() + start_index_);
+        } else if (start_index_ > 0) {
+            records.clear();
+        }
+        if (max_positions_ > 0 && static_cast<int>(records.size()) > max_positions_) {
+            records.resize(max_positions_);
+        }
+        std::cout << "  Running on positions [" << start_index_
+                  << ", " << (start_index_ + static_cast<int>(records.size())) << ")" << std::endl;
     } else {
         records = generateTestPositions();
         if (max_positions_ > 0 && static_cast<int>(records.size()) > max_positions_) {
@@ -982,6 +1003,7 @@ void ClusteringEffectivenessExperiment::run() {
 
     // SimulatorWrapper (ロールアウト評価用)
     SimulatorWrapper sim(dc::Team::k0, game_setting_);
+    sim.setDeterministic(deterministic_);
 
     // 各保持率で実験
     for (int ret : retention_rates_) {

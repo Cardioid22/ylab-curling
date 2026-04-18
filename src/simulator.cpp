@@ -18,16 +18,33 @@ SimulatorWrapper::SimulatorWrapper(
 }
 
 void SimulatorWrapper::initialize(
-) 
+)
 {
     g_simulator_ = dc::simulators::SimulatorFCV1Factory().CreateSimulator();
 
     g_simulator_storage_ = g_simulator_->CreateStorage();
 
     // プレイヤーを生成する
-    // 非対応の場合は NormalDistプレイヤーを使用する．
+    // deterministic_=true: PlayerIdentical (ノイズなし、再現可能)
+    // deterministic_=false: PlayerNormalDist (本番用、ランダムノイズ)
     for (size_t i = 0; i < g_players.size(); ++i) {
-        g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+        if (deterministic_) {
+            g_players[i] = dc::players::PlayerIdenticalFactory().CreatePlayer();
+        } else {
+            g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+        }
+    }
+}
+
+void SimulatorWrapper::setDeterministic(bool d) {
+    if (deterministic_ == d) return;
+    deterministic_ = d;
+    for (size_t i = 0; i < g_players.size(); ++i) {
+        if (deterministic_) {
+            g_players[i] = dc::players::PlayerIdenticalFactory().CreatePlayer();
+        } else {
+            g_players[i] = dc::players::PlayerNormalDistFactory().CreatePlayer();
+        }
     }
 }
 

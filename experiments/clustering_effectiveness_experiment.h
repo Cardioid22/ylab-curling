@@ -86,6 +86,8 @@ public:
     void setRetentionRates(const std::vector<int>& rates) { retention_rates_ = rates; }
     void setLoadPositionsDir(const std::string& d) { load_positions_dir_ = d; }
     void setMaxPositions(int n) { max_positions_ = n; }
+    void setDeterministic(bool d) { deterministic_ = d; }
+    void setStartIndex(int i) { start_index_ = i; }
 
     void run();
 
@@ -98,6 +100,8 @@ private:
     std::vector<int> retention_rates_ = {10, 20};  // 保持率(%)
     std::string load_positions_dir_;  // CSVから読み込むディレクトリ (空 = 自己対戦)
     int max_positions_ = -1;          // -1 = 全局面使用
+    bool deterministic_ = false;       // true: PlayerIdentical + argmax (再現可能)
+    int start_index_ = 0;              // 並列実行用: この index から開始 (先頭を skip)
 
     // コンポーネント
     std::unique_ptr<RolloutPolicy> policy_;

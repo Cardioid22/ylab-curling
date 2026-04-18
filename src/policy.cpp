@@ -555,6 +555,12 @@ int RolloutPolicy::selectShot(
 
     auto scores = scoreCandidates(state, candidates, shot_num, my_team, end_index, rel_score);
 
+    // deterministic モード: argmax 選択（再現可能）
+    if (deterministic_) {
+        return static_cast<int>(
+            std::max_element(scores.begin(), scores.end()) - scores.begin());
+    }
+
     // softmax with temperature
     double max_score = *std::max_element(scores.begin(), scores.end());
     std::vector<double> probs(scores.size());

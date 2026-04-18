@@ -815,6 +815,7 @@ int main(int argc, char const* argv[])
         bool test_policy_mode = false;
         bool clustering_experiment_mode = false;
         bool generate_positions_mode = false;
+        bool deterministic_mode = false;
         int rollout_arg = 1;
         std::string retention_arg = "10,20";
         int total_games_arg = 10000;
@@ -822,6 +823,7 @@ int main(int argc, char const* argv[])
         int opening_random_arg = 3;
         std::string load_positions_arg;
         int max_positions_arg = -1;
+        int start_index_arg = 0;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -865,6 +867,9 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--generate-positions") {
                 generate_positions_mode = true;
             }
+            if (std::string(argv[i]) == "--deterministic") {
+                deterministic_mode = true;
+            }
             if (std::string(argv[i]) == "--total-games" && i + 1 < argc) {
                 total_games_arg = std::atoi(argv[i + 1]);
                 i++;
@@ -883,6 +888,11 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--max-positions" && i + 1 < argc) {
                 max_positions_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--start-index" && i + 1 < argc) {
+                start_index_arg = std::atoi(argv[i + 1]);
+                if (start_index_arg < 0) start_index_arg = 0;
                 i++;
             }
             if (std::string(argv[i]) == "--use-clustered") {
@@ -1301,6 +1311,10 @@ int main(int argc, char const* argv[])
             if (max_positions_arg > 0) {
                 exp.setMaxPositions(max_positions_arg);
             }
+            exp.setDeterministic(deterministic_mode);
+            if (start_index_arg > 0) {
+                exp.setStartIndex(start_index_arg);
+            }
 
             std::cout << "  Config: test_num=" << test_num
                       << " rollout=" << rollout_arg
@@ -1310,6 +1324,12 @@ int main(int argc, char const* argv[])
             }
             if (max_positions_arg > 0) {
                 std::cout << " max_positions=" << max_positions_arg;
+            }
+            if (start_index_arg > 0) {
+                std::cout << " start_index=" << start_index_arg;
+            }
+            if (deterministic_mode) {
+                std::cout << " deterministic=ON";
             }
             std::cout << std::endl;
 

@@ -128,10 +128,16 @@ public:
     void setTemperature(double t) { temperature_ = t; }
     double temperature() const { return temperature_; }
 
+    // deterministic=true: argmax 選択 (再現可能)
+    // deterministic=false: softmax サンプリング (本番用)
+    void setDeterministic(bool d) { deterministic_ = d; }
+    bool isDeterministic() const { return deterministic_; }
+
 private:
     double params_[N_PARAMS_ALL];
     double temperature_ = 0.8;
     bool loaded_ = false;
+    bool deterministic_ = false;
     std::mt19937 rng_;
 
     // ShotType → Ayumu Standard type index
