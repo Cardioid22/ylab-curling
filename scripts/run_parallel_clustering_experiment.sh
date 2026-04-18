@@ -5,10 +5,17 @@
 # 例: 48プロセス並列（48コア想定）
 #   ./scripts/run_parallel_clustering_experiment.sh 48
 #
-# 例: 10プロセス並列（軽めに試す場合）
-#   ./scripts/run_parallel_clustering_experiment.sh 10
+# SSH切断しても継続させたい場合（推奨）:
+#   nohup ./scripts/run_parallel_clustering_experiment.sh 48 > master.log 2>&1 &
+# または tmux/screen 推奨:
+#   tmux new -s exp
+#   ./scripts/run_parallel_clustering_experiment.sh 48
+#   (Ctrl-B, D で detach → 後で tmux attach -t exp で戻れる)
 
 set -euo pipefail
+
+# SSH切断時のSIGHUP無視 (スクリプト自体と子プロセス両方を守る)
+trap '' HUP
 
 # ---- 設定 ----
 NUM_PROCESSES="${1:-48}"
@@ -96,7 +103,9 @@ for i in $(seq 0 $((NUM_PROCESSES - 1))); do
     LOG_FILE="$LOG_DIR/proc_${i}_idx${START}.log"
     printf "  [%2d] start=%5d max=%4d -> %s\n" "$i" "$START" "$MAX" "$LOG_FILE"
 
-    "$BINARY" \
+    # nohup: SIGHUP 無視、SSH 切断後も生存
+    # < /dev/null: 標準入力切り離し (端末依存を排除)
+    nohup "$BINARY" \
         --clustering-experiment \
         --rollout "$ROLLOUT" \
         --retention "$RETENTION" \
@@ -104,7 +113,7 @@ for i in $(seq 0 $((NUM_PROCESSES - 1))); do
         --max-positions "$MAX" \
         --start-index "$START" \
         --deterministic \
-        > "$LOG_FILE" 2>&1 &
+        < /dev/null > "$LOG_FILE" 2>&1 &
 
     PIDS+=($!)
 done
