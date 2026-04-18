@@ -84,6 +84,8 @@ public:
     void setTestNum(int n) { test_games_ = n; }
     void setRolloutCount(int b) { rollout_count_ = b; }
     void setRetentionRates(const std::vector<int>& rates) { retention_rates_ = rates; }
+    void setLoadPositionsDir(const std::string& d) { load_positions_dir_ = d; }
+    void setMaxPositions(int n) { max_positions_ = n; }
 
     void run();
 
@@ -94,6 +96,8 @@ private:
     int test_games_ = 10;           // テストゲーム数
     int rollout_count_ = 1;         // 各候補のロールアウト回数
     std::vector<int> retention_rates_ = {10, 20};  // 保持率(%)
+    std::string load_positions_dir_;  // CSVから読み込むディレクトリ (空 = 自己対戦)
+    int max_positions_ = -1;          // -1 = 全局面使用
 
     // コンポーネント
     std::unique_ptr<RolloutPolicy> policy_;
@@ -112,6 +116,9 @@ private:
         dc::Team current_team;
     };
     std::vector<GameRecord> generateTestPositions();
+
+    // CSVから読み込み（generate_test_positions が出力したバッチ形式）
+    std::vector<GameRecord> loadTestPositionsFromCSV(const std::string& dir, int max_n = -1);
 
     // Phase 2: 各盤面で AllGrid vs Clustered を比較
     TestCaseResult evaluatePosition(

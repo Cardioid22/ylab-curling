@@ -86,6 +86,94 @@ ClusteringEffectivenessExperiment::generateTestPositions() {
 }
 
 // ============================================================
+// CSVからテスト盤面を読み込み (generate_test_positions のバッチ形式)
+// ============================================================
+std::vector<ClusteringEffectivenessExperiment::GameRecord>
+ClusteringEffectivenessExperiment::loadTestPositionsFromCSV(
+    const std::string& dir, int max_n)
+{
+    std::vector<GameRecord> records;
+
+    std::cout << "\n=== Phase 1 (Load): Reading test positions from " << dir << " ===" << std::endl;
+
+    if (!std::filesystem::exists(dir)) {
+        std::cerr << "Error: directory does not exist: " << dir << std::endl;
+        return records;
+    }
+
+    // ディレクトリ内のbatch_*.csvをソートして順に読み込み
+    std::vector<std::filesystem::path> batch_files;
+    for (auto& entry : std::filesystem::directory_iterator(dir)) {
+        if (entry.path().extension() == ".csv" &&
+            entry.path().filename().string().find("batch_") == 0) {
+            batch_files.push_back(entry.path());
+        }
+    }
+    std::sort(batch_files.begin(), batch_files.end());
+
+    std::cout << "  Found " << batch_files.size() << " batch files" << std::endl;
+
+    for (auto& bf : batch_files) {
+        std::ifstream ifs(bf);
+        if (!ifs) continue;
+
+        std::string header;
+        std::getline(ifs, header);  // ヘッダ行スキップ
+
+        std::string line;
+        while (std::getline(ifs, line)) {
+            if (max_n > 0 && static_cast<int>(records.size()) >= max_n) break;
+
+            // カラム分割
+            std::vector<std::string> cols;
+            std::stringstream ss(line);
+            std::string col;
+            while (std::getline(ss, col, ',')) cols.push_back(col);
+
+            if (cols.size() < 4 + 16 * 3) continue;  // 最小カラム数
+
+            GameRecord rec;
+            rec.game_id = std::stoi(cols[0]);
+            rec.end = std::stoi(cols[1]);
+            rec.shot_num = std::stoi(cols[2]);
+            int team_int = std::stoi(cols[3]);
+            rec.current_team = (team_int == 0) ? dc::Team::k0 : dc::Team::k1;
+
+            // GameState を復元
+            dc::GameState state(game_setting_);
+            state.end = static_cast<std::uint8_t>(rec.end);
+            state.shot = static_cast<std::uint8_t>(rec.shot_num);
+
+            // 全石をクリア
+            for (int t = 0; t < 2; ++t)
+                for (int s = 0; s < 8; ++s)
+                    state.stones[t][s].reset();
+
+            // 石情報を読み込み (4列目以降: team × 8石 × (inplay, x, y))
+            int col_idx = 4;
+            for (int t = 0; t < 2; ++t) {
+                for (int s = 0; s < 8; ++s) {
+                    int inplay = std::stoi(cols[col_idx++]);
+                    float x = std::stof(cols[col_idx++]);
+                    float y = std::stof(cols[col_idx++]);
+                    if (inplay == 1) {
+                        state.stones[t][s].emplace(dc::Vector2(x, y), 0.0f);
+                    }
+                }
+            }
+
+            rec.state = state;
+            records.push_back(rec);
+        }
+
+        if (max_n > 0 && static_cast<int>(records.size()) >= max_n) break;
+    }
+
+    std::cout << "  Loaded: " << records.size() << " test positions" << std::endl;
+    return records;
+}
+
+// ============================================================
 // 候補手のロールアウト評価
 // ============================================================
 double ClusteringEffectivenessExperiment::evaluateCandidate(
@@ -881,8 +969,16 @@ void ClusteringEffectivenessExperiment::run() {
         return;
     }
 
-    // テスト盤面生成
-    auto records = generateTestPositions();
+    // テスト盤面生成 or CSV読み込み
+    std::vector<GameRecord> records;
+    if (!load_positions_dir_.empty()) {
+        records = loadTestPositionsFromCSV(load_positions_dir_, max_positions_);
+    } else {
+        records = generateTestPositions();
+        if (max_positions_ > 0 && static_cast<int>(records.size()) > max_positions_) {
+            records.resize(max_positions_);
+        }
+    }
 
     // SimulatorWrapper (ロールアウト評価用)
     SimulatorWrapper sim(dc::Team::k0, game_setting_);

@@ -820,6 +820,8 @@ int main(int argc, char const* argv[])
         int total_games_arg = 10000;
         int batch_size_arg = 1000;
         int opening_random_arg = 3;
+        std::string load_positions_arg;
+        int max_positions_arg = -1;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -873,6 +875,14 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--opening-random" && i + 1 < argc) {
                 opening_random_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--load-positions" && i + 1 < argc) {
+                load_positions_arg = argv[i + 1];
+                i++;
+            }
+            if (std::string(argv[i]) == "--max-positions" && i + 1 < argc) {
+                max_positions_arg = std::atoi(argv[i + 1]);
                 i++;
             }
             if (std::string(argv[i]) == "--use-clustered") {
@@ -1285,9 +1295,23 @@ int main(int argc, char const* argv[])
             }
             exp.setRetentionRates(rates);
 
+            if (!load_positions_arg.empty()) {
+                exp.setLoadPositionsDir(load_positions_arg);
+            }
+            if (max_positions_arg > 0) {
+                exp.setMaxPositions(max_positions_arg);
+            }
+
             std::cout << "  Config: test_num=" << test_num
                       << " rollout=" << rollout_arg
-                      << " retention=" << retention_arg << std::endl;
+                      << " retention=" << retention_arg;
+            if (!load_positions_arg.empty()) {
+                std::cout << " load=" << load_positions_arg;
+            }
+            if (max_positions_arg > 0) {
+                std::cout << " max_positions=" << max_positions_arg;
+            }
+            std::cout << std::endl;
 
             exp.run();
             return 0;
