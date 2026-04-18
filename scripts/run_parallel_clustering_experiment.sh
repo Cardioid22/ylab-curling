@@ -16,19 +16,36 @@ TOTAL_POSITIONS=10000
 POSITIONS_DIR="clustered_ayumu/test_positions_20260417_055725"
 ROLLOUT=1
 RETENTION=20
-BINARY="./build/Release/ylab_client.exe"
 
 # プロジェクトルートを基準に実行
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# ---- 事前チェック ----
-if [ ! -x "$BINARY" ]; then
-    echo "Error: binary not found: $BINARY"
+# ---- バイナリ自動検出 (Linux/Windows 両対応) ----
+BINARY_CANDIDATES=(
+    "./build/Release/ylab_client.exe"   # Windows (MSVC Release)
+    "./build/Debug/ylab_client.exe"     # Windows (MSVC Debug)
+    "./build/ylab_client"               # Linux (Makefile)
+    "./build/Release/ylab_client"       # Linux (multi-config)
+)
+BINARY=""
+for cand in "${BINARY_CANDIDATES[@]}"; do
+    if [ -x "$cand" ]; then
+        BINARY="$cand"
+        break
+    fi
+done
+
+if [ -z "$BINARY" ]; then
+    echo "Error: ylab_client binary not found. Checked:"
+    for cand in "${BINARY_CANDIDATES[@]}"; do
+        echo "    $cand"
+    done
     echo "Run: cmake --build build --config Release"
     exit 1
 fi
+echo "Using binary: $BINARY"
 
 if [ ! -d "$POSITIONS_DIR" ]; then
     echo "Error: positions directory not found: $POSITIONS_DIR"
