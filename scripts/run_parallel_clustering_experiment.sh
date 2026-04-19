@@ -116,9 +116,11 @@ fi
 # 1プロセスあたりの局面数（切り上げ）
 POSITIONS_PER_PROC=$(( (TOTAL_POSITIONS + NUM_PROCESSES - 1) / NUM_PROCESSES ))
 
-# ログディレクトリ
+# この実行専用のディレクトリ (全出力・全ログ・結合CSVを1箇所に集約)
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-LOG_DIR="logs/parallel_${TIMESTAMP}"
+RUN_DIR="experiment_results/run_${TIMESTAMP}_parallel"
+LOG_DIR="$RUN_DIR/logs"
+OUTPUT_DIR="$RUN_DIR"
 mkdir -p "$LOG_DIR"
 
 # ---- 設定表示 ----
@@ -134,9 +136,25 @@ echo "  Positions/process:  $POSITIONS_PER_PROC"
 echo "  Rollout count:      $ROLLOUT"
 echo "  Retention:          $RETENTION%"
 echo "  Deterministic:      ON"
+echo "  Run dir:            $RUN_DIR"
 echo "  Log dir:            $LOG_DIR"
+echo "  Output CSVs -> $OUTPUT_DIR"
 echo "========================================"
 echo ""
+
+# 実行条件をメモ
+cat > "$RUN_DIR/run_config.txt" <<EOF
+Timestamp:         $TIMESTAMP
+Num processes:     $NUM_PROCESSES
+Total positions:   $TOTAL_POSITIONS
+Positions/proc:    $POSITIONS_PER_PROC
+Positions dir:     $POSITIONS_DIR
+Rollout count:     $ROLLOUT
+Retention:         $RETENTION%
+Deterministic:     ON
+Binary:            $BINARY
+Policy param:      $POLICY_PARAM
+EOF
 
 # ---- プロセス起動 ----
 PIDS=()
@@ -162,6 +180,7 @@ for i in $(seq 0 $((NUM_PROCESSES - 1))); do
         --load-positions "$POSITIONS_DIR" \
         --max-positions "$MAX" \
         --start-index "$START" \
+        --output-dir "$OUTPUT_DIR" \
         --deterministic \
         < /dev/null > "$LOG_FILE" 2>&1 &
 
@@ -194,22 +213,43 @@ fi
 if [ $SKIP_COMBINE -eq 0 ]; then
     echo ""
     echo "Combining CSV outputs..."
-    COMBINED="experiment_results/clustering_effectiveness_ret${RETENTION}_B${ROLLOUT}_combined_${TIMESTAMP}.csv"
-    # 一時的に set -u を緩める（glob が空のとき配列参照でエラーになるのを回避）
-    set +u
-    FILES=(experiment_results/clustering_effectiveness_ret${RETENTION}_B${ROLLOUT}_idx*.csv)
-    set -u
-    if [ ${#FILES[@]} -gt 0 ] && [ -f "${FILES[0]}" ]; then
-        head -1 "${FILES[0]}" > "$COMBINED"
-        for f in "${FILES[@]}"; do
-            tail -n +2 "$f" >> "$COMBINED"
+
+    # clustering_effectiveness (no-idx: 先頭プロセス + _idx*: それ以降) を全部統合
+    combine_csvs() {
+        local prefix="$1"
+        local out="$RUN_DIR/${prefix}_ret${RETENTION}_B${ROLLOUT}_COMBINED.csv"
+        set +u
+        local no_idx=("$OUTPUT_DIR"/${prefix}_ret${RETENTION}_B${ROLLOUT}_2[0-9]*.csv)
+        local with_idx=("$OUTPUT_DIR"/${prefix}_ret${RETENTION}_B${ROLLOUT}_idx*.csv)
+        set -u
+
+        local first_file=""
+        for f in "${no_idx[@]}" "${with_idx[@]}"; do
+            if [ -f "$f" ]; then first_file="$f"; break; fi
         done
-        TOTAL_ROWS=$(( $(wc -l < "$COMBINED") - 1 ))
-        echo "  Combined: $COMBINED ($TOTAL_ROWS rows)"
-    else
-        echo "  No output CSVs found."
-    fi
+
+        if [ -z "$first_file" ]; then
+            echo "  [$prefix] No output CSVs found."
+            return
+        fi
+
+        head -1 "$first_file" > "$out"
+        for f in "${no_idx[@]}"; do
+            [ -f "$f" ] && tail -n +2 "$f" >> "$out"
+        done
+        for f in "${with_idx[@]}"; do
+            [ -f "$f" ] && tail -n +2 "$f" >> "$out"
+        done
+        local rows=$(( $(wc -l < "$out") - 1 ))
+        echo "  [$prefix] $out ($rows rows)"
+    }
+
+    combine_csvs "clustering_effectiveness"
+    combine_csvs "cluster_details"
 fi
 
+echo ""
+echo "All outputs in: $RUN_DIR"
+echo "To transfer to local:   scp -r user@server:$PROJECT_ROOT/$RUN_DIR ./"
 echo ""
 echo "Done."

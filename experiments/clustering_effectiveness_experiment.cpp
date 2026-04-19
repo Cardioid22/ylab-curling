@@ -874,7 +874,7 @@ void ClusteringEffectivenessExperiment::printSummary(
 void ClusteringEffectivenessExperiment::exportCSV(
     const std::vector<TestCaseResult>& results, int retention_pct)
 {
-    std::string dir = "experiment_results";
+    const std::string& dir = output_dir_;
     std::filesystem::create_directories(dir);
 
     // タイムスタンプ付きファイル名（上書き防止）
@@ -930,7 +930,7 @@ void ClusteringEffectivenessExperiment::exportCSV(
 }
 
 void ClusteringEffectivenessExperiment::exportClusterDetailsCSV(int retention_pct) {
-    std::string dir = "experiment_results";
+    const std::string& dir = output_dir_;
     std::filesystem::create_directories(dir);
 
     auto now = std::chrono::system_clock::now();

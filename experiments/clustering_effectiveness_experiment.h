@@ -88,6 +88,7 @@ public:
     void setMaxPositions(int n) { max_positions_ = n; }
     void setDeterministic(bool d) { deterministic_ = d; }
     void setStartIndex(int i) { start_index_ = i; }
+    void setOutputDir(const std::string& d) { output_dir_ = d; }
 
     void run();
 
@@ -102,6 +103,7 @@ private:
     int max_positions_ = -1;          // -1 = 全局面使用
     bool deterministic_ = false;       // true: PlayerIdentical + argmax (再現可能)
     int start_index_ = 0;              // 並列実行用: この index から開始 (先頭を skip)
+    std::string output_dir_ = "experiment_results";  // CSV出力先 (並列実行時は共有)
 
     // コンポーネント
     std::unique_ptr<RolloutPolicy> policy_;

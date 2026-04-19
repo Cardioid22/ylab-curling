@@ -824,6 +824,7 @@ int main(int argc, char const* argv[])
         std::string load_positions_arg;
         int max_positions_arg = -1;
         int start_index_arg = 0;
+        std::string output_dir_arg;
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -893,6 +894,10 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--start-index" && i + 1 < argc) {
                 start_index_arg = std::atoi(argv[i + 1]);
                 if (start_index_arg < 0) start_index_arg = 0;
+                i++;
+            }
+            if (std::string(argv[i]) == "--output-dir" && i + 1 < argc) {
+                output_dir_arg = argv[i + 1];
                 i++;
             }
             if (std::string(argv[i]) == "--use-clustered") {
@@ -1315,6 +1320,9 @@ int main(int argc, char const* argv[])
             if (start_index_arg > 0) {
                 exp.setStartIndex(start_index_arg);
             }
+            if (!output_dir_arg.empty()) {
+                exp.setOutputDir(output_dir_arg);
+            }
 
             std::cout << "  Config: test_num=" << test_num
                       << " rollout=" << rollout_arg
@@ -1327,6 +1335,9 @@ int main(int argc, char const* argv[])
             }
             if (start_index_arg > 0) {
                 std::cout << " start_index=" << start_index_arg;
+            }
+            if (!output_dir_arg.empty()) {
+                std::cout << " output_dir=" << output_dir_arg;
             }
             if (deterministic_mode) {
                 std::cout << " deterministic=ON";
