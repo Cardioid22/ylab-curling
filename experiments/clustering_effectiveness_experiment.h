@@ -164,9 +164,13 @@ private:
     std::vector<int> selectByVelocityGrid(
         const std::vector<CandidateShot>& candidates, int k);
 
+    // 案A: gPolicyスコア最大の候補手をメドイドとする
+    //   gpolicy_scores が非空なら最大スコアの手を代表に選ぶ
+    //   空なら従来の min-total-distance メドイドにフォールバック
     std::vector<int> calculateMedoids(
         const std::vector<std::vector<float>>& dist_table,
-        const std::vector<std::set<int>>& clusters);
+        const std::vector<std::set<int>>& clusters,
+        const std::vector<double>& gpolicy_scores = {});
 
     // シルエットスコア
     double calcSilhouetteScore(

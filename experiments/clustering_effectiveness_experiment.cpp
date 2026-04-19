@@ -259,7 +259,11 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
 
     auto dist_table = makeDistanceTableDelta(record.state, result_states);
     auto clusters = runClustering(dist_table, n_clusters);
-    auto medoids = calculateMedoids(dist_table, clusters);
+
+    // 案A: gPolicyスコアを使って代表手を選ぶ
+    auto gpolicy_scores = policy_->scoreCandidates(
+        record.state, candidates, record.shot_num, record.current_team, record.end, 0);
+    auto medoids = calculateMedoids(dist_table, clusters, gpolicy_scores);
 
     // シルエットスコア
     result.silhouette_score = calcSilhouetteScore(dist_table, clusters);
@@ -699,17 +703,36 @@ std::vector<int> ClusteringEffectivenessExperiment::selectByVelocityGrid(
 }
 
 std::vector<int> ClusteringEffectivenessExperiment::calculateMedoids(
-    const std::vector<std::vector<float>>& dist_table, const std::vector<std::set<int>>& clusters)
+    const std::vector<std::vector<float>>& dist_table,
+    const std::vector<std::set<int>>& clusters,
+    const std::vector<double>& gpolicy_scores)
 {
+    const bool use_gpolicy = !gpolicy_scores.empty();
     std::vector<int> medoids;
     for (auto& cluster : clusters) {
         if (cluster.empty()) { medoids.push_back(-1); continue; }
         if (cluster.size() == 1) { medoids.push_back(*cluster.begin()); continue; }
-        int best = -1; float best_sum = 1e18f;
-        for (int c : cluster) {
-            float sum = 0;
-            for (int o : cluster) if (c != o) sum += dist_table[c][o];
-            if (sum < best_sum) { best_sum = sum; best = c; }
+
+        int best = -1;
+        if (use_gpolicy) {
+            // 案A: gPolicyスコア最大の手を代表にする
+            double best_score = -1e18;
+            for (int c : cluster) {
+                if (c < 0 || c >= static_cast<int>(gpolicy_scores.size())) continue;
+                if (gpolicy_scores[c] > best_score) {
+                    best_score = gpolicy_scores[c];
+                    best = c;
+                }
+            }
+            if (best < 0) best = *cluster.begin();  // フォールバック
+        } else {
+            // 従来: 距離合計最小の手
+            float best_sum = 1e18f;
+            for (int c : cluster) {
+                float sum = 0;
+                for (int o : cluster) if (c != o) sum += dist_table[c][o];
+                if (sum < best_sum) { best_sum = sum; best = c; }
+            }
         }
         medoids.push_back(best);
     }
