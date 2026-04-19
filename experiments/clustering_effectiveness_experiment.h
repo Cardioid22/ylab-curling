@@ -92,6 +92,16 @@ public:
 
     void run();
 
+    // 単一局面の詳細分析をCSV出力（図作成用）
+    //   game_id, end, shot_num で指定した局面について:
+    //     - 入力盤面の石
+    //     - 全候補手の { ラベル、ショット情報、結果盤面の石座標 }
+    //     - 距離行列（N×N）
+    //     - クラスタ割当と代表手
+    //   を output_dir_ 下の export_<game>_<end>_<shot>/ フォルダに書き出す
+    void exportCaseAnalysis(int target_game, int target_end, int target_shot,
+                             int retention_pct);
+
 private:
     dc::GameSetting game_setting_;
 
