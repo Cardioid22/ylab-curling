@@ -260,10 +260,8 @@ TestCaseResult ClusteringEffectivenessExperiment::evaluatePosition(
     auto dist_table = makeDistanceTableDelta(record.state, result_states);
     auto clusters = runClustering(dist_table, n_clusters);
 
-    // 案A: gPolicyスコアを使って代表手を選ぶ
-    auto gpolicy_scores = policy_->scoreCandidates(
-        record.state, candidates, record.shot_num, record.current_team, record.end, 0);
-    auto medoids = calculateMedoids(dist_table, clusters, gpolicy_scores);
+    // min-total-distance medoid (gPolicy ではなく距離ベースの代表手)
+    auto medoids = calculateMedoids(dist_table, clusters);
 
     // シルエットスコア
     result.silhouette_score = calcSilhouetteScore(dist_table, clusters);
@@ -985,6 +983,167 @@ void ClusteringEffectivenessExperiment::exportClusterDetailsCSV(int retention_pc
             << "\"" << ci.medoid_label << "\"" << std::endl;
     }
     std::cout << "  Exported cluster details: " << path << std::endl;
+}
+
+// ============================================================
+// 単一局面の詳細エクスポート（図作成用）
+// ============================================================
+void ClusteringEffectivenessExperiment::exportCaseAnalysis(
+    int target_game, int target_end, int target_shot, int retention_pct)
+{
+    std::cout << "\n=== Exporting case analysis ===" << std::endl;
+    std::cout << "  Target: Game" << target_game << " End" << target_end
+              << " Shot" << target_shot << "  Retention:" << retention_pct << "%" << std::endl;
+
+    // gPolicy 読み込み（まだなら）
+    if (!policy_->isLoaded()) {
+        if (!policy_->load("data/policy_param.dat")) {
+            std::cerr << "Failed to load gPolicy." << std::endl;
+            return;
+        }
+        policy_->setDeterministic(deterministic_);
+    }
+
+    // 局面データを読み込む
+    if (load_positions_dir_.empty()) {
+        std::cerr << "Error: --load-positions required for case export." << std::endl;
+        return;
+    }
+    auto records = loadTestPositionsFromCSV(load_positions_dir_, -1);
+
+    // 該当局面を探す
+    const GameRecord* target = nullptr;
+    for (auto& r : records) {
+        if (r.game_id == target_game && r.end == target_end && r.shot_num == target_shot) {
+            target = &r;
+            break;
+        }
+    }
+    if (!target) {
+        std::cerr << "Error: position Game" << target_game << " End" << target_end
+                  << " Shot" << target_shot << " not found." << std::endl;
+        return;
+    }
+
+    // 出力ディレクトリ
+    std::string case_dir = output_dir_ + "/export_g" + std::to_string(target_game)
+                         + "_e" + std::to_string(target_end)
+                         + "_s" + std::to_string(target_shot);
+    std::filesystem::create_directories(case_dir);
+
+    // 候補手生成＋シミュレーション
+    auto pool = shot_gen_->generatePool(target->state, target->current_team);
+    auto& candidates = pool.candidates;
+    auto& result_states = pool.result_states;
+    int n = static_cast<int>(candidates.size());
+    std::cout << "  Candidates: " << n << std::endl;
+
+    // 距離行列
+    auto dist_table = makeDistanceTableDelta(target->state, result_states);
+
+    // クラスタリング
+    int n_clusters = std::max(1, n * retention_pct / 100);
+    auto clusters = runClustering(dist_table, n_clusters);
+    // min-total-distance medoid (本実験と同じ選び方)
+    auto medoids = calculateMedoids(dist_table, clusters);
+    // 分析用に gPolicy スコアは出力する（CSV 参照用）
+    auto gpolicy_scores = policy_->scoreCandidates(
+        target->state, candidates, target->shot_num, target->current_team, target->end, 0);
+
+    // 各候補が属するクラスタID
+    std::vector<int> cluster_of(n, -1);
+    for (int c = 0; c < static_cast<int>(clusters.size()); c++)
+        for (int i : clusters[c]) cluster_of[i] = c;
+
+    // 1. 入力盤面の石
+    {
+        std::ofstream ofs(case_dir + "/input_board.csv");
+        ofs << "team,stone_idx,x,y\n";
+        for (int t = 0; t < 2; t++)
+            for (int s = 0; s < 8; s++) {
+                if (target->state.stones[t][s]) {
+                    ofs << t << "," << s << ","
+                        << target->state.stones[t][s]->position.x << ","
+                        << target->state.stones[t][s]->position.y << "\n";
+                }
+            }
+    }
+
+    // 2. 候補手 + 結果盤面
+    {
+        std::ofstream ofs(case_dir + "/candidates.csv");
+        ofs << "candidate_idx,label,shot_type,vx,vy,rot,target_index,"
+            << "cluster_id,is_medoid,gpolicy_score\n";
+        for (int i = 0; i < n; i++) {
+            bool is_medoid = std::find(medoids.begin(), medoids.end(), i) != medoids.end();
+            ofs << i << ",\"" << candidates[i].label << "\","
+                << static_cast<int>(candidates[i].type) << ","
+                << candidates[i].shot.vx << "," << candidates[i].shot.vy << ","
+                << candidates[i].shot.rot << "," << candidates[i].target_index << ","
+                << cluster_of[i] << "," << (is_medoid ? 1 : 0) << ","
+                << gpolicy_scores[i] << "\n";
+        }
+    }
+
+    // 3. 各候補の結果盤面
+    {
+        std::ofstream ofs(case_dir + "/result_stones.csv");
+        ofs << "candidate_idx,team,stone_idx,x,y\n";
+        for (int i = 0; i < n; i++) {
+            const auto& rs = result_states[i];
+            for (int t = 0; t < 2; t++)
+                for (int s = 0; s < 8; s++) {
+                    if (rs.stones[t][s]) {
+                        ofs << i << "," << t << "," << s << ","
+                            << rs.stones[t][s]->position.x << ","
+                            << rs.stones[t][s]->position.y << "\n";
+                    }
+                }
+        }
+    }
+
+    // 4. 距離行列
+    {
+        std::ofstream ofs(case_dir + "/distance_matrix.csv");
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (j) ofs << ",";
+                ofs << dist_table[i][j];
+            }
+            ofs << "\n";
+        }
+    }
+
+    // 5. クラスタメンバー一覧 + メドイド
+    {
+        std::ofstream ofs(case_dir + "/clusters.csv");
+        ofs << "cluster_id,size,medoid_idx,medoid_label,member_indices\n";
+        for (int c = 0; c < static_cast<int>(clusters.size()); c++) {
+            ofs << c << "," << clusters[c].size() << "," << medoids[c] << ",";
+            ofs << "\"" << (medoids[c] >= 0 ? candidates[medoids[c]].label : "N/A") << "\",\"";
+            bool first = true;
+            for (int m : clusters[c]) {
+                if (!first) ofs << ";";
+                ofs << m;
+                first = false;
+            }
+            ofs << "\"\n";
+        }
+    }
+
+    // 6. メタ情報
+    {
+        std::ofstream ofs(case_dir + "/meta.txt");
+        ofs << "game_id=" << target_game << "\n";
+        ofs << "end=" << target_end << "\n";
+        ofs << "shot_num=" << target_shot << "\n";
+        ofs << "current_team=" << static_cast<int>(target->current_team) << "\n";
+        ofs << "n_candidates=" << n << "\n";
+        ofs << "n_clusters=" << n_clusters << "\n";
+        ofs << "retention_pct=" << retention_pct << "\n";
+    }
+
+    std::cout << "  Exported to: " << case_dir << std::endl;
 }
 
 // ============================================================
