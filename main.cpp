@@ -23,6 +23,7 @@
 #include "experiments/pool_experiment.h"
 #include "experiments/pool_clustering_experiment.h"
 #include "experiments/depth1_mcts_experiment.h"
+#include "experiments/depth_n_mcts_experiment.h"
 #include "experiments/clustering_effectiveness_experiment.h"
 #include "experiments/generate_test_positions.h"
 #include "src/policy.h"
@@ -812,6 +813,13 @@ int main(int argc, char const* argv[])
         bool pool_experiment_mode = false;
         bool pool_clustering_mode = false;
         bool depth1_mcts_mode = false;
+        bool depth3_mcts_mode = false;
+        int depth3_n_states_arg = 100;
+        int depth3_proposed_playouts_arg = 500;
+        int depth3_allgrid_playouts_arg = 10000;
+        double depth3_retention_arg = 0.20;
+        int depth3_threads_arg = 8;
+        uint64_t depth3_seed_arg = 42;
         bool test_policy_mode = false;
         bool clustering_experiment_mode = false;
         bool generate_positions_mode = false;
@@ -825,6 +833,7 @@ int main(int argc, char const* argv[])
         int max_positions_arg = -1;
         int start_index_arg = 0;
         std::string output_dir_arg;
+        std::string export_case_arg;  // "game,end,shot" 形式、指定時は単一局面をエクスポート
         int cluster_num_arg = -1;  // クラスタ数の引数（-1はデフォルト値を使用）
 		int depth_arg = -1;        // 深さの引数（-1はデフォルト値を使用）
         int repeat_count = 1;      // 反復回数の引数（デフォルトは1回）
@@ -858,6 +867,33 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--depth1-mcts") {
                 depth1_mcts_mode = true;
+            }
+            if (std::string(argv[i]) == "--depth3-mcts") {
+                depth3_mcts_mode = true;
+            }
+            if (std::string(argv[i]) == "--proposed-playouts" && i + 1 < argc) {
+                depth3_proposed_playouts_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--allgrid-playouts" && i + 1 < argc) {
+                depth3_allgrid_playouts_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--retention" && i + 1 < argc) {
+                depth3_retention_arg = std::atof(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--threads" && i + 1 < argc) {
+                depth3_threads_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--seed" && i + 1 < argc) {
+                depth3_seed_arg = static_cast<uint64_t>(std::atoll(argv[i + 1]));
+                i++;
+            }
+            if (std::string(argv[i]) == "--states" && i + 1 < argc) {
+                depth3_n_states_arg = std::atoi(argv[i + 1]);
+                i++;
             }
             if (std::string(argv[i]) == "--test-policy") {
                 test_policy_mode = true;
@@ -898,6 +934,10 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--output-dir" && i + 1 < argc) {
                 output_dir_arg = argv[i + 1];
+                i++;
+            }
+            if (std::string(argv[i]) == "--export-case" && i + 1 < argc) {
+                export_case_arg = argv[i + 1];  // "game_id,end,shot_num"
                 i++;
             }
             if (std::string(argv[i]) == "--use-clustered") {
@@ -1324,6 +1364,23 @@ int main(int argc, char const* argv[])
                 exp.setOutputDir(output_dir_arg);
             }
 
+            // 単一局面エクスポートモード
+            if (!export_case_arg.empty()) {
+                int g = -1, e = -1, s = -1;
+                std::stringstream ss2(export_case_arg);
+                std::string tok;
+                std::vector<int> parts;
+                while (std::getline(ss2, tok, ',')) parts.push_back(std::atoi(tok.c_str()));
+                if (parts.size() != 3) {
+                    std::cerr << "Error: --export-case expects game,end,shot" << std::endl;
+                    return 1;
+                }
+                g = parts[0]; e = parts[1]; s = parts[2];
+                int ret = rates.empty() ? 20 : rates[0];
+                exp.exportCaseAnalysis(g, e, s, ret);
+                return 0;
+            }
+
             std::cout << "  Config: test_num=" << test_num
                       << " rollout=" << rollout_arg
                       << " retention=" << retention_arg;
@@ -1488,6 +1545,40 @@ int main(int argc, char const* argv[])
             game_setting.sheet_width = 4.75f;
 
             Depth1MctsExperiment exp(game_setting);
+            exp.run();
+            return 0;
+        }
+
+        // Depth-3 MCTS モード (Proposed vs AllGrid 比較実験)
+        if (depth3_mcts_mode) {
+            std::cout << "Running Depth-3 MCTS experiment..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 10;
+            game_setting.sheet_width = 4.75f;
+            // 思考時間を十分長く取る (デフォルトの0msだと時間切れ扱いになるため)
+            game_setting.thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.thinking_time[1] = std::chrono::seconds(86400);
+            game_setting.extra_end_thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.extra_end_thinking_time[1] = std::chrono::seconds(86400);
+
+            DepthNMctsConfig cfg;
+            cfg.depth = 3;
+            cfg.n_states = depth3_n_states_arg;
+            cfg.proposed_playouts = depth3_proposed_playouts_arg;
+            cfg.allgrid_playouts = depth3_allgrid_playouts_arg;
+            cfg.retention_rate = depth3_retention_arg;
+            cfg.num_threads = depth3_threads_arg;
+            cfg.seed = depth3_seed_arg;
+            cfg.load_positions_dir = load_positions_arg.empty()
+                ? "experiments/parallel_agreement_results" : load_positions_arg;
+            if (!output_dir_arg.empty()) {
+                cfg.output_dir = output_dir_arg;
+            } else {
+                cfg.output_dir = "experiments/depth3_results";
+            }
+
+            DepthNMctsExperiment exp(game_setting, cfg);
             exp.run();
             return 0;
         }
