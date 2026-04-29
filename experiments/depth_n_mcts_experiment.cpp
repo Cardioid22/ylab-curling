@@ -152,14 +152,23 @@ double DepthNMctsExperiment::runPlayout(
     std::mt19937& rng,
     dc::Team root_team)
 {
+    int rollouts_per_visit = (mode == MctsMode::Proposed)
+        ? config_.proposed_rollouts_per_visit
+        : config_.allgrid_rollouts_per_visit;
+    if (rollouts_per_visit < 1) rollouts_per_visit = 1;
+
     // 葉に到達したらロールアウト開始
     if (node.depth >= max_depth) {
         int remaining = 16 - static_cast<int>(node.state.shot);
-        double reward = mcts_shared::rolloutFromState(
-            sim, node.state, remaining, root_team, rng, config_.epsilon);
+        double sum = 0.0;
+        for (int i = 0; i < rollouts_per_visit; i++) {
+            sum += mcts_shared::rolloutFromState(
+                sim, node.state, remaining, root_team, rng, config_.epsilon);
+        }
+        double mean_reward = sum / rollouts_per_visit;
         node.visits++;
-        node.total_reward += reward;
-        return reward;
+        node.total_reward += mean_reward;
+        return mean_reward;
     }
 
     // 未展開なら展開
@@ -170,11 +179,15 @@ double DepthNMctsExperiment::runPlayout(
     if (K == 0) {
         // 候補がない異常系: ロールアウトのみ
         int remaining = 16 - static_cast<int>(node.state.shot);
-        double reward = mcts_shared::rolloutFromState(
-            sim, node.state, remaining, root_team, rng, config_.epsilon);
+        double sum = 0.0;
+        for (int i = 0; i < rollouts_per_visit; i++) {
+            sum += mcts_shared::rolloutFromState(
+                sim, node.state, remaining, root_team, rng, config_.epsilon);
+        }
+        double mean_reward = sum / rollouts_per_visit;
         node.visits++;
-        node.total_reward += reward;
-        return reward;
+        node.total_reward += mean_reward;
+        return mean_reward;
     }
 
     // UCB1 で子を選択
@@ -372,16 +385,20 @@ void DepthNMctsExperiment::run() {
     using clock = std::chrono::steady_clock;
 
     std::cout << "\n=== Depth-" << config_.depth << " MCTS Experiment ===" << std::endl;
-    std::cout << "  n_states            = " << config_.n_states << std::endl;
-    std::cout << "  proposed_playouts   = " << config_.proposed_playouts << std::endl;
-    std::cout << "  allgrid_playouts    = " << config_.allgrid_playouts << std::endl;
-    std::cout << "  retention_rate      = " << config_.retention_rate << std::endl;
-    std::cout << "  ucb_c               = " << config_.ucb_c << std::endl;
-    std::cout << "  epsilon             = " << config_.epsilon << std::endl;
-    std::cout << "  num_threads         = " << config_.num_threads << std::endl;
-    std::cout << "  seed                = " << config_.seed << std::endl;
-    std::cout << "  load_positions_dir  = " << config_.load_positions_dir << std::endl;
-    std::cout << "  output_dir          = " << config_.output_dir << std::endl;
+    std::cout << "  n_states                = " << config_.n_states << std::endl;
+    std::cout << "  proposed_playouts       = " << config_.proposed_playouts << std::endl;
+    std::cout << "  allgrid_playouts        = " << config_.allgrid_playouts << std::endl;
+    std::cout << "  proposed_rollouts/visit = " << config_.proposed_rollouts_per_visit << std::endl;
+    std::cout << "  allgrid_rollouts/visit  = " << config_.allgrid_rollouts_per_visit << std::endl;
+    std::cout << "  retention_rate          = " << config_.retention_rate << std::endl;
+    std::cout << "  ucb_c                   = " << config_.ucb_c << std::endl;
+    std::cout << "  epsilon                 = " << config_.epsilon << std::endl;
+    std::cout << "  num_threads             = " << config_.num_threads << std::endl;
+    std::cout << "  seed                    = " << config_.seed << std::endl;
+    std::cout << "  start_index             = " << config_.start_index << std::endl;
+    std::cout << "  max_positions           = " << config_.max_positions << std::endl;
+    std::cout << "  load_positions_dir      = " << config_.load_positions_dir << std::endl;
+    std::cout << "  output_dir              = " << config_.output_dir << std::endl;
 
     // 1. 盤面ロード
     auto all_records = mcts_shared::loadTestPositionsFromCSV(
@@ -396,6 +413,24 @@ void DepthNMctsExperiment::run() {
         all_records, config_.n_states, config_.seed);
     std::cout << "  Sampled " << sampled.size() << " / " << all_records.size()
               << " positions (seed=" << config_.seed << ")" << std::endl;
+
+    // 2b. start_index / max_positions でスライス（並列実行用）
+    //     state_seed 計算用に「サンプリング後の元index」を保持
+    std::vector<int> global_indices(sampled.size());
+    std::iota(global_indices.begin(), global_indices.end(), 0);
+    if (config_.start_index > 0 || config_.max_positions > 0) {
+        int total = static_cast<int>(sampled.size());
+        int s = std::min(std::max(0, config_.start_index), total);
+        int e = (config_.max_positions < 0)
+                ? total
+                : std::min(total, s + config_.max_positions);
+        sampled = std::vector<mcts_shared::TestPositionRecord>(
+            sampled.begin() + s, sampled.begin() + e);
+        global_indices = std::vector<int>(
+            global_indices.begin() + s, global_indices.begin() + e);
+        std::cout << "  Sliced to [" << s << ", " << e << ") = "
+                  << sampled.size() << " positions" << std::endl;
+    }
 
     // 3. 出力ディレクトリ
     std::filesystem::create_directories(config_.output_dir);
@@ -425,7 +460,23 @@ void DepthNMctsExperiment::run() {
             if (idx >= N) break;
 
             const auto& rec = sampled[idx];
-            uint64_t state_seed = config_.seed ^ (static_cast<uint64_t>(idx) * 0x9E3779B97F4A7C15ULL);
+            // state_seed はスライス前のグローバルindexで決定
+            // → プロセスを跨いでも同じ盤面なら同じ乱数で再現可能、シード衝突なし
+            uint64_t state_seed = config_.seed ^ (static_cast<uint64_t>(global_indices[idx]) * 0x9E3779B97F4A7C15ULL);
+
+            // 盤面開始ログ（実行中盤面の可視化）
+            auto state_start = clock::now();
+            {
+                std::lock_guard<std::mutex> lk(log_mutex);
+                auto elapsed = std::chrono::duration<double>(state_start - start).count();
+                std::cerr << "[start " << (idx + 1) << "/" << N << "] "
+                          << "thread=" << thread_id
+                          << " global_idx=" << global_indices[idx]
+                          << " (g=" << rec.game_id << ",e=" << rec.end << ",s=" << rec.shot_num << ") "
+                          << "elapsed=" << std::fixed << std::setprecision(1) << elapsed << "s"
+                          << std::endl;
+            }
+
             try {
                 results[idx] = runOneState(rec, sim, gen, state_seed);
             } catch (const std::exception& e) {
@@ -440,9 +491,23 @@ void DepthNMctsExperiment::run() {
             }
 
             int d = ++done_count;
-            if (d % 5 == 0 || d == N) {
+            {
                 std::lock_guard<std::mutex> lk(log_mutex);
-                auto elapsed = std::chrono::duration<double>(clock::now() - start).count();
+                auto now = clock::now();
+                auto state_dur = std::chrono::duration<double>(now - state_start).count();
+                auto elapsed = std::chrono::duration<double>(now - start).count();
+                const auto& r = results[idx];
+                std::cerr << "[done " << d << "/" << N << "] "
+                          << "thread=" << thread_id
+                          << " global_idx=" << global_indices[idx]
+                          << " (g=" << r.game_id << ",e=" << r.end << ",s=" << r.shot_num << ") "
+                          << "state_time=" << std::fixed << std::setprecision(1) << state_dur << "s"
+                          << " p_time=" << r.proposed_time_sec << "s"
+                          << " a_time=" << r.allgrid_time_sec << "s"
+                          << " exact=" << (r.exact_match ? 1 : 0)
+                          << " same_cluster=" << (r.same_cluster ? 1 : 0)
+                          << " score_diff=" << std::setprecision(3) << r.score_diff
+                          << std::endl;
                 logProgress(d, N, elapsed);
             }
         }
@@ -457,9 +522,12 @@ void DepthNMctsExperiment::run() {
     std::cout << "\n=== All " << N << " states done in "
               << std::fixed << std::setprecision(1) << total_elapsed << "s ===" << std::endl;
 
-    // 5. CSV 書き出し
+    // 5. CSV 書き出し（並列実行時は start_index でファイル名分離）
+    std::string suffix = (config_.start_index > 0 || config_.max_positions > 0)
+        ? "_idx" + std::to_string(config_.start_index)
+        : "";
     std::string csv_path = config_.output_dir + "/depth" + std::to_string(config_.depth)
-                         + "_results.csv";
+                         + "_results" + suffix + ".csv";
     writeResultsCSV(results, csv_path);
 
     // 6. サマリ出力
@@ -491,27 +559,31 @@ void DepthNMctsExperiment::run() {
 
     // サマリを別ファイルにも保存
     std::string summary_path = config_.output_dir + "/depth" + std::to_string(config_.depth)
-                             + "_summary.txt";
+                             + "_summary" + suffix + ".txt";
     std::ofstream sfs(summary_path);
     if (sfs) {
         sfs << "Depth-" << config_.depth << " MCTS Experiment Summary\n";
         sfs << "========================================\n";
-        sfs << "n_states            = " << config_.n_states << "\n";
-        sfs << "proposed_playouts   = " << config_.proposed_playouts << "\n";
-        sfs << "allgrid_playouts    = " << config_.allgrid_playouts << "\n";
-        sfs << "retention_rate      = " << config_.retention_rate << "\n";
-        sfs << "seed                = " << config_.seed << "\n";
-        sfs << "num_threads         = " << config_.num_threads << "\n";
-        sfs << "total_elapsed_sec   = " << total_elapsed << "\n";
-        sfs << "valid_cases         = " << n_valid << "\n";
+        sfs << "n_states                = " << config_.n_states << "\n";
+        sfs << "proposed_playouts       = " << config_.proposed_playouts << "\n";
+        sfs << "allgrid_playouts        = " << config_.allgrid_playouts << "\n";
+        sfs << "proposed_rollouts/visit = " << config_.proposed_rollouts_per_visit << "\n";
+        sfs << "allgrid_rollouts/visit  = " << config_.allgrid_rollouts_per_visit << "\n";
+        sfs << "retention_rate          = " << config_.retention_rate << "\n";
+        sfs << "seed                    = " << config_.seed << "\n";
+        sfs << "num_threads             = " << config_.num_threads << "\n";
+        sfs << "start_index             = " << config_.start_index << "\n";
+        sfs << "max_positions           = " << config_.max_positions << "\n";
+        sfs << "total_elapsed_sec       = " << total_elapsed << "\n";
+        sfs << "valid_cases             = " << n_valid << "\n";
         if (n_valid > 0) {
             auto pct = [&](int x) { return 100.0 * x / n_valid; };
-            sfs << "exact_match_pct     = " << pct(n_exact) << "\n";
-            sfs << "same_cluster_pct    = " << pct(n_cluster) << "\n";
-            sfs << "same_type_pct       = " << pct(n_type) << "\n";
-            sfs << "avg_score_diff      = " << sum_score_diff / n_valid << "\n";
-            sfs << "avg_proposed_time_s = " << sum_proposed_time / n_valid << "\n";
-            sfs << "avg_allgrid_time_s  = " << sum_allgrid_time / n_valid << "\n";
+            sfs << "exact_match_pct         = " << pct(n_exact) << "\n";
+            sfs << "same_cluster_pct        = " << pct(n_cluster) << "\n";
+            sfs << "same_type_pct           = " << pct(n_type) << "\n";
+            sfs << "avg_score_diff          = " << sum_score_diff / n_valid << "\n";
+            sfs << "avg_proposed_time_s     = " << sum_proposed_time / n_valid << "\n";
+            sfs << "avg_allgrid_time_s      = " << sum_allgrid_time / n_valid << "\n";
         }
     }
 }

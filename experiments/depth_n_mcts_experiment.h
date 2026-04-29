@@ -70,11 +70,15 @@ struct DepthNMctsConfig {
     int n_states = 100;                    // テスト盤面数
     int proposed_playouts = 500;           // Proposed プレイアウト数
     int allgrid_playouts = 10000;          // AllGrid プレイアウト数
+    int proposed_rollouts_per_visit = 20;  // Proposed: 葉到達時の平均化ロールアウト数
+    int allgrid_rollouts_per_visit = 10;   // AllGrid: 葉到達時の平均化ロールアウト数
     double retention_rate = 0.20;          // Proposed 保持率
     double ucb_c = 1.41;                   // UCB1 の c (≒√2)
     double epsilon = 0.3;                  // ロールアウト ε
     int num_threads = 8;                   // スレッド数
     uint64_t seed = 42;                    // サンプリング＆ロールアウト用シード
+    int start_index = 0;                   // 並列実行用: サンプリング後リストの開始index
+    int max_positions = -1;                // 並列実行用: 担当盤面数 (-1=全部)
     std::string load_positions_dir;        // batch_*.csv があるディレクトリ
     std::string output_dir;                // 結果出力ディレクトリ
 };

@@ -820,6 +820,8 @@ int main(int argc, char const* argv[])
         double depth3_retention_arg = 0.20;
         int depth3_threads_arg = 8;
         uint64_t depth3_seed_arg = 42;
+        int depth3_proposed_rollouts_arg = 20;
+        int depth3_allgrid_rollouts_arg = 10;
         bool test_policy_mode = false;
         bool clustering_experiment_mode = false;
         bool generate_positions_mode = false;
@@ -893,6 +895,16 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--states" && i + 1 < argc) {
                 depth3_n_states_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--proposed-rollouts" && i + 1 < argc) {
+                depth3_proposed_rollouts_arg = std::atoi(argv[i + 1]);
+                if (depth3_proposed_rollouts_arg < 1) depth3_proposed_rollouts_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--allgrid-rollouts" && i + 1 < argc) {
+                depth3_allgrid_rollouts_arg = std::atoi(argv[i + 1]);
+                if (depth3_allgrid_rollouts_arg < 1) depth3_allgrid_rollouts_arg = 1;
                 i++;
             }
             if (std::string(argv[i]) == "--test-policy") {
@@ -1570,6 +1582,10 @@ int main(int argc, char const* argv[])
             cfg.retention_rate = depth3_retention_arg;
             cfg.num_threads = depth3_threads_arg;
             cfg.seed = depth3_seed_arg;
+            cfg.start_index = start_index_arg;
+            cfg.max_positions = max_positions_arg;
+            cfg.proposed_rollouts_per_visit = depth3_proposed_rollouts_arg;
+            cfg.allgrid_rollouts_per_visit = depth3_allgrid_rollouts_arg;
             cfg.load_positions_dir = load_positions_arg.empty()
                 ? "experiments/parallel_agreement_results" : load_positions_arg;
             if (!output_dir_arg.empty()) {
