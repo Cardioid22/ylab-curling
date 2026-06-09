@@ -79,10 +79,14 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     experiments/mcts_shared.cpp
     experiments/depth_n_mcts_experiment.h
     experiments/depth_n_mcts_experiment.cpp
+    experiments/score_move_experiment.h
+    experiments/score_move_experiment.cpp
     experiments/clustering_effectiveness_experiment.h
     experiments/clustering_effectiveness_experiment.cpp
     experiments/generate_test_positions.h
     experiments/generate_test_positions.cpp
+    experiments/trajectory_export.h
+    experiments/trajectory_export.cpp
     # example.cpp
 
 )

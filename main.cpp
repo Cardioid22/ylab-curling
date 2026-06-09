@@ -24,8 +24,10 @@
 #include "experiments/pool_clustering_experiment.h"
 #include "experiments/depth1_mcts_experiment.h"
 #include "experiments/depth_n_mcts_experiment.h"
+#include "experiments/score_move_experiment.h"
 #include "experiments/clustering_effectiveness_experiment.h"
 #include "experiments/generate_test_positions.h"
+#include "experiments/trajectory_export.h"
 #include "src/policy.h"
 #include "src/shot_generator.h"
 #define DBL_EPSILON 2.2204460492503131e-016
@@ -814,6 +816,8 @@ int main(int argc, char const* argv[])
         bool pool_clustering_mode = false;
         bool depth1_mcts_mode = false;
         bool depth3_mcts_mode = false;
+        bool score_move_mode = false;
+        int score_move_rollouts_arg = 500;  // 審判: 候補1手あたりのロールアウト回数 K
         int depth3_n_states_arg = 100;
         int depth3_proposed_playouts_arg = 500;
         int depth3_allgrid_playouts_arg = 10000;
@@ -826,6 +830,10 @@ int main(int argc, char const* argv[])
         bool clustering_experiment_mode = false;
         bool generate_positions_mode = false;
         bool deterministic_mode = false;
+        bool trajectory_export_mode = false;
+        std::string trajectory_csv_arg;
+        int trajectory_row_arg = 0;
+        std::string trajectory_out_arg = "trajectory_output";
         int rollout_arg = 1;
         std::string retention_arg = "10,20";
         int total_games_arg = 10000;
@@ -873,6 +881,14 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--depth3-mcts") {
                 depth3_mcts_mode = true;
             }
+            if (std::string(argv[i]) == "--score-move") {
+                score_move_mode = true;
+            }
+            if (std::string(argv[i]) == "--score-rollouts" && i + 1 < argc) {
+                score_move_rollouts_arg = std::atoi(argv[i + 1]);
+                if (score_move_rollouts_arg < 1) score_move_rollouts_arg = 1;
+                i++;
+            }
             if (std::string(argv[i]) == "--proposed-playouts" && i + 1 < argc) {
                 depth3_proposed_playouts_arg = std::atoi(argv[i + 1]);
                 i++;
@@ -915,6 +931,21 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--generate-positions") {
                 generate_positions_mode = true;
+            }
+            if (std::string(argv[i]) == "--trajectory-export") {
+                trajectory_export_mode = true;
+            }
+            if (std::string(argv[i]) == "--trajectory-csv" && i + 1 < argc) {
+                trajectory_csv_arg = argv[i + 1];
+                i++;
+            }
+            if (std::string(argv[i]) == "--trajectory-row" && i + 1 < argc) {
+                trajectory_row_arg = std::atoi(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--trajectory-out" && i + 1 < argc) {
+                trajectory_out_arg = argv[i + 1];
+                i++;
             }
             if (std::string(argv[i]) == "--deterministic") {
                 deterministic_mode = true;
@@ -1316,6 +1347,21 @@ int main(int argc, char const* argv[])
         }
 
         // テスト盤面生成モード
+        if (trajectory_export_mode) {
+            if (trajectory_csv_arg.empty()) {
+                std::cerr << "--trajectory-export requires --trajectory-csv <path>\n";
+                return 1;
+            }
+            dc::GameSetting gs;
+            gs.max_end = 8;
+            gs.sheet_width = 4.75f;
+            gs.thinking_time[0] = std::chrono::seconds(86400);
+            gs.thinking_time[1] = std::chrono::seconds(86400);
+            TrajectoryExportExperiment exp(gs, trajectory_csv_arg, trajectory_row_arg, trajectory_out_arg);
+            exp.run();
+            return 0;
+        }
+
         if (generate_positions_mode) {
             std::cout << "Running Generate Test Positions mode..." << std::endl;
 
@@ -1595,6 +1641,35 @@ int main(int argc, char const* argv[])
             }
 
             DepthNMctsExperiment exp(game_setting, cfg);
+            exp.run();
+            return 0;
+        }
+
+        // Score-Move 審判モード (iso-budget 比較用の共通評価器)
+        if (score_move_mode) {
+            std::cout << "Running Score-Move referee..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 10;
+            game_setting.sheet_width = 4.75f;
+            game_setting.thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.thinking_time[1] = std::chrono::seconds(86400);
+            game_setting.extra_end_thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.extra_end_thinking_time[1] = std::chrono::seconds(86400);
+
+            ScoreMoveConfig cfg;
+            cfg.n_states = depth3_n_states_arg;
+            cfg.score_rollouts = score_move_rollouts_arg;
+            cfg.num_threads = depth3_threads_arg;
+            cfg.seed = depth3_seed_arg;
+            cfg.start_index = start_index_arg;
+            cfg.max_positions = max_positions_arg;
+            cfg.load_positions_dir = load_positions_arg.empty()
+                ? "experiments/parallel_agreement_results" : load_positions_arg;
+            cfg.output_dir = output_dir_arg.empty()
+                ? "experiments/score_move_results" : output_dir_arg;
+
+            ScoreMoveExperiment exp(game_setting, cfg);
             exp.run();
             return 0;
         }
