@@ -85,8 +85,11 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     experiments/clustering_effectiveness_experiment.cpp
     experiments/generate_test_positions.h
     experiments/generate_test_positions.cpp
-    experiments/trajectory_export.h
-    experiments/trajectory_export.cpp
+    # trajectory_export depends on uncommitted src/simulator changes
+    # (TrajectoryFrame / run_single_simulation_with_trajectory); excluded
+    # from the build until those land.
+    # experiments/trajectory_export.h
+    # experiments/trajectory_export.cpp
     # example.cpp
 
 )

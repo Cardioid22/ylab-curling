@@ -27,7 +27,6 @@
 #include "experiments/score_move_experiment.h"
 #include "experiments/clustering_effectiveness_experiment.h"
 #include "experiments/generate_test_positions.h"
-#include "experiments/trajectory_export.h"
 #include "src/policy.h"
 #include "src/shot_generator.h"
 #define DBL_EPSILON 2.2204460492503131e-016
@@ -830,10 +829,6 @@ int main(int argc, char const* argv[])
         bool clustering_experiment_mode = false;
         bool generate_positions_mode = false;
         bool deterministic_mode = false;
-        bool trajectory_export_mode = false;
-        std::string trajectory_csv_arg;
-        int trajectory_row_arg = 0;
-        std::string trajectory_out_arg = "trajectory_output";
         int rollout_arg = 1;
         std::string retention_arg = "10,20";
         int total_games_arg = 10000;
@@ -931,21 +926,6 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--generate-positions") {
                 generate_positions_mode = true;
-            }
-            if (std::string(argv[i]) == "--trajectory-export") {
-                trajectory_export_mode = true;
-            }
-            if (std::string(argv[i]) == "--trajectory-csv" && i + 1 < argc) {
-                trajectory_csv_arg = argv[i + 1];
-                i++;
-            }
-            if (std::string(argv[i]) == "--trajectory-row" && i + 1 < argc) {
-                trajectory_row_arg = std::atoi(argv[i + 1]);
-                i++;
-            }
-            if (std::string(argv[i]) == "--trajectory-out" && i + 1 < argc) {
-                trajectory_out_arg = argv[i + 1];
-                i++;
             }
             if (std::string(argv[i]) == "--deterministic") {
                 deterministic_mode = true;
@@ -1347,21 +1327,6 @@ int main(int argc, char const* argv[])
         }
 
         // テスト盤面生成モード
-        if (trajectory_export_mode) {
-            if (trajectory_csv_arg.empty()) {
-                std::cerr << "--trajectory-export requires --trajectory-csv <path>\n";
-                return 1;
-            }
-            dc::GameSetting gs;
-            gs.max_end = 8;
-            gs.sheet_width = 4.75f;
-            gs.thinking_time[0] = std::chrono::seconds(86400);
-            gs.thinking_time[1] = std::chrono::seconds(86400);
-            TrajectoryExportExperiment exp(gs, trajectory_csv_arg, trajectory_row_arg, trajectory_out_arg);
-            exp.run();
-            return 0;
-        }
-
         if (generate_positions_mode) {
             std::cout << "Running Generate Test Positions mode..." << std::endl;
 
