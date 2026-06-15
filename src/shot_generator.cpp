@@ -31,6 +31,17 @@ static constexpr float kHitRemainingDist[] = {
 // ピールの速度 (歩: FV_MAX - 0.3 ≈ 高速)
 static constexpr float kPeelSpeed = 3.5f;
 
+// ガードゾーン判定: ハウス手前(投擲側)の所定範囲にある石をガードとみなす。
+// Peel(相手ガード排除) / ComeAround(ガード裏に回り込む) の対象選定に使う。
+static bool isGuardZone(const Position& p) {
+    bool in_house = (std::pow(p.x - kHouseCenterX, 2) + std::pow(p.y - kHouseCenterY, 2))
+                    <= std::pow(kHouseRadius + kStoneRadius, 2);
+    float front_edge = kHouseCenterY - kHouseRadius;  // ハウス手前端
+    return !in_house
+           && p.y < front_edge && p.y > (front_edge - 5.0f)  // ハウス手前 ~5m
+           && std::abs(p.x - kHouseCenterX) < 2.0f;           // 横方向 ±2m
+}
+
 ShotGenerator::ShotGenerator(dc::GameSetting const& game_setting)
     : game_setting_(game_setting)
 {
@@ -278,6 +289,7 @@ dc::GameState ShotGenerator::simulateNoRand(
     const dc::GameState& state,
     const ShotInfo& shot
 ) {
+    ++g_physics_sim_count;  // 物理シミュ1回 (ノード展開 = generatePool) — 等予算カウント用
     dc::GameState new_state = state;
     simulator_->Load(*simulator_storage_);
 
@@ -421,6 +433,21 @@ std::vector<CandidateShot> ShotGenerator::generateCandidates(
                 candidates.push_back(c);
             }
         }
+
+        // ピール (ガードゾーンの相手石を排除。歩 genStandardPeel 相当)
+        if (isGuardZone(stone_pos)) {
+            for (int spin : {1, 0}) {
+                CandidateShot c;
+                c.type = ShotType::PEEL;
+                c.spin = spin;
+                c.target_index = stone_index;
+                c.param = -1;
+                c.shot = calcPeelShot(stone_pos, spin);
+                c.label = "Peel(" + std::string(spin == 1 ? "CW" : "CCW") + "," +
+                          std::to_string(stone_index) + ")";
+                candidates.push_back(c);
+            }
+        }
     }
 
     // --- 4. 自分石へのヒット (Push), PostGuard ---
@@ -452,7 +479,33 @@ std::vector<CandidateShot> ShotGenerator::generateCandidates(
         }
     }
 
-    // --- 5. PASS ---
+    // --- 5. カムアラウンド (ガードの裏に回り込む。両チームのガードが対象。歩 genStandardComeAround 相当) ---
+    for (dc::Team t : { my_team, opp_team }) {
+        for (int idx = 0; idx < 8; ++idx) {
+            int stone_index = idx * 2 + static_cast<int>(t);
+            auto& stone = state.stones[static_cast<int>(t)][idx];
+            if (!stone.has_value()) continue;
+
+            Position stone_pos = { stone->position.x, stone->position.y };
+            if (!isGuardZone(stone_pos)) continue;
+
+            for (auto cl : { ComeAroundLength::SHORT, ComeAroundLength::MIDDLE, ComeAroundLength::LONG }) {
+                for (int spin : {1, 0}) {
+                    CandidateShot c;
+                    c.type = ShotType::COMEAROUND;
+                    c.spin = spin;
+                    c.target_index = stone_index;
+                    c.param = static_cast<int>(cl);
+                    c.shot = calcComeAroundShot(stone_pos, cl, spin);
+                    c.label = "ComeAround(" + std::string(spin == 1 ? "CW" : "CCW") + "," +
+                              std::to_string(stone_index) + "," + std::to_string(static_cast<int>(cl)) + ")";
+                    candidates.push_back(c);
+                }
+            }
+        }
+    }
+
+    // --- 6. PASS ---
     {
         CandidateShot c;
         c.type = ShotType::PASS;

@@ -27,6 +27,7 @@ void ScoreMoveExperiment::run() {
     std::cout << "\n=== Score-Move Referee ===" << std::endl;
     std::cout << "  n_states           = " << config_.n_states << std::endl;
     std::cout << "  score_rollouts (K) = " << config_.score_rollouts << std::endl;
+    std::cout << "  resample_first_shot= " << (config_.resample_first_shot ? "true (execution-uncertainty-aware)" : "false (frozen landing)") << std::endl;
     std::cout << "  epsilon            = " << config_.epsilon << std::endl;
     std::cout << "  num_threads        = " << config_.num_threads << std::endl;
     std::cout << "  seed               = " << config_.seed << std::endl;
@@ -128,14 +129,38 @@ void ScoreMoveExperiment::run() {
                 ^ (static_cast<uint64_t>(c) * 0x85EBCA6B029E4F31ULL);
             std::mt19937 rng(static_cast<uint32_t>(job_seed ^ (job_seed >> 32)));
 
-            int remaining = 16 - static_cast<int>(post_state.shot);
             int K = std::max(1, config_.score_rollouts);
             double sum = 0.0, sumsq = 0.0;
-            for (int i = 0; i < K; i++) {
-                double v = mcts_shared::rolloutFromState(
-                    sim, post_state, remaining, root_team, rng, config_.epsilon);
-                sum += v;
-                sumsq += v * v;
+            if (config_.resample_first_shot) {
+                // 実行不確実性込み: 初手の物理シミュレーションを毎回振り直す。
+                // Q_ref = E[着地ばらつき + 継続プレイ] = 「その手を試みる価値」
+                for (int i = 0; i < K; i++) {
+                    dc::GameState post = sim.run_single_simulation(rec.state, cand.shot);
+                    double v;
+                    if (post.end != rec.state.end || post.IsGameOver()) {
+                        // 初手でエンドが終わった: 実スコアで評価
+                        int e = rec.state.end;
+                        int t0 = post.scores[0][e] ? static_cast<int>(*post.scores[0][e]) : 0;
+                        int t1 = post.scores[1][e] ? static_cast<int>(*post.scores[1][e]) : 0;
+                        double diff = static_cast<double>(t0 - t1);
+                        v = (root_team == dc::Team::k0) ? diff : -diff;
+                    } else {
+                        int remaining = 16 - static_cast<int>(post.shot);
+                        v = mcts_shared::rolloutFromState(
+                            sim, post, remaining, root_team, rng, config_.epsilon);
+                    }
+                    sum += v;
+                    sumsq += v * v;
+                }
+            } else {
+                // 従来: 候補プール生成時の1回の着地で固定 (探索木の子ノードと同じ規約)
+                int remaining = 16 - static_cast<int>(post_state.shot);
+                for (int i = 0; i < K; i++) {
+                    double v = mcts_shared::rolloutFromState(
+                        sim, post_state, remaining, root_team, rng, config_.epsilon);
+                    sum += v;
+                    sumsq += v * v;
+                }
             }
             double mean = sum / K;
             double var = std::max(0.0, sumsq / K - mean * mean);
@@ -150,6 +175,7 @@ void ScoreMoveExperiment::run() {
             sc.q_ref_mean = mean;
             sc.q_ref_sd = std::sqrt(var);
             sc.n_rollouts = K;
+            sc.resampled = config_.resample_first_shot ? 1 : 0;
             results[j] = sc;
 
             int d = ++done_count;
@@ -190,12 +216,13 @@ void ScoreMoveExperiment::writeCSV(
         return;
     }
     ofs << "game_id,end,shot_num,candidate_idx,label,shot_type,"
-        << "q_ref_mean,q_ref_sd,n_rollouts\n";
+        << "q_ref_mean,q_ref_sd,n_rollouts,resampled\n";
     ofs << std::setprecision(6);
     for (const auto& r : rows) {
         if (r.candidate_idx < 0) continue;
         ofs << r.game_id << "," << r.end << "," << r.shot_num << ","
             << r.candidate_idx << ",\"" << r.label << "\"," << r.shot_type << ","
-            << r.q_ref_mean << "," << r.q_ref_sd << "," << r.n_rollouts << "\n";
+            << r.q_ref_mean << "," << r.q_ref_sd << "," << r.n_rollouts << ","
+            << r.resampled << "\n";
     }
 }

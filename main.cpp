@@ -25,6 +25,7 @@
 #include "experiments/depth1_mcts_experiment.h"
 #include "experiments/depth_n_mcts_experiment.h"
 #include "experiments/score_move_experiment.h"
+#include "experiments/reinvest_experiment.h"
 #include "experiments/clustering_effectiveness_experiment.h"
 #include "experiments/generate_test_positions.h"
 #include "src/policy.h"
@@ -817,6 +818,14 @@ int main(int argc, char const* argv[])
         bool depth3_mcts_mode = false;
         bool score_move_mode = false;
         int score_move_rollouts_arg = 500;  // 審判: 候補1手あたりのロールアウト回数 K
+        bool score_move_frozen_arg = false; // true: 初手ノイズを固定 (旧挙動)。デフォルトは毎回振り直し
+        // 計算再投資実験 (単一アーム MCTS)
+        bool reinvest_mode = false;
+        std::string reinvest_method_arg = "Proposed";  // AllGrid / Proposed / RandomK
+        int reinvest_depth_arg = 3;                     // 3 or 5
+        int reinvest_playouts_arg = 500;                // P
+        int reinvest_rollouts_arg = 20;                 // R (葉あたりロールアウト数)
+        std::string reinvest_arm_label_arg;             // "A1".."A6" (任意)
         int depth3_n_states_arg = 100;
         int depth3_proposed_playouts_arg = 500;
         int depth3_allgrid_playouts_arg = 10000;
@@ -882,6 +891,36 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--score-rollouts" && i + 1 < argc) {
                 score_move_rollouts_arg = std::atoi(argv[i + 1]);
                 if (score_move_rollouts_arg < 1) score_move_rollouts_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--frozen-first-shot") {
+                score_move_frozen_arg = true;
+            }
+            // ---- 計算再投資実験フラグ ----
+            if (std::string(argv[i]) == "--reinvest-arm") {
+                reinvest_mode = true;
+            }
+            if (std::string(argv[i]) == "--method" && i + 1 < argc) {
+                reinvest_method_arg = argv[i + 1];
+                i++;
+            }
+            if (std::string(argv[i]) == "--depth" && i + 1 < argc) {
+                reinvest_depth_arg = std::atoi(argv[i + 1]);
+                if (reinvest_depth_arg < 1) reinvest_depth_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--playouts" && i + 1 < argc) {
+                reinvest_playouts_arg = std::atoi(argv[i + 1]);
+                if (reinvest_playouts_arg < 1) reinvest_playouts_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--rollouts-per-visit" && i + 1 < argc) {
+                reinvest_rollouts_arg = std::atoi(argv[i + 1]);
+                if (reinvest_rollouts_arg < 1) reinvest_rollouts_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--arm-label" && i + 1 < argc) {
+                reinvest_arm_label_arg = argv[i + 1];
                 i++;
             }
             if (std::string(argv[i]) == "--proposed-playouts" && i + 1 < argc) {
@@ -1625,6 +1664,7 @@ int main(int argc, char const* argv[])
             ScoreMoveConfig cfg;
             cfg.n_states = depth3_n_states_arg;
             cfg.score_rollouts = score_move_rollouts_arg;
+            cfg.resample_first_shot = !score_move_frozen_arg;
             cfg.num_threads = depth3_threads_arg;
             cfg.seed = depth3_seed_arg;
             cfg.start_index = start_index_arg;
@@ -1635,6 +1675,40 @@ int main(int argc, char const* argv[])
                 ? "experiments/score_move_results" : output_dir_arg;
 
             ScoreMoveExperiment exp(game_setting, cfg);
+            exp.run();
+            return 0;
+        }
+
+        // 計算再投資 単一アームモード (A1..A6 のいずれか1アームを1プロセスで実行)
+        if (reinvest_mode) {
+            std::cout << "Running Reinvestment arm..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 10;
+            game_setting.sheet_width = 4.75f;
+            game_setting.thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.thinking_time[1] = std::chrono::seconds(86400);
+            game_setting.extra_end_thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.extra_end_thinking_time[1] = std::chrono::seconds(86400);
+
+            ReinvestConfig cfg;
+            cfg.mode = parseMctsMode(reinvest_method_arg);
+            cfg.depth = reinvest_depth_arg;
+            cfg.playouts = reinvest_playouts_arg;
+            cfg.rollouts_per_visit = reinvest_rollouts_arg;
+            cfg.retention_rate = depth3_retention_arg;  // --retention を共用
+            cfg.n_states = depth3_n_states_arg;          // --states を共用
+            cfg.num_threads = depth3_threads_arg;        // --threads を共用
+            cfg.seed = depth3_seed_arg;                  // --seed を共用
+            cfg.start_index = start_index_arg;
+            cfg.max_positions = max_positions_arg;
+            cfg.arm_label = reinvest_arm_label_arg;
+            cfg.load_positions_dir = load_positions_arg.empty()
+                ? "test_positions_isobudget10" : load_positions_arg;
+            cfg.output_dir = output_dir_arg.empty()
+                ? "experiments/reinvest_results" : output_dir_arg;
+
+            ReinvestExperiment exp(game_setting, cfg);
             exp.run();
             return 0;
         }

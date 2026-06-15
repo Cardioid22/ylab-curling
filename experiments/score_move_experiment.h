@@ -27,6 +27,8 @@ namespace dc = digitalcurling3;
 struct ScoreMoveConfig {
     int n_states = 10;            // テスト局面数
     int score_rollouts = 500;     // 候補1手あたりのロールアウト回数 K
+    bool resample_first_shot = true;  // true: 初手の実行ノイズも毎回振り直す (実行不確実性込みの価値)
+                                      // false: プール生成時の1回の着地で固定 (探索木と同じ規約)
     double epsilon = 0.3;         // ロールアウトの ε-greedy 確率 (実験と一致させる)
     int num_threads = 8;
     uint64_t seed = 42;           // ロールアウト RNG のベースシード
@@ -47,6 +49,7 @@ struct ScoredCandidate {
     double q_ref_mean = 0.0;      // K 回ロールアウト平均 (root_team 視点)
     double q_ref_sd = 0.0;        // K 回のばらつき
     int n_rollouts = 0;
+    int resampled = 1;            // 1: 初手ノイズ再サンプルあり / 0: 固定着地
 };
 
 class ScoreMoveExperiment {
