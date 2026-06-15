@@ -6,6 +6,7 @@
 #include <iostream>
 #include <random>
 #include <limits>
+#include <algorithm>
 
 namespace dc = digitalcurling3;
 
@@ -60,6 +61,7 @@ float SimulatorWrapper::evaluate(dc::GameState& game_state) const {
 
 dc::GameState SimulatorWrapper::run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot) {
     //std::cout << "Single Run Simulation Begin.\n";
+    ++g_physics_sim_count;  // 物理シミュ1回 (ロールアウト/審判リサンプル) — 等予算カウント用
     dc::GameState new_state = game_state;
     if (!g_simulator_ || !g_simulator_storage_) throw std::runtime_error("Simulator or storage not initialized");
     g_simulator_->Load(*g_simulator_storage_);
@@ -76,6 +78,51 @@ dc::GameState SimulatorWrapper::run_single_simulation(dc::GameState const& game_
     //std::cout << "debug check2\n";
     g_simulator_->Save(*g_simulator_storage_);
     //std::cout << "Single Run Simulation Done.\n";
+    return new_state;
+}
+
+dc::GameState SimulatorWrapper::run_single_simulation_with_trajectory(
+    dc::GameState const& game_state,
+    const ShotInfo& shot,
+    std::vector<TrajectoryFrame>& frames,
+    int frame_stride)
+{
+    dc::GameState new_state = game_state;
+    if (!g_simulator_ || !g_simulator_storage_) throw std::runtime_error("Simulator or storage not initialized");
+    g_simulator_->Load(*g_simulator_storage_);
+    auto& current_player = *g_players[new_state.shot / 4];
+
+    dc::Vector2 velocity(shot.vx, shot.vy);
+    auto rot = shot.rot == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+    dc::moves::Shot shot_move{ velocity, rot };
+    dc::Move move{ shot_move };
+
+    frames.clear();
+    int step_counter = 0;
+    int stride = std::max(1, frame_stride);
+    auto const shot_side = dc::coordinate::GetShotSide(new_state.end);
+
+    auto on_step = [&](dc::ISimulator const& sim) {
+        if (step_counter % stride == 0) {
+            TrajectoryFrame f;
+            auto const& stones = sim.GetStones();
+            for (size_t i = 0; i < 16 && i < stones.size(); ++i) {
+                if (stones[i]) {
+                    // sim coords → canonical (shot_side) coords so y-axis matches GameState.stones
+                    f.stones[i] = dc::coordinate::TransformPosition(
+                        stones[i]->position, dc::coordinate::Id::kSimulation, shot_side);
+                } else {
+                    f.stones[i] = std::nullopt;
+                }
+            }
+            frames.push_back(f);
+        }
+        step_counter++;
+    };
+
+    dc::ApplyMove(g_game_setting, *g_simulator_, current_player, new_state, move,
+                  std::chrono::milliseconds(0), nullptr, on_step);
+    g_simulator_->Save(*g_simulator_storage_);
     return new_state;
 }
 

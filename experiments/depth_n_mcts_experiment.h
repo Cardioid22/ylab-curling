@@ -25,7 +25,8 @@ namespace dc = digitalcurling3;
 
 enum class MctsMode {
     Proposed,  // クラスタリングでK個のメドイドを子ノードに
-    AllGrid    // 全候補を子ノードに（歩相当）
+    AllGrid,   // 全候補を子ノードに（歩相当）
+    RandomK    // K=ceil(N*retention)個を決定的乱択で子ノードに（計算再投資実験 A5: クラスタリング vs 単なる削減）
 };
 
 // 展開キャッシュ: 同じ盤面ハッシュなら候補手とシミュ結果を再利用
