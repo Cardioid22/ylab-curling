@@ -1,0 +1,9 @@
+category,game_id,end,shot_num,team,n_stones,my_in_house,op_in_house
+takeout,7977,6,14,0,14,7,7
+takeout,3926,6,11,1,11,5,6
+draw,3883,1,14,0,1,0,0
+draw,9222,7,5,1,1,0,0
+freeze,7881,2,15,1,12,6,6
+freeze,6406,1,10,0,3,1,2
+crowded,8452,5,15,1,15,8,6
+crowded,1028,6,15,1,15,8,7
