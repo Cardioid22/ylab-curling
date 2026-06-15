@@ -43,11 +43,14 @@ trap '' HUP
 #   RETENTION     : Proposed/RandomK の保持率 (K = ceil(N*RETENTION))
 # 既定値は「低予算帯」の暫定値。本番前に必ず校正すること。
 # ============================================================================
-P_BASE=400
-R_BASE=20
-P_DEEP=120
-R_RINV=80
-P_RINV=120
+# 低予算帯。ベースライン総ロールアウト = P_BASE*R_BASE = 2000/局面。
+# 等予算は「総物理シミュ数」で揃える: A4 は P*R を据え置き(浅広→深厚に再配分)、
+# A3(深さ5)は展開シミュ増の分 P_DEEP を下げて総シミュを A1/A2 に合わせる(smokeで微調整)。
+P_BASE=200
+R_BASE=10
+P_DEEP=130   # A3/A6 深さ5: smoke実測で A2 と総シミュが揃うよう調整
+R_RINV=20
+P_RINV=100
 RETENTION=0.20
 
 # アーム定義: "METHOD DEPTH PLAYOUTS ROLLOUTS RETENTION" を返す
