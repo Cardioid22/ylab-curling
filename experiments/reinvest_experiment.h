@@ -59,6 +59,17 @@ struct ReinvestConfig {
     std::string arm_label;               // "A1".."A6" など (ファイル名/ログ用、空可)
 };
 
+// Proposed/RandomK のクラスタ割当 1 行 (候補 -> クラスタ + 代表点フラグ)
+// モード分離実験用: 審判 Q テーブル・AllGrid 選択分布と candidate_idx で join する。
+// 展開は simulateNoRand (決定的) なのでクラスタリングは局面ごと seed 非依存 = 審判と同一プール。
+struct ClusterAssign {
+    int candidate_idx = -1;          // generatePool 順 index (join キー)
+    int cluster_id = -1;             // Proposed: 所属クラスタ; RandomK: 選択順 (membership 概念なし)
+    bool is_representative = false;   // クラスタ代表 (medoid) / RandomK 選択手か
+    std::string label;               // 候補ラベル ("Draw(CW,5)" 等)
+    std::string shot_type;           // ShotType 文字列 ("Draw"/"Hit"/... = モード定義キー)
+};
+
 // 1 局面分の選択結果 (§4 出力スキーマに対応)
 struct ReinvestResult {
     int game_id = -1;
@@ -75,6 +86,9 @@ struct ReinvestResult {
     long long actual_total_sims = 0;  // その局面で消費した実物理シミュ回数 (等予算検証用)
     double time_sec = 0.0;            // 壁時計
     int actual_playouts = 0;          // 実際に走ったプレイアウト数
+
+    // モード分離実験用: root のクラスタ割当 (Proposed/RandomK のみ; AllGrid は空)
+    std::vector<ClusterAssign> cluster_table;
 };
 
 class ReinvestExperiment {
@@ -128,6 +142,10 @@ private:
 
     void writeResultsCSV(const std::vector<ReinvestResult>& results,
                          const std::string& path) const;
+
+    // モード分離実験用: root のクラスタ割当を 1 候補 1 行で出力 (Proposed/RandomK)
+    void writeClusterTableCSV(const std::vector<ReinvestResult>& results,
+                              const std::string& path) const;
 
     static std::string methodName(MctsMode m);
 };

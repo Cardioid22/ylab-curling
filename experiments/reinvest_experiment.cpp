@@ -11,6 +11,7 @@
 #include <iostream>
 #include <mutex>
 #include <numeric>
+#include <set>
 #include <sstream>
 #include <thread>
 
@@ -20,6 +21,15 @@ ReinvestExperiment::ReinvestExperiment(
     : game_setting_(game_setting), config_(config)
 {
 }
+
+namespace {
+// ラベル "Draw(CW,5)" -> "Draw"。shotTypeToString は private なのでラベル接頭辞で代用。
+// モード定義キー (shot_type) として cluster_table に出力する。
+std::string labelToType(const std::string& label) {
+    auto paren = label.find('(');
+    return (paren == std::string::npos) ? label : label.substr(0, paren);
+}
+}  // namespace
 
 std::string ReinvestExperiment::methodName(MctsMode m) {
     switch (m) {
@@ -294,6 +304,38 @@ ReinvestResult ReinvestExperiment::runOneState(
         r.label = root.candidates[cand_idx].label;
     }
 
+    // ===== モード分離実験用: root のクラスタ割当をエクスポート =====
+    // Proposed: 全候補をクラスタ + 代表点フラグつきで記録 (分離/被覆/collapse 診断の権威マップ)。
+    // RandomK : クラスタ概念なし。選んだ K 個を代表として記録 (cluster_id = 選択順)。
+    // AllGrid : 全候補が子なので分離対象外 → 空のまま (正解集合 A の供給側)。
+    if (config_.mode == MctsMode::Proposed && !root.clusters.empty()) {
+        std::set<int> rep_set(root.medoid_indices.begin(), root.medoid_indices.end());
+        for (int cid = 0; cid < static_cast<int>(root.clusters.size()); cid++) {
+            for (int cand_idx : root.clusters[cid]) {
+                if (cand_idx < 0 || cand_idx >= static_cast<int>(root.candidates.size())) continue;
+                ClusterAssign ca;
+                ca.candidate_idx = cand_idx;
+                ca.cluster_id = cid;
+                ca.is_representative = (rep_set.count(cand_idx) > 0);
+                ca.label = root.candidates[cand_idx].label;
+                ca.shot_type = labelToType(ca.label);
+                r.cluster_table.push_back(ca);
+            }
+        }
+    } else if (config_.mode == MctsMode::RandomK) {
+        for (int j = 0; j < static_cast<int>(root.medoid_indices.size()); j++) {
+            int cand_idx = root.medoid_indices[j];
+            if (cand_idx < 0 || cand_idx >= static_cast<int>(root.candidates.size())) continue;
+            ClusterAssign ca;
+            ca.candidate_idx = cand_idx;
+            ca.cluster_id = j;
+            ca.is_representative = true;
+            ca.label = root.candidates[cand_idx].label;
+            ca.shot_type = labelToType(ca.label);
+            r.cluster_table.push_back(ca);
+        }
+    }
+
     return r;
 }
 
@@ -322,6 +364,36 @@ void ReinvestExperiment::writeResultsCSV(
             << r.actual_total_sims << "," << r.time_sec << "\n";
     }
     std::cout << "  [csv] wrote " << results.size() << " records to " << path << std::endl;
+}
+
+// ========== クラスタ割当 CSV 出力 (モード分離実験用) ==========
+// 1 候補 1 行。candidate_idx で reinvest_results (AllGrid 選択) / 審判 Q テーブルと join 可能。
+void ReinvestExperiment::writeClusterTableCSV(
+    const std::vector<ReinvestResult>& results,
+    const std::string& path) const
+{
+    std::ofstream ofs(path);
+    if (!ofs) {
+        std::cerr << "Error: cannot open " << path << " for writing" << std::endl;
+        return;
+    }
+    ofs << "game_id,end,shot_num,method,seed,candidate_idx,cluster_id,"
+        << "is_representative,shot_type,label\n";
+
+    std::string method = methodName(config_.mode);
+    long long rows = 0;
+    for (const auto& r : results) {
+        if (r.game_id < 0) continue;
+        for (const auto& ca : r.cluster_table) {
+            ofs << r.game_id << "," << r.end << "," << r.shot_num << ","
+                << method << "," << config_.seed << ","
+                << ca.candidate_idx << "," << ca.cluster_id << ","
+                << (ca.is_representative ? 1 : 0) << ","
+                << "\"" << ca.shot_type << "\",\"" << ca.label << "\"\n";
+            rows++;
+        }
+    }
+    std::cout << "  [csv] wrote " << rows << " cluster-assign rows to " << path << std::endl;
 }
 
 // ========== 実験本体 ==========
@@ -466,6 +538,12 @@ void ReinvestExperiment::run() {
         ? "_idx" + std::to_string(config_.start_index) : "";
     std::string csv_path = config_.output_dir + "/reinvest_results" + suffix + ".csv";
     writeResultsCSV(results, csv_path);
+
+    // モード分離実験用: クラスタ割当テーブル (Proposed/RandomK のみ中身あり)
+    if (config_.mode == MctsMode::Proposed || config_.mode == MctsMode::RandomK) {
+        std::string ct_path = config_.output_dir + "/cluster_table" + suffix + ".csv";
+        writeClusterTableCSV(results, ct_path);
+    }
 
     // 6. サマリ (実シミュ予算の揃い確認用)
     long long sum_sims = 0, min_sims = -1, max_sims = -1;
