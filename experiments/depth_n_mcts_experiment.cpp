@@ -163,7 +163,7 @@ double DepthNMctsExperiment::runPlayout(
         double sum = 0.0;
         for (int i = 0; i < rollouts_per_visit; i++) {
             sum += mcts_shared::rolloutFromState(
-                sim, node.state, remaining, root_team, rng, config_.epsilon);
+                sim, gen, node.state, remaining, root_team, rng, config_.epsilon);
         }
         double mean_reward = sum / rollouts_per_visit;
         node.visits++;
@@ -182,7 +182,7 @@ double DepthNMctsExperiment::runPlayout(
         double sum = 0.0;
         for (int i = 0; i < rollouts_per_visit; i++) {
             sum += mcts_shared::rolloutFromState(
-                sim, node.state, remaining, root_team, rng, config_.epsilon);
+                sim, gen, node.state, remaining, root_team, rng, config_.epsilon);
         }
         double mean_reward = sum / rollouts_per_visit;
         node.visits++;

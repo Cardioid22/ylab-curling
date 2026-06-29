@@ -6,7 +6,7 @@
 // 共通評価器。各候補手を「その手を着手 → エンド終了まで K 回ロールアウト」して
 // 平均スコアで採点する。どの探索手法が選んだ手でも同じ物差しで質を測れる。
 //
-// depth_n_mcts_experiment と同じ rolloutFromState / 4x4 グリッドポリシーを使うので、
+// depth_n_mcts_experiment と同じ rolloutFromState / 賢い候補ロールアウト方策を使うので、
 // 探索の葉評価と内部的に一貫した「手の真の価値」の低分散推定になる。
 // K を大きくすれば AllGrid@少playouts のような自己不一致を避けられる。
 //
@@ -50,6 +50,7 @@ struct ScoredCandidate {
     double q_ref_sd = 0.0;        // K 回のばらつき
     int n_rollouts = 0;
     int resampled = 1;            // 1: 初手ノイズ再サンプルあり / 0: 固定着地
+    std::string score_hist;       // 得点ヒストグラム "score:count;score:count;..." (round した純得点の頻度)
 };
 
 class ScoreMoveExperiment {

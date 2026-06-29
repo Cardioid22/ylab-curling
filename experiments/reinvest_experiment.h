@@ -46,7 +46,11 @@ struct ReinvestConfig {
     int depth = 3;                       // MCTS 木の深さ (3 or 5)
     int playouts = 500;                  // P: プレイアウト数
     int rollouts_per_visit = 20;         // R: 葉到達時の平均化ロールアウト数
-    double retention_rate = 0.20;        // Proposed/RandomK: K = ceil(N * rate)
+    double retention_rate = 0.20;        // Proposed/RandomK: K = ceil(N * rate); ScoreScreen: depth>0 の子数
+    // ScoreScreen (A7) 専用パラメータ
+    int score_screen_r_pre = 3;          // root 候補ごとの E[score] 事前推定ロールアウト数 R_pre
+    double score_screen_band = 1.0;      // ε帯 Δ: 最良E[score]から Δ 点以内を有望集合に残す
+    int score_screen_v_target = 50;      // 子1個に割り当てたい最低訪問数 → K_cap = max(1, playouts / v_target)
     double ucb_c = 1.41;                 // UCB1 の c (≒√2)
     double epsilon = 0.3;                // ロールアウト ε (全アーム共通)
     int n_states = 10;                   // テスト局面数
@@ -129,12 +133,24 @@ private:
         dc::Team root_team,
         uint64_t state_seed);
 
-    // ノード展開 (候補生成 + Proposed:クラスタリング / RandomK:決定的乱択 / AllGrid:全候補)
+    // ノード展開 (候補生成 + Proposed:クラスタリング / RandomK:決定的乱択 / AllGrid:全候補 / ScoreScreen:得点スクリーン)
+    // sim/rng は ScoreScreen の root で E[score] 事前推定ロールアウトに使う
     void expandNode(
         TreeNode& node,
+        SimulatorWrapper& sim,
         ShotGenerator& gen,
         std::unordered_map<uint64_t, CandidateCacheEntry>& cache,
+        std::mt19937& rng,
+        dc::Team root_team,
         uint64_t state_seed);
+
+    // ScoreScreen の root 候補選別: ①R_pre 推定 →②ε帯 →③リスク多様性保持でK個。選んだ candidate idx を返す。
+    std::vector<int> selectScoreScreen(
+        TreeNode& node,
+        SimulatorWrapper& sim,
+        ShotGenerator& gen,
+        std::mt19937& rng,
+        dc::Team root_team);
 
     int selectBestChildUCB(const TreeNode& node) const;
     int selectMostVisited(const TreeNode& node) const;

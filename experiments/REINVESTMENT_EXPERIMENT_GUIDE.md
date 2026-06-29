@@ -72,7 +72,7 @@
   - `enum MctsMode { Proposed, AllGrid }`。`expandNode` がクラスタリング(Proposed)/全候補(AllGrid)を分岐。`buildTree`/`runPlayout` は `config_.depth` に汎用。
   - **depth は config で可変だが、main.cpp が `cfg.depth = 3` でハードコードしている**(`main.cpp` の `depth3_mcts_mode` ブロック)。
 - `experiments/score_move_experiment.{h,cpp}`: 審判(実行不確実性込み)。
-- `experiments/mcts_shared.{h,cpp}`: `rolloutFromState`(ε-greedy 4×4グリッド), `makeDistanceTableDelta`, `runClustering`, `calculateMedoids`, 局面ローダ。
+- `experiments/mcts_shared.{h,cpp}`: `rolloutFromState`(ε-greedy + 賢い候補 `generateRolloutCandidates`: ドロー群/相手No.1へのHit・Freeze/疎ならガード), `makeDistanceTableDelta`, `runClustering`, `calculateMedoids`, 局面ローダ。
 - `src/shot_generator.{h,cpp}`: `generatePool`(全アーム共通の候補生成。歩相当だが ComeAround/Peel 等は未生成・速度グリッド誤差積分なし。差分は監査済み、本実験では全アーム共通なので影響なし)。
 - `scripts/run_multiseed_depth3.sh`: K seed 並列ランナー。
 

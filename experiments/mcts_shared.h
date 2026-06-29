@@ -72,6 +72,7 @@ std::vector<int> calculateMedoids(
 // rng はスレッドローカルで渡す
 double rollout(
     SimulatorWrapper& sim,
+    ShotGenerator& gen,
     const dc::GameState& state,
     const ShotInfo& initial_shot,
     int remaining_shots,
@@ -80,8 +81,10 @@ double rollout(
     double epsilon = 0.3);
 
 // initial_shot なしで、state の時点からそのまま最後までロールアウト
+// gen: 各手番で賢いロールアウト候補 (generateRolloutCandidates) を生成するのに使う
 double rolloutFromState(
     SimulatorWrapper& sim,
+    ShotGenerator& gen,
     const dc::GameState& state,
     int remaining_shots,
     dc::Team root_team,

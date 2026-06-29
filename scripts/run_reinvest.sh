@@ -21,7 +21,8 @@
 #   ./scripts/run_reinvest.sh --arms "A3"          [OPTIONS]   # bear (深さ5担当)
 #
 # Options:
-#   --arms LIST              実行するアーム (カンマ区切り; A1..A6) [必須]
+#   --arms LIST              実行するアーム (カンマ区切り; A1..A7) [必須]
+#                            A7=ScoreScreen (得点スクリーン型 Proposed; root で E[score] ε帯+リスク多様性選別)
 #   --base-seed S            先頭 seed; S..S+K-1 を使う (default: 42)
 #   --num-seeds K            seed 数 (default: 5)
 #   --positions-dir PATH     N 局面のディレクトリ (default: test_positions_isobudget10)
@@ -62,6 +63,7 @@ arm_spec() {
         A4) echo "Proposed 3 $P_RINV $R_RINV $RETENTION" ;;  # ロールアウト再投資
         A5) echo "RandomK  3 $P_BASE $R_BASE $RETENTION" ;;  # クラスタリング vs 単なる削減
         A6) echo "AllGrid  5 $P_DEEP $R_BASE $RETENTION" ;;  # (任意) 深さ5が予算内で破綻する実証
+        A7) echo "ScoreScreen 3 $P_BASE $R_BASE $RETENTION" ;;  # 得点スクリーン (root: E[score]ε帯+リスク多様性; defaults R_pre=3,Δ=1.0,V_target=50)
         *)  return 1 ;;
     esac
 }
@@ -149,7 +151,7 @@ mkdir -p "$PARENT_DIR"
 IFS=',' read -ra ARM_LIST <<< "$ARMS"
 for ARM in "${ARM_LIST[@]}"; do
     if ! arm_spec "$ARM" >/dev/null 2>&1; then
-        echo "Error: unknown arm '$ARM' (valid: A1..A6)" >&2
+        echo "Error: unknown arm '$ARM' (valid: A1..A7)" >&2
         exit 1
     fi
 done

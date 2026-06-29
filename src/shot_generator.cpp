@@ -549,59 +549,80 @@ std::vector<CandidateShot> ShotGenerator::generateRolloutCandidates(
     std::vector<CandidateShot> candidates;
     dc::Team opp_team = dc::GetOpponentTeam(my_team);
 
-    // ① TEE ドロー × CW/CCW (キャッシュ済み速度、0ms)
-    {
-        CandidateShot cw, ccw;
-        cw.type = ShotType::DRAW;
-        cw.spin = 1; cw.target_index = -1; cw.param = 0;
-        cw.shot = velocity_cache_.draw[0][0];  // TEE, CW
-        cw.label = "Draw(CW,TEE)";
-        ccw.type = ShotType::DRAW;
-        ccw.spin = 0; ccw.target_index = -1; ccw.param = 0;
-        ccw.shot = velocity_cache_.draw[0][1];  // TEE, CCW
-        ccw.label = "Draw(CCW,TEE)";
-        candidates.push_back(cw);
-        candidates.push_back(ccw);
-    }
+    // ① ハウスを覆う代表ドロー (キャッシュ済み速度, 0ms): ボタン + 右/左/奥/前
+    //    cache index: 0=TEE, 5=L0(奥), 7=L2(右), 9=L4(前), 11=L6(左)
+    auto pushDraw = [&](int cache_idx, int spin, const std::string& name) {
+        CandidateShot c;
+        c.type = ShotType::DRAW; c.spin = spin; c.target_index = -1; c.param = 0;
+        c.shot = velocity_cache_.draw[cache_idx][spin == 1 ? 0 : 1];
+        c.label = "Draw(" + std::string(spin == 1 ? "CW" : "CCW") + "," + name + ")";
+        candidates.push_back(c);
+    };
+    pushDraw(0, 1, "TEE");   // ボタン CW
+    pushDraw(0, 0, "TEE");   // ボタン CCW
+    pushDraw(7, 1, "L2");    // 右
+    pushDraw(11, 0, "L6");   // 左
+    pushDraw(5, 1, "L0");    // 奥
+    pushDraw(9, 0, "L4");    // 前
 
-    // ② 相手No.1石へのHit × CW/CCW
-    // 速度は estimateVelocity 1回のみ（estimatePassThroughVelocityを避けて高速化）
-    {
-        float best_dist = 1e9f;
-        int best_idx = -1;
-        Position best_pos = {0, 0};
-        for (int s = 0; s < 8; ++s) {
-            auto& stone = state.stones[static_cast<int>(opp_team)][s];
-            if (!stone) continue;
-            float dx = stone->position.x - kHouseCenterX;
-            float dy = stone->position.y - kHouseCenterY;
-            float dist = std::sqrt(dx * dx + dy * dy);
-            if (dist < best_dist) {
-                best_dist = dist;
-                best_idx = s * 2 + static_cast<int>(opp_team);
-                best_pos = { stone->position.x, stone->position.y };
-            }
-        }
-        if (best_idx >= 0) {
-            dc::Vector2 hit_target(best_pos.x, best_pos.y);
-            for (int spin : {1, 0}) {
-                auto rotation = spin == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
-                // 直接 estimateVelocity(target, speed=3.0) で1回のみ（高速）
-                dc::Vector2 vel = estimateVelocity(hit_target, 3.0f, rotation);
-                CandidateShot c;
-                c.type = ShotType::HIT;
-                c.spin = spin;
-                c.target_index = best_idx;
-                c.param = static_cast<int>(HitWeight::STRONG);
-                c.shot = { vel.x, vel.y, spin };
-                c.label = "Hit(" + std::string(spin == 1 ? "CW" : "CCW") + "," +
-                          std::to_string(best_idx) + ")";
-                candidates.push_back(c);
-            }
+    // 相手No.1石 (中心最近接) を探す
+    float best_dist = 1e9f;
+    int best_idx = -1;
+    Position best_pos = {0, 0};
+    for (int s = 0; s < 8; ++s) {
+        auto& stone = state.stones[static_cast<int>(opp_team)][s];
+        if (!stone) continue;
+        float dx = stone->position.x - kHouseCenterX;
+        float dy = stone->position.y - kHouseCenterY;
+        float dist = std::sqrt(dx * dx + dy * dy);
+        if (dist < best_dist) {
+            best_dist = dist;
+            best_idx = s * 2 + static_cast<int>(opp_team);
+            best_pos = { stone->position.x, stone->position.y };
         }
     }
 
-    return candidates;  // 4-6手
+    if (best_idx >= 0) {
+        // ② 相手No.1石への Hit × CW/CCW (estimateVelocity 1回のみで高速)
+        dc::Vector2 hit_target(best_pos.x, best_pos.y);
+        for (int spin : {1, 0}) {
+            auto rotation = spin == 1 ? dc::moves::Shot::Rotation::kCW : dc::moves::Shot::Rotation::kCCW;
+            dc::Vector2 vel = estimateVelocity(hit_target, 3.0f, rotation);
+            CandidateShot c;
+            c.type = ShotType::HIT;
+            c.spin = spin;
+            c.target_index = best_idx;
+            c.param = static_cast<int>(HitWeight::STRONG);
+            c.shot = { vel.x, vel.y, spin };
+            c.label = "Hit(" + std::string(spin == 1 ? "CW" : "CCW") + "," +
+                      std::to_string(best_idx) + ")";
+            candidates.push_back(c);
+        }
+        // ③ 相手No.1石がハウス内なら Freeze (密着で除去しにくくする)
+        if (best_dist <= kHouseRadius + 2.0f * kStoneRadius) {
+            CandidateShot c;
+            c.type = ShotType::FREEZE; c.spin = 1; c.target_index = best_idx; c.param = 0;
+            c.shot = calcFreezeShot(best_pos, 1);
+            c.label = "Freeze(CW," + std::to_string(best_idx) + ")";
+            candidates.push_back(c);
+        }
+    }
+
+    // ④ 盤面が疎 (総石数<=2) ならガード (G4 前方)
+    int n_stones = 0;
+    for (int t = 0; t < 2; ++t)
+        for (int s = 0; s < 8; ++s)
+            if (state.stones[t][s]) n_stones++;
+    if (n_stones <= 2) {
+        Position g = getDrawPosition(DrawPos::G4);
+        CandidateShot c;
+        c.type = ShotType::PREGUARD; c.spin = 1; c.target_index = -1; c.param = 0;
+        c.shot = calcDrawShot(g, 1);
+        c.label = "Guard(CW,G4)";
+        candidates.push_back(c);
+    }
+
+    return candidates;  // 6〜10手 (状態依存)
 }
 
 // ========== 文字列変換 ==========

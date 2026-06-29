@@ -250,6 +250,7 @@ std::vector<int> calculateMedoids(
 
 double rolloutFromState(
     SimulatorWrapper& sim,
+    ShotGenerator& gen,
     const dc::GameState& state,
     int remaining_shots,
     dc::Team root_team,
@@ -260,7 +261,6 @@ double rolloutFromState(
     dc::GameState sim_state = state;
     int shots_played = 0;
 
-    std::uniform_int_distribution<int> grid_dist(0, static_cast<int>(sim.initialShotData.size()) - 1);
     std::uniform_real_distribution<double> prob(0.0, 1.0);
 
     while (shots_played < remaining_shots
@@ -268,16 +268,23 @@ double rolloutFromState(
            && sim_state.end == starting_end) {
 
         bool is_team1_turn = (sim_state.shot % 2 == 1);
+        dc::Team cur = is_team1_turn ? dc::Team::k1 : dc::Team::k0;
+
+        // 手番チーム視点の「賢い」ロールアウト候補 (ドロー群 + 相手No.1へのHit/Freeze + 疎ならガード)
+        // 物理シミュ不要の速度計算のみで生成 (毎手呼んでも安い)
+        auto cands = gen.generateRolloutCandidates(sim_state, cur);
+        if (cands.empty()) break;
 
         ShotInfo chosen;
         if (prob(rng) < epsilon) {
-            chosen = sim.initialShotData[grid_dist(rng)];
+            std::uniform_int_distribution<int> cd(0, static_cast<int>(cands.size()) - 1);
+            chosen = cands[cd(rng)].shot;
         } else {
-            // グリッド全探索で最高評価を選択
+            // 候補全探索で1手先読みの最高評価を選択
             double best_score = -1e9;
-            chosen = sim.initialShotData[0];
-            for (auto& grid_shot : sim.initialShotData) {
-                dc::GameState next = sim.run_single_simulation(sim_state, grid_shot);
+            chosen = cands[0].shot;
+            for (auto& cand : cands) {
+                dc::GameState next = sim.run_single_simulation(sim_state, cand.shot);
                 double score;
                 if (next.end > starting_end || next.IsGameOver()) {
                     int t0 = next.scores[0][starting_end].value_or(0);
@@ -287,7 +294,7 @@ double rolloutFromState(
                     score = static_cast<double>(evaluateEndScore(next, dc::Team::k0));
                 }
                 if (is_team1_turn) score = -score;
-                if (score > best_score) { best_score = score; chosen = grid_shot; }
+                if (score > best_score) { best_score = score; chosen = cand.shot; }
             }
         }
         sim_state = sim.run_single_simulation(sim_state, chosen);
@@ -310,6 +317,7 @@ double rolloutFromState(
 
 double rollout(
     SimulatorWrapper& sim,
+    ShotGenerator& gen,
     const dc::GameState& state,
     const ShotInfo& initial_shot,
     int remaining_shots,
@@ -320,7 +328,7 @@ double rollout(
     // initial_shot を適用
     dc::GameState sim_state = sim.run_single_simulation(state, initial_shot);
     int remaining_after = std::max(0, remaining_shots - 1);
-    return rolloutFromState(sim, sim_state, remaining_after, root_team, rng, epsilon);
+    return rolloutFromState(sim, gen, sim_state, remaining_after, root_team, rng, epsilon);
 }
 
 // ========== UCB1 ==========

@@ -33,16 +33,18 @@ std::string labelToType(const std::string& label) {
 
 std::string ReinvestExperiment::methodName(MctsMode m) {
     switch (m) {
-        case MctsMode::AllGrid:  return "AllGrid";
-        case MctsMode::Proposed: return "Proposed";
-        case MctsMode::RandomK:  return "RandomK";
+        case MctsMode::AllGrid:     return "AllGrid";
+        case MctsMode::Proposed:    return "Proposed";
+        case MctsMode::RandomK:     return "RandomK";
+        case MctsMode::ScoreScreen: return "ScoreScreen";
     }
     return "Proposed";
 }
 
 MctsMode parseMctsMode(const std::string& s) {
-    if (s == "AllGrid" || s == "allgrid")   return MctsMode::AllGrid;
-    if (s == "RandomK" || s == "randomk")   return MctsMode::RandomK;
+    if (s == "AllGrid" || s == "allgrid")         return MctsMode::AllGrid;
+    if (s == "RandomK" || s == "randomk")         return MctsMode::RandomK;
+    if (s == "ScoreScreen" || s == "scorescreen") return MctsMode::ScoreScreen;
     return MctsMode::Proposed;  // 既定 (Proposed / proposed / 未知)
 }
 
@@ -75,8 +77,11 @@ uint64_t ReinvestExperiment::hashGameState(const dc::GameState& s) const {
 
 void ReinvestExperiment::expandNode(
     TreeNode& node,
+    SimulatorWrapper& sim,
     ShotGenerator& gen,
     std::unordered_map<uint64_t, CandidateCacheEntry>& cache,
+    std::mt19937& rng,
+    dc::Team root_team,
     uint64_t state_seed)
 {
     if (node.expanded) return;
@@ -100,8 +105,12 @@ void ReinvestExperiment::expandNode(
         return;
     }
 
-    if (config_.mode == MctsMode::Proposed) {
-        // 距離行列 → 階層的クラスタリング → メドイド (歩相当の Proposed)
+    if (config_.mode == MctsMode::ScoreScreen && node.depth == 0) {
+        // root: 得点スクリーン (①R_pre推定 →②ε帯 →③リスク多様性保持でK個)
+        node.medoid_indices = selectScoreScreen(node, sim, gen, rng, root_team);
+    } else if (config_.mode == MctsMode::Proposed
+               || config_.mode == MctsMode::ScoreScreen) {
+        // distDelta クラスタリング (Proposed 全ノード / ScoreScreen の depth>0 ノード)
         auto dist_table = mcts_shared::makeDistanceTableDelta(node.state, node.result_states);
         int K = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
         K = std::min(K, N);
@@ -132,6 +141,105 @@ void ReinvestExperiment::expandNode(
 
     node.children.resize(node.medoid_indices.size());
     node.expanded = true;
+}
+
+// ========== ScoreScreen: 得点スクリーン型の root 候補選別 (A7) ==========
+// ① 各候補を R_pre 回ロールアウトして E[score]/SD を安価推定
+// ② ε帯: 最良 E[score] から Δ 以内の「有望集合」に絞る (ジャンク除去)
+// ③ |有望集合| > K_cap のときだけ、SD で 低/中/高 の3帯に分けて K_cap を配分
+//    (「安全な手」と「博打の手」を両方残す = リスク多様性保持)。再利用なし。
+std::vector<int> ReinvestExperiment::selectScoreScreen(
+    TreeNode& node,
+    SimulatorWrapper& sim,
+    ShotGenerator& gen,
+    std::mt19937& rng,
+    dc::Team root_team)
+{
+    int N = static_cast<int>(node.candidates.size());
+    std::vector<int> selected;
+    if (N == 0) return selected;
+
+    // ① 安価な E[score]/SD 推定 (result_states[c] = simulateNoRand の決定的着地から継続)
+    int R_pre = std::max(1, config_.score_screen_r_pre);
+    int cur_end = static_cast<int>(node.state.end);
+    std::vector<double> e_pre(N, 0.0), sd_pre(N, 0.0);
+    for (int c = 0; c < N; c++) {
+        const dc::GameState& rs = node.result_states[c];
+        // 候補着手で既にこのエンドが終了 → 実エンド得点を使う (次エンドをロールアウトしない; 審判と同じ規約)
+        bool end_done = (static_cast<int>(rs.end) != cur_end) || rs.IsGameOver();
+        if (end_done) {
+            double diff = 0.0;
+            if (cur_end >= 0 && cur_end < static_cast<int>(rs.scores[0].size())) {
+                int t0 = rs.scores[0][cur_end] ? static_cast<int>(*rs.scores[0][cur_end]) : 0;
+                int t1 = rs.scores[1][cur_end] ? static_cast<int>(*rs.scores[1][cur_end]) : 0;
+                diff = static_cast<double>(t0 - t1);
+            }
+            e_pre[c] = (root_team == dc::Team::k0) ? diff : -diff;
+            sd_pre[c] = 0.0;  // 決定的着地でエンド確定 → 分散なし
+            continue;
+        }
+        int remaining = 16 - static_cast<int>(rs.shot);
+        double sum = 0.0, sumsq = 0.0;
+        for (int i = 0; i < R_pre; i++) {
+            double v = mcts_shared::rolloutFromState(
+                sim, gen, rs, remaining, root_team, rng, config_.epsilon);
+            sum += v; sumsq += v * v;
+        }
+        double m = sum / R_pre;
+        e_pre[c] = m;
+        sd_pre[c] = std::sqrt(std::max(0.0, sumsq / R_pre - m * m));
+    }
+
+    // ② ε帯 (有望集合)
+    double e_star = *std::max_element(e_pre.begin(), e_pre.end());
+    std::vector<int> promising;
+    for (int c = 0; c < N; c++) {
+        if (e_pre[c] >= e_star - config_.score_screen_band) promising.push_back(c);
+    }
+
+    // K_cap: 予算連動 (子1個に最低 v_target 訪問させたい)
+    int v_target = std::max(1, config_.score_screen_v_target);
+    int K_cap = std::max(1, config_.playouts / v_target);
+
+    auto by_escore_desc = [&](int a, int b) { return e_pre[a] > e_pre[b]; };
+
+    if (static_cast<int>(promising.size()) <= K_cap) {
+        std::sort(promising.begin(), promising.end(), by_escore_desc);
+        return promising;  // 間引き不要
+    }
+
+    // ③ リスク多様性を保った間引き: SD 昇順に 3 等分 → 低/中/高 リスク帯
+    std::vector<int> by_sd = promising;
+    std::sort(by_sd.begin(), by_sd.end(),
+              [&](int a, int b) { return sd_pre[a] < sd_pre[b]; });
+    int n = static_cast<int>(by_sd.size());
+    std::vector<std::vector<int>> tiers(3);
+    for (int i = 0; i < n; i++) tiers[std::min(2, i * 3 / n)].push_back(by_sd[i]);
+    for (auto& t : tiers) std::sort(t.begin(), t.end(), by_escore_desc);
+
+    // 全体の E[score] 最良手を必ず確保
+    std::set<int> chosen;
+    int best = *std::max_element(promising.begin(), promising.end(),
+                                [&](int a, int b) { return e_pre[a] < e_pre[b]; });
+    selected.push_back(best);
+    chosen.insert(best);
+
+    // 各リスク帯からラウンドロビンで高 E[score] 順に採る
+    std::vector<size_t> pos(3, 0);
+    while (static_cast<int>(selected.size()) < K_cap) {
+        bool added = false;
+        for (int t = 0; t < 3 && static_cast<int>(selected.size()) < K_cap; t++) {
+            while (pos[t] < tiers[t].size() && chosen.count(tiers[t][pos[t]])) pos[t]++;
+            if (pos[t] < tiers[t].size()) {
+                int idx = tiers[t][pos[t]++];
+                selected.push_back(idx);
+                chosen.insert(idx);
+                added = true;
+            }
+        }
+        if (!added) break;
+    }
+    return selected;
 }
 
 // ========== UCB1 選択 ==========
@@ -187,13 +295,13 @@ double ReinvestExperiment::runPlayout(
 {
     int R = std::max(1, config_.rollouts_per_visit);
 
-    // 葉に到達 → ロールアウト (R 回平均)。方策は全アーム共通の ε-greedy グリッド。
+    // 葉に到達 → ロールアウト (R 回平均)。方策は全アーム共通の ε-greedy 賢い候補。
     if (node.depth >= config_.depth) {
         int remaining = 16 - static_cast<int>(node.state.shot);
         double sum = 0.0;
         for (int i = 0; i < R; i++) {
             sum += mcts_shared::rolloutFromState(
-                sim, node.state, remaining, root_team, rng, config_.epsilon);
+                sim, gen, node.state, remaining, root_team, rng, config_.epsilon);
         }
         double mean_reward = sum / R;
         node.visits++;
@@ -202,7 +310,7 @@ double ReinvestExperiment::runPlayout(
     }
 
     if (!node.expanded) {
-        expandNode(node, gen, cache, state_seed);
+        expandNode(node, sim, gen, cache, rng, root_team, state_seed);
     }
     int K = static_cast<int>(node.medoid_indices.size());
     if (K == 0) {
@@ -211,7 +319,7 @@ double ReinvestExperiment::runPlayout(
         double sum = 0.0;
         for (int i = 0; i < R; i++) {
             sum += mcts_shared::rolloutFromState(
-                sim, node.state, remaining, root_team, rng, config_.epsilon);
+                sim, gen, node.state, remaining, root_team, rng, config_.epsilon);
         }
         double mean_reward = sum / R;
         node.visits++;
@@ -249,7 +357,7 @@ void ReinvestExperiment::buildTree(
     uint64_t state_seed)
 {
     if (!root.expanded) {
-        expandNode(root, gen, cache, state_seed);
+        expandNode(root, sim, gen, cache, rng, root_team, state_seed);
     }
     for (int p = 0; p < config_.playouts; p++) {
         runPlayout(root, sim, gen, cache, rng, root_team, state_seed);

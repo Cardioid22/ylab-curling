@@ -9,9 +9,11 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <mutex>
 #include <numeric>
 #include <random>
+#include <sstream>
 #include <thread>
 
 ScoreMoveExperiment::ScoreMoveExperiment(
@@ -107,6 +109,7 @@ void ScoreMoveExperiment::run() {
 
     auto worker = [&](int thread_id) {
         SimulatorWrapper sim(dc::Team::k0, game_setting_);
+        ShotGenerator gen(game_setting_);  // ロールアウトの賢い候補生成用 (スレッドごと)
         sim.initialShotData.reserve(shared_grid.size());
         for (auto& pos : shared_grid) {
             sim.initialShotData.push_back(sim.FindShot(pos));
@@ -131,6 +134,7 @@ void ScoreMoveExperiment::run() {
 
             int K = std::max(1, config_.score_rollouts);
             double sum = 0.0, sumsq = 0.0;
+            std::map<int, int> hist;  // round した純得点 -> 頻度 (得点分布)
             if (config_.resample_first_shot) {
                 // 実行不確実性込み: 初手の物理シミュレーションを毎回振り直す。
                 // Q_ref = E[着地ばらつき + 継続プレイ] = 「その手を試みる価値」
@@ -147,23 +151,34 @@ void ScoreMoveExperiment::run() {
                     } else {
                         int remaining = 16 - static_cast<int>(post.shot);
                         v = mcts_shared::rolloutFromState(
-                            sim, post, remaining, root_team, rng, config_.epsilon);
+                            sim, gen, post, remaining, root_team, rng, config_.epsilon);
                     }
                     sum += v;
                     sumsq += v * v;
+                    hist[static_cast<int>(std::lround(v))]++;
                 }
             } else {
                 // 従来: 候補プール生成時の1回の着地で固定 (探索木の子ノードと同じ規約)
                 int remaining = 16 - static_cast<int>(post_state.shot);
                 for (int i = 0; i < K; i++) {
                     double v = mcts_shared::rolloutFromState(
-                        sim, post_state, remaining, root_team, rng, config_.epsilon);
+                        sim, gen, post_state, remaining, root_team, rng, config_.epsilon);
                     sum += v;
                     sumsq += v * v;
+                    hist[static_cast<int>(std::lround(v))]++;
                 }
             }
             double mean = sum / K;
             double var = std::max(0.0, sumsq / K - mean * mean);
+
+            // 得点ヒストグラムを "score:count;..." に直列化 (得点昇順)
+            std::ostringstream hss;
+            bool first = true;
+            for (const auto& kv : hist) {
+                if (!first) hss << ";";
+                hss << kv.first << ":" << kv.second;
+                first = false;
+            }
 
             ScoredCandidate sc;
             sc.game_id = rec.game_id;
@@ -176,6 +191,7 @@ void ScoreMoveExperiment::run() {
             sc.q_ref_sd = std::sqrt(var);
             sc.n_rollouts = K;
             sc.resampled = config_.resample_first_shot ? 1 : 0;
+            sc.score_hist = hss.str();
             results[j] = sc;
 
             int d = ++done_count;
@@ -216,13 +232,13 @@ void ScoreMoveExperiment::writeCSV(
         return;
     }
     ofs << "game_id,end,shot_num,candidate_idx,label,shot_type,"
-        << "q_ref_mean,q_ref_sd,n_rollouts,resampled\n";
+        << "q_ref_mean,q_ref_sd,n_rollouts,resampled,score_hist\n";
     ofs << std::setprecision(6);
     for (const auto& r : rows) {
         if (r.candidate_idx < 0) continue;
         ofs << r.game_id << "," << r.end << "," << r.shot_num << ","
             << r.candidate_idx << ",\"" << r.label << "\"," << r.shot_type << ","
             << r.q_ref_mean << "," << r.q_ref_sd << "," << r.n_rollouts << ","
-            << r.resampled << "\n";
+            << r.resampled << ",\"" << r.score_hist << "\"\n";
     }
 }
