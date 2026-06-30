@@ -1,0 +1,10 @@
+category,game_id,end,shot_num,team,n_stones,my_in_house,op_in_house,origin
+crowded,4062,4,15,1,10,4,6,new
+crowded,9882,2,11,1,10,6,4,new
+crowded,2998,6,14,0,14,7,7,new
+takeout,1555,2,3,1,3,2,1,new
+draw,4372,4,14,0,2,1,1,new
+freeze,3732,7,7,1,2,1,1,new
+takeout,3858,5,5,1,5,2,3,new
+crowded,1938,0,14,0,8,5,3,new
+takeout,9112,3,9,1,5,2,3,new
