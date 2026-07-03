@@ -78,6 +78,8 @@ THREADS_PER_SEED=""
 MAX_PARALLEL=""
 BINARY=""
 PARENT_DIR=""
+PLAYOUTS_OVERRIDE=""   # 予算スイープ用: 全アームの P を上書き (空なら arm_spec の既定)
+ROLLOUTS_OVERRIDE=""   # 同上: 全アームの R を上書き
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -90,6 +92,8 @@ while [[ $# -gt 0 ]]; do
         --max-parallel)     MAX_PARALLEL="$2"; shift 2 ;;
         --binary)           BINARY="$2"; shift 2 ;;
         --parent-dir)       PARENT_DIR="$2"; shift 2 ;;
+        --playouts)         PLAYOUTS_OVERRIDE="$2"; shift 2 ;;
+        --rollouts)         ROLLOUTS_OVERRIDE="$2"; shift 2 ;;
         -h|--help)
             grep '^#' "$0" | sed 's/^# \?//'
             exit 0 ;;
@@ -193,6 +197,8 @@ declare -a PID_TAG=()
 launch_job() {
     local arm="$1" seed="$2"
     read -r method depth playouts rollouts retention <<< "$(arm_spec "$arm")"
+    [ -n "$PLAYOUTS_OVERRIDE" ] && playouts="$PLAYOUTS_OVERRIDE"   # 予算スイープ: P 上書き
+    [ -n "$ROLLOUTS_OVERRIDE" ] && rollouts="$ROLLOUTS_OVERRIDE"   # R 上書き
     local out_dir="$PARENT_DIR/$arm/seed_${seed}"
     mkdir -p "$out_dir"
     nohup "$BINARY" \
