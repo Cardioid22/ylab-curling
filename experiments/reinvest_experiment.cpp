@@ -447,6 +447,28 @@ ReinvestResult ReinvestExperiment::runOneState(
     return r;
 }
 
+// ========== 1局面の着手決定 (自己対戦ハーネス用) ==========
+ShotInfo ReinvestExperiment::decideShot(
+    const dc::GameState& state, dc::Team to_play, uint64_t state_seed,
+    SimulatorWrapper& sim, ShotGenerator& gen, std::mt19937& rng)
+{
+    std::unordered_map<uint64_t, CandidateCacheEntry> cache;
+    TreeNode root;
+    root.state = state;
+    root.depth = 0;
+    root.to_play = to_play;
+    buildTree(root, sim, gen, cache, rng, to_play, state_seed);  // root_team = to_play (自己最適化)
+
+    int best = selectMostVisited(root);
+    if (best >= 0 && best < static_cast<int>(root.medoid_indices.size())) {
+        int idx = root.medoid_indices[best];
+        if (idx >= 0 && idx < static_cast<int>(root.candidates.size()))
+            return root.candidates[idx].shot;
+    }
+    if (!root.candidates.empty()) return root.candidates[0].shot;  // フォールバック
+    return ShotInfo{0.0f, 0.0f, 1};  // 候補なし異常系 (実質到達しない)
+}
+
 // ========== CSV 出力 (§4 スキーマ厳守) ==========
 
 void ReinvestExperiment::writeResultsCSV(

@@ -26,6 +26,7 @@
 #include "experiments/depth_n_mcts_experiment.h"
 #include "experiments/score_move_experiment.h"
 #include "experiments/reinvest_experiment.h"
+#include "experiments/selfplay_experiment.h"
 #include "experiments/clustering_effectiveness_experiment.h"
 #include "experiments/generate_test_positions.h"
 #include "src/policy.h"
@@ -819,6 +820,12 @@ int main(int argc, char const* argv[])
         bool score_move_mode = false;
         int score_move_rollouts_arg = 500;  // 審判: 候補1手あたりのロールアウト回数 K
         bool score_move_frozen_arg = false; // true: 初手ノイズを固定 (旧挙動)。デフォルトは毎回振り直し
+        // 自己対戦ハーネス (勝率評価)
+        bool selfplay_mode = false;
+        std::string selfplay_method_a = "ScoreScreen";
+        std::string selfplay_method_b = "AllGrid";
+        int selfplay_games = 100;
+
         // 計算再投資実験 (単一アーム MCTS)
         bool reinvest_mode = false;
         std::string reinvest_method_arg = "Proposed";  // AllGrid / Proposed / RandomK
@@ -898,6 +905,21 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--frozen-first-shot") {
                 score_move_frozen_arg = true;
+            }
+            // ---- 自己対戦ハーネスフラグ ----
+            if (std::string(argv[i]) == "--selfplay") {
+                selfplay_mode = true;
+            }
+            if (std::string(argv[i]) == "--method-a" && i + 1 < argc) {
+                selfplay_method_a = argv[i + 1]; i++;
+            }
+            if (std::string(argv[i]) == "--method-b" && i + 1 < argc) {
+                selfplay_method_b = argv[i + 1]; i++;
+            }
+            if (std::string(argv[i]) == "--games" && i + 1 < argc) {
+                selfplay_games = std::atoi(argv[i + 1]);
+                if (selfplay_games < 1) selfplay_games = 1;
+                i++;
             }
             // ---- 計算再投資実験フラグ ----
             if (std::string(argv[i]) == "--reinvest-arm") {
@@ -1730,6 +1752,50 @@ int main(int argc, char const* argv[])
 
             ReinvestExperiment exp(game_setting, cfg);
             exp.run();
+            return 0;
+        }
+
+        // 自己対戦ハーネス (勝率評価)
+        if (selfplay_mode) {
+            std::cout << "Running Self-play harness..." << std::endl;
+
+            dc::GameSetting game_setting;
+            game_setting.max_end = 10;
+            game_setting.sheet_width = 4.75f;
+            game_setting.thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.thinking_time[1] = std::chrono::seconds(86400);
+            game_setting.extra_end_thinking_time[0] = std::chrono::seconds(86400);
+            game_setting.extra_end_thinking_time[1] = std::chrono::seconds(86400);
+
+            // 両アームは同一予算設定・モードのみ違う (--depth/--playouts/--rollouts-per-visit
+            // /--retention/--r-pre/--score-band/--v-target を共用)
+            auto mkcfg = [&](const std::string& m) {
+                ReinvestConfig c;
+                c.mode = parseMctsMode(m);
+                c.depth = reinvest_depth_arg;
+                c.playouts = reinvest_playouts_arg;
+                c.rollouts_per_visit = reinvest_rollouts_arg;
+                c.retention_rate = depth3_retention_arg;
+                c.score_screen_r_pre = score_screen_r_pre_arg;
+                c.score_screen_band = score_screen_band_arg;
+                c.score_screen_v_target = score_screen_v_target_arg;
+                c.num_threads = 1;   // 並列はゲーム単位
+                c.seed = depth3_seed_arg;
+                return c;
+            };
+
+            SelfPlayConfig sp;
+            sp.arm_a = mkcfg(selfplay_method_a);
+            sp.arm_b = mkcfg(selfplay_method_b);
+            sp.label_a = selfplay_method_a;
+            sp.label_b = selfplay_method_b;
+            sp.n_games = selfplay_games;
+            sp.num_threads = depth3_threads_arg;   // --threads を共用
+            sp.seed = depth3_seed_arg;             // --seed を共用
+            sp.output_dir = output_dir_arg.empty() ? "experiments/selfplay" : output_dir_arg;
+
+            SelfPlayExperiment sp_exp(game_setting, sp);
+            sp_exp.run();
             return 0;
         }
 

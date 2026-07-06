@@ -83,6 +83,8 @@ add_executable(ylab_client  # 実行ファイルの名前はここの名前に�
     experiments/score_move_experiment.cpp
     experiments/reinvest_experiment.h
     experiments/reinvest_experiment.cpp
+    experiments/selfplay_experiment.h
+    experiments/selfplay_experiment.cpp
     experiments/clustering_effectiveness_experiment.h
     experiments/clustering_effectiveness_experiment.cpp
     experiments/generate_test_positions.h

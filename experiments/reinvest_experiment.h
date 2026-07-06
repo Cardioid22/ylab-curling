@@ -102,6 +102,14 @@ public:
     // 局面ロード → サンプリング → スライス → スレッド実行 → CSV 出力
     void run();
 
+    // 1局面 → この手法(config_.mode)での着手を返す (自己対戦ハーネス用)。
+    // 木を構築し最多訪問子の候補手を返す。決定は to_play 視点で自己最適化。
+    // メンバ状態を変更しないので、同一インスタンスを複数スレッドから呼んでよい。
+    ShotInfo decideShot(const dc::GameState& state, dc::Team to_play, uint64_t state_seed,
+                        SimulatorWrapper& sim, ShotGenerator& gen, std::mt19937& rng);
+
+    static std::string methodName(MctsMode m);  // "AllGrid"/"Proposed"/"RandomK"/"ScoreScreen"
+
 private:
     dc::GameSetting game_setting_;
     ReinvestConfig config_;
@@ -162,8 +170,6 @@ private:
     // モード分離実験用: root のクラスタ割当を 1 候補 1 行で出力 (Proposed/RandomK)
     void writeClusterTableCSV(const std::vector<ReinvestResult>& results,
                               const std::string& path) const;
-
-    static std::string methodName(MctsMode m);
 };
 
 // 文字列 -> MctsMode ("AllGrid"/"Proposed"/"RandomK")。未知は Proposed。
