@@ -133,43 +133,53 @@ void ScoreMoveExperiment::run() {
             std::mt19937 rng(static_cast<uint32_t>(job_seed ^ (job_seed >> 32)));
 
             int K = std::max(1, config_.score_rollouts);
-            double sum = 0.0, sumsq = 0.0;
+            double sum = 0.0, sumsq = 0.0, imm_sum = 0.0;
             std::map<int, int> hist;  // round した純得点 -> 頻度 (得点分布)
             if (config_.resample_first_shot) {
                 // 実行不確実性込み: 初手の物理シミュレーションを毎回振り直す。
                 // Q_ref = E[着地ばらつき + 継続プレイ] = 「その手を試みる価値」
+                // q_immediate = E[着地後の即時盤面評価] = 先読みなし(GREEDY)基準
                 for (int i = 0; i < K; i++) {
                     dc::GameState post = sim.run_single_simulation(rec.state, cand.shot);
-                    double v;
+                    double v, imm_v;
                     if (post.end != rec.state.end || post.IsGameOver()) {
-                        // 初手でエンドが終わった: 実スコアで評価
+                        // 初手でエンドが終わった: 実スコアで評価 (即時＝最終)
                         int e = rec.state.end;
                         int t0 = post.scores[0][e] ? static_cast<int>(*post.scores[0][e]) : 0;
                         int t1 = post.scores[1][e] ? static_cast<int>(*post.scores[1][e]) : 0;
                         double diff = static_cast<double>(t0 - t1);
                         v = (root_team == dc::Team::k0) ? diff : -diff;
+                        imm_v = v;
                     } else {
                         int remaining = 16 - static_cast<int>(post.shot);
                         v = mcts_shared::rolloutFromState(
                             sim, gen, post, remaining, root_team, rng, config_.epsilon);
+                        imm_v = static_cast<double>(
+                            mcts_shared::evaluateEndScore(post, root_team));  // 先読みなしの即時評価
                     }
                     sum += v;
                     sumsq += v * v;
+                    imm_sum += imm_v;
                     hist[static_cast<int>(std::lround(v))]++;
                 }
             } else {
                 // 従来: 候補プール生成時の1回の着地で固定 (探索木の子ノードと同じ規約)
                 int remaining = 16 - static_cast<int>(post_state.shot);
+                double imm_fixed = (post_state.end != rec.state.end || post_state.IsGameOver())
+                    ? 0.0  // 固定着地でエンド確定は稀。近似で0 (非既定パス)
+                    : static_cast<double>(mcts_shared::evaluateEndScore(post_state, root_team));
                 for (int i = 0; i < K; i++) {
                     double v = mcts_shared::rolloutFromState(
                         sim, gen, post_state, remaining, root_team, rng, config_.epsilon);
                     sum += v;
                     sumsq += v * v;
+                    imm_sum += imm_fixed;
                     hist[static_cast<int>(std::lround(v))]++;
                 }
             }
             double mean = sum / K;
             double var = std::max(0.0, sumsq / K - mean * mean);
+            double imm_mean = imm_sum / K;
 
             // 得点ヒストグラムを "score:count;..." に直列化 (得点昇順)
             std::ostringstream hss;
@@ -192,6 +202,7 @@ void ScoreMoveExperiment::run() {
             sc.n_rollouts = K;
             sc.resampled = config_.resample_first_shot ? 1 : 0;
             sc.score_hist = hss.str();
+            sc.q_immediate_mean = imm_mean;
             results[j] = sc;
 
             int d = ++done_count;
@@ -232,13 +243,13 @@ void ScoreMoveExperiment::writeCSV(
         return;
     }
     ofs << "game_id,end,shot_num,candidate_idx,label,shot_type,"
-        << "q_ref_mean,q_ref_sd,n_rollouts,resampled,score_hist\n";
+        << "q_ref_mean,q_ref_sd,n_rollouts,resampled,score_hist,q_immediate_mean\n";
     ofs << std::setprecision(6);
     for (const auto& r : rows) {
         if (r.candidate_idx < 0) continue;
         ofs << r.game_id << "," << r.end << "," << r.shot_num << ","
             << r.candidate_idx << ",\"" << r.label << "\"," << r.shot_type << ","
             << r.q_ref_mean << "," << r.q_ref_sd << "," << r.n_rollouts << ","
-            << r.resampled << ",\"" << r.score_hist << "\"\n";
+            << r.resampled << ",\"" << r.score_hist << "\"," << r.q_immediate_mean << "\n";
     }
 }

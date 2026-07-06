@@ -51,6 +51,7 @@ struct ScoredCandidate {
     int n_rollouts = 0;
     int resampled = 1;            // 1: 初手ノイズ再サンプルあり / 0: 固定着地
     std::string score_hist;       // 得点ヒストグラム "score:count;score:count;..." (round した純得点の頻度)
+    double q_immediate_mean = 0.0; // 外乱込みの「即時盤面評価(evaluateEndScore)の期待値」= 先読みなし(GREEDY)基準
 };
 
 class ScoreMoveExperiment {
