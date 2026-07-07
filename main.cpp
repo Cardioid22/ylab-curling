@@ -1790,9 +1790,15 @@ int main(int argc, char const* argv[])
                 return c;
             };
 
+            // 歩(gPolicyポリシープレイヤー): --method-a/b に "Ayumu"(または "歩"/"gPolicy") 指定で有効
+            auto is_ayumu_name = [](const std::string& s) {
+                return s == "Ayumu" || s == "ayumu" || s == "歩" || s == "gPolicy";
+            };
             SelfPlayConfig sp;
             sp.arm_a = mkcfg(selfplay_method_a);
             sp.arm_b = mkcfg(selfplay_method_b);
+            sp.a_is_ayumu = is_ayumu_name(selfplay_method_a);
+            sp.b_is_ayumu = is_ayumu_name(selfplay_method_b);
             sp.label_a = selfplay_method_a;
             sp.label_b = selfplay_method_b;
             sp.n_games = selfplay_games;

@@ -18,9 +18,26 @@ SelfPlayExperiment::SelfPlayExperiment(
 {
 }
 
+// 歩(gPolicyポリシープレイヤー)の一手: ロールアウト候補からポリシーで選択 (探索なし)
+static ShotInfo decideAyumu(const dc::GameState& state, dc::Team team,
+                            ShotGenerator& gen, RolloutPolicy& policy)
+{
+    auto cands = gen.generateRolloutCandidates(state, team);
+    std::vector<CandidateShot> filtered;
+    for (auto& c : cands) if (c.type != ShotType::PASS) filtered.push_back(c);
+    if (filtered.empty()) filtered = cands;
+    if (filtered.empty()) return ShotInfo{0.0f, 0.0f, 1};  // 候補ゼロ (念のため)
+    int sel = policy.selectShot(state, filtered, static_cast<int>(state.shot),
+                                team, static_cast<int>(state.end), 0);
+    if (sel < 0 || sel >= static_cast<int>(filtered.size())) sel = 0;
+    return filtered[sel].shot;
+}
+
 // n_ends エンドを打ち切り、team0 視点の各エンド純得点を返す
+// t0_ayumu/t1_ayumu が真なら その手番は歩(policy) が打つ (policy!=nullptr 前提)
 std::vector<double> SelfPlayExperiment::playGame(
     ReinvestExperiment& e0, ReinvestExperiment& e1,
+    RolloutPolicy* policy, bool t0_ayumu, bool t1_ayumu,
     SimulatorWrapper& sim, ShotGenerator& gen,
     std::mt19937& rng, uint64_t game_seed, int n_ends)
 {
@@ -34,11 +51,17 @@ std::vector<double> SelfPlayExperiment::playGame(
            && total_shots < guard_max) {
         // 手番はハンマー依存 (エンドをまたぐと先攻後攻が交代する)
         dc::Team team = state.GetNextTeam();
-        ReinvestExperiment& e = (team == dc::Team::k0) ? e0 : e1;
+        bool is_ayumu = (team == dc::Team::k0) ? t0_ayumu : t1_ayumu;
 
         uint64_t sseed = game_seed
             ^ (static_cast<uint64_t>(total_shots) * 0x9E3779B97F4A7C15ULL);
-        ShotInfo shot = e.decideShot(state, team, sseed, sim, gen, rng);
+        ShotInfo shot;
+        if (is_ayumu && policy != nullptr) {
+            shot = decideAyumu(state, team, gen, *policy);
+        } else {
+            ReinvestExperiment& e = (team == dc::Team::k0) ? e0 : e1;
+            shot = e.decideShot(state, team, sseed, sim, gen, rng);
+        }
         state = sim.run_single_simulation(state, shot);
         total_shots++;
     }
@@ -57,14 +80,18 @@ std::vector<double> SelfPlayExperiment::playGame(
 void SelfPlayExperiment::run()
 {
     using clock = std::chrono::steady_clock;
+    // 表示名: 歩なら "Ayumu(gPolicy)"、そうでなければ手法名
+    auto disp = [](bool ayumu, const ReinvestConfig& c) -> std::string {
+        if (ayumu) return "Ayumu(gPolicy, 探索なし)";
+        return ReinvestExperiment::methodName(c.mode) + " depth"
+             + std::to_string(c.depth) + " P=" + std::to_string(c.playouts)
+             + " R=" + std::to_string(c.rollouts_per_visit);
+    };
     std::cout << "\n=== Self-play: " << config_.label_a << " vs " << config_.label_b
-              << " (" << config_.n_games << " ends) ===" << std::endl;
-    std::cout << "  A: " << ReinvestExperiment::methodName(config_.arm_a.mode)
-              << " depth" << config_.arm_a.depth << " P=" << config_.arm_a.playouts
-              << " R=" << config_.arm_a.rollouts_per_visit << std::endl;
-    std::cout << "  B: " << ReinvestExperiment::methodName(config_.arm_b.mode)
-              << " depth" << config_.arm_b.depth << " P=" << config_.arm_b.playouts
-              << " R=" << config_.arm_b.rollouts_per_visit << std::endl;
+              << " (" << config_.n_games << " games x " << config_.n_ends
+              << " ends) ===" << std::endl;
+    std::cout << "  A: " << disp(config_.a_is_ayumu, config_.arm_a) << std::endl;
+    std::cout << "  B: " << disp(config_.b_is_ayumu, config_.arm_b) << std::endl;
 
     ReinvestExperiment expA(game_setting_, config_.arm_a);
     ReinvestExperiment expB(game_setting_, config_.arm_b);
@@ -79,11 +106,23 @@ void SelfPlayExperiment::run()
 
     auto shared_grid = PoolExperiment(game_setting_).makeGrid(4, 4);
 
+    bool need_policy = config_.a_is_ayumu || config_.b_is_ayumu;
+
     auto worker = [&](int) {
         SimulatorWrapper sim(dc::Team::k0, game_setting_);
         ShotGenerator gen(game_setting_);
         sim.initialShotData.reserve(shared_grid.size());
         for (auto& pos : shared_grid) sim.initialShotData.push_back(sim.FindShot(pos));
+
+        // 歩を使うならスレッド毎に gPolicy をロード (selectShot は内部状態を持つため共有しない)
+        RolloutPolicy policy;
+        if (need_policy) {
+            if (!policy.load("data/policy_param.dat")) {
+                std::lock_guard<std::mutex> lk(log_mutex);
+                std::cerr << "[WARN] gPolicy 読み込み失敗 (data/policy_param.dat)"
+                          << " -- 歩の手は候補先頭にフォールバック" << std::endl;
+            }
+        }
 
         while (true) {
             int g = next_idx.fetch_add(1);
@@ -95,9 +134,14 @@ void SelfPlayExperiment::run()
                 ^ (static_cast<uint64_t>(g) * 0xD1B54A32D192ED03ULL);
             std::mt19937 rng(static_cast<uint32_t>(game_seed ^ (game_seed >> 32)));
 
+            // team0/team1 が歩かどうか (swap で担当が入れ替わる)
+            bool t0_ay = swap ? config_.b_is_ayumu : config_.a_is_ayumu;
+            bool t1_ay = swap ? config_.a_is_ayumu : config_.b_is_ayumu;
+            RolloutPolicy* pol = need_policy ? &policy : nullptr;
+
             std::vector<double> ends0 = swap
-                ? playGame(expB, expA, sim, gen, rng, game_seed, config_.n_ends)
-                : playGame(expA, expB, sim, gen, rng, game_seed, config_.n_ends);
+                ? playGame(expB, expA, pol, t0_ay, t1_ay, sim, gen, rng, game_seed, config_.n_ends)
+                : playGame(expA, expB, pol, t0_ay, t1_ay, sim, gen, rng, game_seed, config_.n_ends);
             std::vector<double> aEnds(ends0.size());
             for (size_t i = 0; i < ends0.size(); i++) aEnds[i] = swap ? -ends0[i] : ends0[i];
             netA_ends[g] = aEnds;       // A 視点 エンド別
@@ -165,9 +209,12 @@ void SelfPlayExperiment::run()
         std::ofstream ofs(sm);
         ofs << "label_a,label_b,method_a,method_b,depth,playouts,rollouts,n_games,"
             << "a_win,b_win,tie,win_rate,mean_net,binom_p\n";
+        std::string mname_a = config_.a_is_ayumu ? "Ayumu"
+                                : ReinvestExperiment::methodName(config_.arm_a.mode);
+        std::string mname_b = config_.b_is_ayumu ? "Ayumu"
+                                : ReinvestExperiment::methodName(config_.arm_b.mode);
         ofs << config_.label_a << "," << config_.label_b << ","
-            << ReinvestExperiment::methodName(config_.arm_a.mode) << ","
-            << ReinvestExperiment::methodName(config_.arm_b.mode) << ","
+            << mname_a << "," << mname_b << ","
             << config_.arm_a.depth << "," << config_.arm_a.playouts << ","
             << config_.arm_a.rollouts_per_visit << "," << N << ","
             << a_win << "," << b_win << "," << tie << ","
