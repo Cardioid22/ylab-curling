@@ -825,6 +825,7 @@ int main(int argc, char const* argv[])
         std::string selfplay_method_a = "ScoreScreen";
         std::string selfplay_method_b = "AllGrid";
         int selfplay_games = 100;
+        int selfplay_ends = 1;
 
         // 計算再投資実験 (単一アーム MCTS)
         bool reinvest_mode = false;
@@ -919,6 +920,11 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--games" && i + 1 < argc) {
                 selfplay_games = std::atoi(argv[i + 1]);
                 if (selfplay_games < 1) selfplay_games = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--ends" && i + 1 < argc) {
+                selfplay_ends = std::atoi(argv[i + 1]);
+                if (selfplay_ends < 1) selfplay_ends = 1;
                 i++;
             }
             // ---- 計算再投資実験フラグ ----
@@ -1760,7 +1766,7 @@ int main(int argc, char const* argv[])
             std::cout << "Running Self-play harness..." << std::endl;
 
             dc::GameSetting game_setting;
-            game_setting.max_end = 10;
+            game_setting.max_end = selfplay_ends;   // n_ends エンドで1ゲーム終了
             game_setting.sheet_width = 4.75f;
             game_setting.thinking_time[0] = std::chrono::seconds(86400);
             game_setting.thinking_time[1] = std::chrono::seconds(86400);
@@ -1790,6 +1796,7 @@ int main(int argc, char const* argv[])
             sp.label_a = selfplay_method_a;
             sp.label_b = selfplay_method_b;
             sp.n_games = selfplay_games;
+            sp.n_ends = selfplay_ends;
             sp.num_threads = depth3_threads_arg;   // --threads を共用
             sp.seed = depth3_seed_arg;             // --seed を共用
             sp.output_dir = output_dir_arg.empty() ? "experiments/selfplay" : output_dir_arg;

@@ -14,13 +14,15 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace dc = digitalcurling3;
 
 struct SelfPlayConfig {
-    ReinvestConfig arm_a;         // 手法A (先に置く方)
+    ReinvestConfig arm_a;         // 手法A (team0 側; ゲーム毎に team を入替える)
     ReinvestConfig arm_b;         // 手法B
-    int n_games = 100;            // 対戦エンド数 (ハンマー入替のため偶数推奨)
+    int n_games = 100;            // 対戦ゲーム数 (先攻後攻入替のため偶数推奨)
+    int n_ends = 1;               // 1ゲームのエンド数 (2 で2エンド戦)
     int num_threads = 8;
     uint64_t seed = 42;
     std::string label_a = "A";
@@ -37,10 +39,11 @@ private:
     dc::GameSetting game_setting_;
     SelfPlayConfig config_;
 
-    // 単一エンドを e0(team0)/e1(team1) で打ち切り、team0 の純得点(= s0 - s1)を返す
-    double playOneEnd(ReinvestExperiment& e0, ReinvestExperiment& e1,
-                      SimulatorWrapper& sim, ShotGenerator& gen,
-                      std::mt19937& rng, uint64_t game_seed);
+    // n_ends エンドを e0(team0)/e1(team1) で打ち切り、team0 視点の各エンド純得点を返す
+    // (長さ n_ends)。手番はハンマー依存の GetNextTeam() で決める。
+    std::vector<double> playGame(ReinvestExperiment& e0, ReinvestExperiment& e1,
+                                 SimulatorWrapper& sim, ShotGenerator& gen,
+                                 std::mt19937& rng, uint64_t game_seed, int n_ends);
 };
 
 #endif  // _SELFPLAY_EXPERIMENT_H_
