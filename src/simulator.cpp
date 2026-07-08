@@ -61,8 +61,11 @@ float SimulatorWrapper::evaluate(dc::GameState& game_state) const {
 
 dc::GameState SimulatorWrapper::run_single_simulation(dc::GameState const& game_state, const ShotInfo& shot) {
     //std::cout << "Single Run Simulation Begin.\n";
-    ++g_physics_sim_count;  // 物理シミュ1回 (ロールアウト/審判リサンプル) — 等予算カウント用
     dc::GameState new_state = game_state;
+    // 終局状態には着手しない (ApplyMove が "game is already over" を投げるのを防ぐ防御網)。
+    // 正常な呼び出し側は !IsGameOver() を確認済みなので、ここに来るのは異常系のみ。
+    if (game_state.IsGameOver()) return new_state;
+    ++g_physics_sim_count;  // 物理シミュ1回 (ロールアウト/審判リサンプル) — 等予算カウント用
     if (!g_simulator_ || !g_simulator_storage_) throw std::runtime_error("Simulator or storage not initialized");
     g_simulator_->Load(*g_simulator_storage_);
     auto& current_player = *g_players[new_state.shot / 4];

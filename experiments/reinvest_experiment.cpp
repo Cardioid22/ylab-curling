@@ -86,6 +86,14 @@ void ReinvestExperiment::expandNode(
 {
     if (node.expanded) return;
 
+    // 終局ノードは展開しない。generatePool が終了済み状態に着手すると
+    // ApplyMove が "game is already over" を投げるため (2エンド目終盤で発生)。
+    // 子なし(N=0)として扱い、runPlayout 側で終局値を評価させる。
+    if (node.state.IsGameOver()) {
+        node.expanded = true;
+        return;
+    }
+
     // 候補手とシミュ結果をキャッシュから引く (盤面ハッシュ単位で再利用)
     uint64_t key = hashGameState(node.state);
     auto it = cache.find(key);

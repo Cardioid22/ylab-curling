@@ -261,6 +261,20 @@ double rolloutFromState(
     dc::GameState sim_state = state;
     int shots_played = 0;
 
+    // 既に終局している状態: これ以上着手できない (ApplyMoveが例外を投げる)。
+    // 完了した最終エンドの純得点を root_team 視点で返す。
+    if (sim_state.IsGameOver()) {
+        int last = static_cast<int>(sim_state.end) - 1;
+        if (last < 0) last = 0;
+        double diff = 0.0;
+        if (last < static_cast<int>(sim_state.scores[0].size())) {
+            int t0 = sim_state.scores[0][last].value_or(0);
+            int t1 = sim_state.scores[1][last].value_or(0);
+            diff = static_cast<double>(t0 - t1);
+        }
+        return (root_team == dc::Team::k0) ? diff : -diff;
+    }
+
     std::uniform_real_distribution<double> prob(0.0, 1.0);
 
     while (shots_played < remaining_shots
