@@ -77,6 +77,7 @@ def main():
     e0     = np.array([float(r["net_end0"]) for r in rows])
     e1     = np.array([float(r["net_end1"]) for r in rows]) if has_end1 else None
     aham0  = np.array([int(float(r["a_hammer_end0"])) for r in rows])
+    src    = np.array([r["_src"] for r in rows])
     n = len(rows)
 
     LA, LB = args.label_a, args.label_b
@@ -87,6 +88,17 @@ def main():
     pr(f"2エンド自己対戦 統合  {LA} vs {LB}")
     pr("=" * 66)
     pr(f"総ゲーム数: {n}  (ファイル {len(files)}個)")
+
+    # マシン別内訳 (net_a 総得点)
+    machines = sorted(set(src))
+    if len(machines) > 1:
+        pr("--- マシン別 (2エンド計) ---")
+        for m in machines:
+            x = net_a[src == m]
+            aw = int((x > 0).sum()); bw = int((x < 0).sum()); tie = int((x == 0).sum())
+            wr = aw / (aw + bw) if (aw + bw) else 0.5
+            pr(f"  {m:18} n={len(x):>3}  A7勝={aw:>2} A1勝={bw:>2} 分={tie:>2}  "
+               f"勝率={wr:.3f}  平均net={x.mean():+.3f}")
 
     # ① 全体 (2エンド計)
     aw = int((net_a > 0).sum()); bw = int((net_a < 0).sum()); tie = int((net_a == 0).sum())

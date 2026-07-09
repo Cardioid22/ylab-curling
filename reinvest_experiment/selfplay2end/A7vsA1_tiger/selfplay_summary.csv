@@ -1,0 +1,2 @@
+label_a,label_b,method_a,method_b,depth,playouts,rollouts,n_games,a_win,b_win,tie,win_rate,mean_net,binom_p
+ScoreScreen,AllGrid,ScoreScreen,AllGrid,3,50,3,24,12,3,9,0.8,1.375,0.0201368
