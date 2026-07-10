@@ -37,6 +37,7 @@ std::string ReinvestExperiment::methodName(MctsMode m) {
         case MctsMode::Proposed:    return "Proposed";
         case MctsMode::RandomK:     return "RandomK";
         case MctsMode::ScoreScreen: return "ScoreScreen";
+        case MctsMode::ScoreTopK:   return "ScoreTopK";
     }
     return "Proposed";
 }
@@ -45,6 +46,7 @@ MctsMode parseMctsMode(const std::string& s) {
     if (s == "AllGrid" || s == "allgrid")         return MctsMode::AllGrid;
     if (s == "RandomK" || s == "randomk")         return MctsMode::RandomK;
     if (s == "ScoreScreen" || s == "scorescreen") return MctsMode::ScoreScreen;
+    if (s == "ScoreTopK" || s == "scoretopk")     return MctsMode::ScoreTopK;
     return MctsMode::Proposed;  // 既定 (Proposed / proposed / 未知)
 }
 
@@ -113,12 +115,14 @@ void ReinvestExperiment::expandNode(
         return;
     }
 
-    if (config_.mode == MctsMode::ScoreScreen && node.depth == 0) {
-        // root: 得点スクリーン (①R_pre推定 →②ε帯 →③リスク多様性保持でK個)
+    if ((config_.mode == MctsMode::ScoreScreen || config_.mode == MctsMode::ScoreTopK)
+        && node.depth == 0) {
+        // root: 得点スクリーン (A7: ①R_pre推定→②ε帯→③リスク多様性 / A8 TopK: ①のみ→E[score]上位K)
         node.medoid_indices = selectScoreScreen(node, sim, gen, rng, root_team);
     } else if (config_.mode == MctsMode::Proposed
-               || config_.mode == MctsMode::ScoreScreen) {
-        // distDelta クラスタリング (Proposed 全ノード / ScoreScreen の depth>0 ノード)
+               || config_.mode == MctsMode::ScoreScreen
+               || config_.mode == MctsMode::ScoreTopK) {
+        // distDelta クラスタリング (Proposed 全ノード / ScoreScreen・ScoreTopK の depth>0 ノード)
         auto dist_table = mcts_shared::makeDistanceTableDelta(node.state, node.result_states);
         int K = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
         K = std::min(K, N);
@@ -198,18 +202,27 @@ std::vector<int> ReinvestExperiment::selectScoreScreen(
         sd_pre[c] = std::sqrt(std::max(0.0, sumsq / R_pre - m * m));
     }
 
+    // K_cap: 予算連動 (子1個に最低 v_target 訪問させたい)
+    int v_target = std::max(1, config_.score_screen_v_target);
+    int K_cap = std::max(1, config_.playouts / v_target);
+
+    auto by_escore_desc = [&](int a, int b) { return e_pre[a] > e_pre[b]; };
+
+    // A8 (ScoreTopK): ε帯もリスク多様性も無し。E[score] 降順で上位 K_cap をそのまま採る。
+    if (config_.mode == MctsMode::ScoreTopK) {
+        std::vector<int> order(N);
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), by_escore_desc);
+        order.resize(std::min(N, K_cap));
+        return order;
+    }
+
     // ② ε帯 (有望集合)
     double e_star = *std::max_element(e_pre.begin(), e_pre.end());
     std::vector<int> promising;
     for (int c = 0; c < N; c++) {
         if (e_pre[c] >= e_star - config_.score_screen_band) promising.push_back(c);
     }
-
-    // K_cap: 予算連動 (子1個に最低 v_target 訪問させたい)
-    int v_target = std::max(1, config_.score_screen_v_target);
-    int K_cap = std::max(1, config_.playouts / v_target);
-
-    auto by_escore_desc = [&](int a, int b) { return e_pre[a] > e_pre[b]; };
 
     if (static_cast<int>(promising.size()) <= K_cap) {
         std::sort(promising.begin(), promising.end(), by_escore_desc);
