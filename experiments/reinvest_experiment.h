@@ -32,6 +32,7 @@
 #include "mcts_shared.h"
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <random>
 #include <string>
@@ -69,9 +70,15 @@ struct ReinvestConfig {
 struct ClusterAssign {
     int candidate_idx = -1;          // generatePool 順 index (join キー)
     int cluster_id = -1;             // Proposed: 所属クラスタ; RandomK: 選択順 (membership 概念なし)
-    bool is_representative = false;   // クラスタ代表 (medoid) / RandomK 選択手か
+    bool is_representative = false;   // クラスタ代表 (medoid/価値最大メンバー) / RandomK 選択手か
     std::string label;               // 候補ラベル ("Draw(CW,5)" 等)
     std::string shot_type;           // ShotType 文字列 ("Draw"/"Hit"/... = モード定義キー)
+    // --- ClusterValue (A9) 拡張列 (他モードは NaN のまま = CSV では空欄) ---
+    double e_score = std::numeric_limits<double>::quiet_NaN();        // 候補の E[score] (R_pre 推定)
+    double e_sd = std::numeric_limits<double>::quiet_NaN();           // 同 SD
+    double cluster_value = std::numeric_limits<double>::quiet_NaN();  // 所属クラスタの平均 E[score]
+    double land_x = std::numeric_limits<double>::quiet_NaN();         // 投球石の無外乱着地 x (エリア逆射影用)
+    double land_y = std::numeric_limits<double>::quiet_NaN();         // 同 y (アウトなら NaN)
 };
 
 // 1 局面分の選択結果 (§4 出力スキーマに対応)
@@ -152,8 +159,28 @@ private:
         dc::Team root_team,
         uint64_t state_seed);
 
+    // root 候補ごとの E[score]/SD を R_pre ロールアウトで推定し node.e_pre/sd_pre に格納
+    // (ScoreScreen/ScoreTopK/ClusterValue 共通の ①)
+    void estimateRootScores(
+        TreeNode& node,
+        SimulatorWrapper& sim,
+        ShotGenerator& gen,
+        std::mt19937& rng,
+        dc::Team root_team);
+
     // ScoreScreen の root 候補選別: ①R_pre 推定 →②ε帯 →③リスク多様性保持でK個。選んだ candidate idx を返す。
+    // (ScoreTopK は ① の後 E[score] 降順上位 K_cap を返す)
     std::vector<int> selectScoreScreen(
+        TreeNode& node,
+        SimulatorWrapper& sim,
+        ShotGenerator& gen,
+        std::mt19937& rng,
+        dc::Team root_team);
+
+    // ClusterValue (A9) の root 候補選別: distDelta クラスタ + クラスタ平均 E[score] 価値付け
+    // → 価値上位 K_cap クラスタから各クラスタ内 E[score] 最大の手を子に。
+    // 全体最良 E[score] の候補が属するクラスタは必ず含める。
+    std::vector<int> selectClusterValue(
         TreeNode& node,
         SimulatorWrapper& sim,
         ShotGenerator& gen,

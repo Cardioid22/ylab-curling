@@ -28,7 +28,9 @@ enum class MctsMode {
     AllGrid,     // 全候補を子ノードに（歩相当）
     RandomK,     // K=ceil(N*retention)個を決定的乱択で子ノードに（計算再投資実験 A5: クラスタリング vs 単なる削減）
     ScoreScreen, // root: 安価なE[score]推定→ε帯(有望集合)→リスク多様性保持でK個に間引き。depth>0: distDelta（A7）
-    ScoreTopK    // root: E[score]降順ソート上位K_capのみ（ε帯・リスク多様性・クラスタ無し）。depth>0はA7と同一（A8: A7のablation）
+    ScoreTopK,   // root: E[score]降順ソート上位K_capのみ（ε帯・リスク多様性・クラスタ無し）。depth>0はA7と同一（A8: A7のablation）
+    ClusterValue // root: distDeltaクラスタ(結果盤面=外乱込み行動表現) + クラスタ平均E[score]で価値付け
+                 //       → 価値上位K_capクラスタから各クラスタ内E[score]最大の手を子に（A9: Proposed改）
 };
 
 // 展開キャッシュ: 同じ盤面ハッシュなら候補手とシミュ結果を再利用
@@ -56,8 +58,14 @@ struct TreeNode {
     // 子ノードインデックス: medoid_indices[i] = candidates の index
     std::vector<int> medoid_indices;
 
-    // クラスタ割当 (Proposed のみ、診断用)
+    // クラスタ割当 (Proposed/ClusterValue のみ、診断用)
     std::vector<std::set<int>> clusters;
+
+    // root の候補別 E[score] 事前推定 (ScoreScreen/ScoreTopK/ClusterValue の root のみ、診断・出力用)
+    std::vector<double> e_pre;
+    std::vector<double> sd_pre;
+    // クラスタ価値 = メンバー e_pre の平均 (ClusterValue の root のみ; index = cluster_id)
+    std::vector<double> cluster_value;
 
     // 子ノード（lazy allocation）
     std::vector<std::unique_ptr<TreeNode>> children;

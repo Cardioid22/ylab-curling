@@ -38,6 +38,7 @@ std::string ReinvestExperiment::methodName(MctsMode m) {
         case MctsMode::RandomK:     return "RandomK";
         case MctsMode::ScoreScreen: return "ScoreScreen";
         case MctsMode::ScoreTopK:   return "ScoreTopK";
+        case MctsMode::ClusterValue: return "ClusterValue";
     }
     return "Proposed";
 }
@@ -47,6 +48,7 @@ MctsMode parseMctsMode(const std::string& s) {
     if (s == "RandomK" || s == "randomk")         return MctsMode::RandomK;
     if (s == "ScoreScreen" || s == "scorescreen") return MctsMode::ScoreScreen;
     if (s == "ScoreTopK" || s == "scoretopk")     return MctsMode::ScoreTopK;
+    if (s == "ClusterValue" || s == "clustervalue") return MctsMode::ClusterValue;
     return MctsMode::Proposed;  // 既定 (Proposed / proposed / 未知)
 }
 
@@ -119,10 +121,14 @@ void ReinvestExperiment::expandNode(
         && node.depth == 0) {
         // root: 得点スクリーン (A7: ①R_pre推定→②ε帯→③リスク多様性 / A8 TopK: ①のみ→E[score]上位K)
         node.medoid_indices = selectScoreScreen(node, sim, gen, rng, root_team);
+    } else if (config_.mode == MctsMode::ClusterValue && node.depth == 0) {
+        // root: A9 = distDeltaクラスタ(外乱込み行動表現) + クラスタ平均E[score]価値付け → 価値上位クラスタの最良メンバー
+        node.medoid_indices = selectClusterValue(node, sim, gen, rng, root_team);
     } else if (config_.mode == MctsMode::Proposed
                || config_.mode == MctsMode::ScoreScreen
-               || config_.mode == MctsMode::ScoreTopK) {
-        // distDelta クラスタリング (Proposed 全ノード / ScoreScreen・ScoreTopK の depth>0 ノード)
+               || config_.mode == MctsMode::ScoreTopK
+               || config_.mode == MctsMode::ClusterValue) {
+        // distDelta クラスタリング (Proposed 全ノード / ScoreScreen・ScoreTopK・ClusterValue の depth>0 ノード)
         auto dist_table = mcts_shared::makeDistanceTableDelta(node.state, node.result_states);
         int K = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
         K = std::min(K, N);
@@ -160,21 +166,19 @@ void ReinvestExperiment::expandNode(
 // ② ε帯: 最良 E[score] から Δ 以内の「有望集合」に絞る (ジャンク除去)
 // ③ |有望集合| > K_cap のときだけ、SD で 低/中/高 の3帯に分けて K_cap を配分
 //    (「安全な手」と「博打の手」を両方残す = リスク多様性保持)。再利用なし。
-std::vector<int> ReinvestExperiment::selectScoreScreen(
+void ReinvestExperiment::estimateRootScores(
     TreeNode& node,
     SimulatorWrapper& sim,
     ShotGenerator& gen,
     std::mt19937& rng,
     dc::Team root_team)
 {
-    int N = static_cast<int>(node.candidates.size());
-    std::vector<int> selected;
-    if (N == 0) return selected;
-
     // ① 安価な E[score]/SD 推定 (result_states[c] = simulateNoRand の決定的着地から継続)
+    int N = static_cast<int>(node.candidates.size());
     int R_pre = std::max(1, config_.score_screen_r_pre);
     int cur_end = static_cast<int>(node.state.end);
-    std::vector<double> e_pre(N, 0.0), sd_pre(N, 0.0);
+    node.e_pre.assign(N, 0.0);
+    node.sd_pre.assign(N, 0.0);
     for (int c = 0; c < N; c++) {
         const dc::GameState& rs = node.result_states[c];
         // 候補着手で既にこのエンドが終了 → 実エンド得点を使う (次エンドをロールアウトしない; 審判と同じ規約)
@@ -186,8 +190,8 @@ std::vector<int> ReinvestExperiment::selectScoreScreen(
                 int t1 = rs.scores[1][cur_end] ? static_cast<int>(*rs.scores[1][cur_end]) : 0;
                 diff = static_cast<double>(t0 - t1);
             }
-            e_pre[c] = (root_team == dc::Team::k0) ? diff : -diff;
-            sd_pre[c] = 0.0;  // 決定的着地でエンド確定 → 分散なし
+            node.e_pre[c] = (root_team == dc::Team::k0) ? diff : -diff;
+            node.sd_pre[c] = 0.0;  // 決定的着地でエンド確定 → 分散なし
             continue;
         }
         int remaining = 16 - static_cast<int>(rs.shot);
@@ -198,9 +202,25 @@ std::vector<int> ReinvestExperiment::selectScoreScreen(
             sum += v; sumsq += v * v;
         }
         double m = sum / R_pre;
-        e_pre[c] = m;
-        sd_pre[c] = std::sqrt(std::max(0.0, sumsq / R_pre - m * m));
+        node.e_pre[c] = m;
+        node.sd_pre[c] = std::sqrt(std::max(0.0, sumsq / R_pre - m * m));
     }
+}
+
+std::vector<int> ReinvestExperiment::selectScoreScreen(
+    TreeNode& node,
+    SimulatorWrapper& sim,
+    ShotGenerator& gen,
+    std::mt19937& rng,
+    dc::Team root_team)
+{
+    int N = static_cast<int>(node.candidates.size());
+    std::vector<int> selected;
+    if (N == 0) return selected;
+
+    estimateRootScores(node, sim, gen, rng, root_team);
+    const std::vector<double>& e_pre = node.e_pre;
+    const std::vector<double>& sd_pre = node.sd_pre;
 
     // K_cap: 予算連動 (子1個に最低 v_target 訪問させたい)
     int v_target = std::max(1, config_.score_screen_v_target);
@@ -259,6 +279,77 @@ std::vector<int> ReinvestExperiment::selectScoreScreen(
             }
         }
         if (!added) break;
+    }
+    return selected;
+}
+
+// ========== ClusterValue: クラスタ価値型の root 候補選別 (A9 = Proposed改) ==========
+// Proposed の「結果盤面クラスタ = 外乱込みでその行動が引き起こす状態による行動表現」を
+// 保持したまま、選択規則に価値を注入する:
+//   ① R_pre ロールアウトで候補別 E[score] を推定 (A7 の①と同一)
+//   ② distDelta で結果盤面クラスタリング (Proposed と同一; K = ceil(N*retention))
+//   ③ クラスタ価値 = メンバー E[score] の平均 (エリア単位の平均化 = 候補単位ノイズの分散削減)
+//   ④ 価値上位 K_cap クラスタから、各クラスタ内 E[score] 最大メンバーを子に。
+//      全体最良 E[score] の候補が属するクラスタは必ず採用 (A7 の best確保と同型)。
+// medoid(盤面的中心) を代表にしない点が Proposed との唯一の選択規則差。
+std::vector<int> ReinvestExperiment::selectClusterValue(
+    TreeNode& node,
+    SimulatorWrapper& sim,
+    ShotGenerator& gen,
+    std::mt19937& rng,
+    dc::Team root_team)
+{
+    int N = static_cast<int>(node.candidates.size());
+    std::vector<int> selected;
+    if (N == 0) return selected;
+
+    // ① 候補別 E[score]/SD
+    estimateRootScores(node, sim, gen, rng, root_team);
+
+    // ② 結果盤面クラスタ (Proposed と同一)
+    auto dist_table = mcts_shared::makeDistanceTableDelta(node.state, node.result_states);
+    int Kc = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
+    Kc = std::min(Kc, N);
+    node.clusters = mcts_shared::runClustering(dist_table, Kc);
+
+    // ③ クラスタ価値 (メンバー平均 E[score]) + クラスタ内最良メンバー
+    int C = static_cast<int>(node.clusters.size());
+    node.cluster_value.assign(C, std::numeric_limits<double>::quiet_NaN());
+    std::vector<int> best_member(C, -1);
+    for (int cid = 0; cid < C; cid++) {
+        double sum = 0.0; int cnt = 0;
+        for (int m : node.clusters[cid]) {
+            if (m < 0 || m >= N) continue;
+            sum += node.e_pre[m]; cnt++;
+            if (best_member[cid] < 0 || node.e_pre[m] > node.e_pre[best_member[cid]])
+                best_member[cid] = m;
+        }
+        if (cnt > 0) node.cluster_value[cid] = sum / cnt;
+    }
+
+    // ④ 価値上位 K_cap クラスタ → 各クラスタの最良メンバー
+    int v_target = std::max(1, config_.score_screen_v_target);
+    int K_cap = std::max(1, config_.playouts / v_target);
+
+    std::vector<int> order;
+    for (int cid = 0; cid < C; cid++) if (best_member[cid] >= 0) order.push_back(cid);
+    std::sort(order.begin(), order.end(),
+              [&](int a, int b) { return node.cluster_value[a] > node.cluster_value[b]; });
+
+    // 全体最良 E[score] 候補の属するクラスタを先頭に (安全網: 平均が低くても最良手は残す)
+    int g_best = 0;
+    for (int c = 1; c < N; c++) if (node.e_pre[c] > node.e_pre[g_best]) g_best = c;
+    int g_cid = -1;
+    for (int cid = 0; cid < C; cid++) if (node.clusters[cid].count(g_best)) { g_cid = cid; break; }
+    if (g_cid >= 0) {
+        auto it = std::find(order.begin(), order.end(), g_cid);
+        if (it != order.end()) order.erase(it);
+        order.insert(order.begin(), g_cid);
+        best_member[g_cid] = g_best;  // このクラスタの代表は全体最良で確定
+    }
+
+    for (int i = 0; i < static_cast<int>(order.size()) && static_cast<int>(selected.size()) < K_cap; i++) {
+        selected.push_back(best_member[order[i]]);
     }
     return selected;
 }
@@ -437,7 +528,11 @@ ReinvestResult ReinvestExperiment::runOneState(
     // Proposed: 全候補をクラスタ + 代表点フラグつきで記録 (分離/被覆/collapse 診断の権威マップ)。
     // RandomK : クラスタ概念なし。選んだ K 個を代表として記録 (cluster_id = 選択順)。
     // AllGrid : 全候補が子なので分離対象外 → 空のまま (正解集合 A の供給側)。
-    if (config_.mode == MctsMode::Proposed && !root.clusters.empty()) {
+    if ((config_.mode == MctsMode::Proposed || config_.mode == MctsMode::ClusterValue)
+        && !root.clusters.empty()) {
+        // ClusterValue は加えて E[score]/クラスタ価値/無外乱着地座標 (エリア逆射影用) を出力
+        int team_idx = static_cast<int>(root.to_play);
+        int stone_idx = static_cast<int>(root.state.shot) / 2;
         std::set<int> rep_set(root.medoid_indices.begin(), root.medoid_indices.end());
         for (int cid = 0; cid < static_cast<int>(root.clusters.size()); cid++) {
             for (int cand_idx : root.clusters[cid]) {
@@ -448,6 +543,20 @@ ReinvestResult ReinvestExperiment::runOneState(
                 ca.is_representative = (rep_set.count(cand_idx) > 0);
                 ca.label = root.candidates[cand_idx].label;
                 ca.shot_type = labelToType(ca.label);
+                if (config_.mode == MctsMode::ClusterValue) {
+                    if (cand_idx < static_cast<int>(root.e_pre.size())) {
+                        ca.e_score = root.e_pre[cand_idx];
+                        ca.e_sd = root.sd_pre[cand_idx];
+                    }
+                    if (cid < static_cast<int>(root.cluster_value.size()))
+                        ca.cluster_value = root.cluster_value[cid];
+                    // 投球石の無外乱着地 (アウトなら NaN のまま)
+                    const auto& rs = root.result_states[cand_idx];
+                    if (team_idx >= 0 && team_idx < 2 && stone_idx >= 0 && stone_idx < 8) {
+                        const auto& st = rs.stones[team_idx][stone_idx];
+                        if (st) { ca.land_x = st->position.x; ca.land_y = st->position.y; }
+                    }
+                }
                 r.cluster_table.push_back(ca);
             }
         }
@@ -529,7 +638,13 @@ void ReinvestExperiment::writeClusterTableCSV(
         return;
     }
     ofs << "game_id,end,shot_num,method,seed,candidate_idx,cluster_id,"
-        << "is_representative,shot_type,label\n";
+        << "is_representative,shot_type,label,"
+        << "e_score,e_sd,cluster_value,land_x,land_y\n";
+
+    // NaN は空欄で出力 (ClusterValue 以外のモード / アウトになった投球石)
+    auto num = [](double v) {
+        return std::isnan(v) ? std::string() : std::to_string(v);
+    };
 
     std::string method = methodName(config_.mode);
     long long rows = 0;
@@ -540,7 +655,9 @@ void ReinvestExperiment::writeClusterTableCSV(
                 << method << "," << config_.seed << ","
                 << ca.candidate_idx << "," << ca.cluster_id << ","
                 << (ca.is_representative ? 1 : 0) << ","
-                << "\"" << ca.shot_type << "\",\"" << ca.label << "\"\n";
+                << "\"" << ca.shot_type << "\",\"" << ca.label << "\","
+                << num(ca.e_score) << "," << num(ca.e_sd) << ","
+                << num(ca.cluster_value) << "," << num(ca.land_x) << "," << num(ca.land_y) << "\n";
             rows++;
         }
     }
@@ -690,8 +807,10 @@ void ReinvestExperiment::run() {
     std::string csv_path = config_.output_dir + "/reinvest_results" + suffix + ".csv";
     writeResultsCSV(results, csv_path);
 
-    // モード分離実験用: クラスタ割当テーブル (Proposed/RandomK のみ中身あり)
-    if (config_.mode == MctsMode::Proposed || config_.mode == MctsMode::RandomK) {
+    // モード分離実験用: クラスタ割当テーブル (Proposed/RandomK/ClusterValue のみ中身あり)
+    // ClusterValue は e_score/cluster_value/land_x,y 列 = エリア価値マップの素データ
+    if (config_.mode == MctsMode::Proposed || config_.mode == MctsMode::RandomK
+        || config_.mode == MctsMode::ClusterValue) {
         std::string ct_path = config_.output_dir + "/cluster_table" + suffix + ".csv";
         writeClusterTableCSV(results, ct_path);
     }
