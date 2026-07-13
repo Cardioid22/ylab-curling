@@ -39,6 +39,7 @@ std::string ReinvestExperiment::methodName(MctsMode m) {
         case MctsMode::ScoreScreen: return "ScoreScreen";
         case MctsMode::ScoreTopK:   return "ScoreTopK";
         case MctsMode::ClusterValue: return "ClusterValue";
+        case MctsMode::ClusterValueDeep: return "ClusterValueDeep";
     }
     return "Proposed";
 }
@@ -48,6 +49,7 @@ MctsMode parseMctsMode(const std::string& s) {
     if (s == "RandomK" || s == "randomk")         return MctsMode::RandomK;
     if (s == "ScoreScreen" || s == "scorescreen") return MctsMode::ScoreScreen;
     if (s == "ScoreTopK" || s == "scoretopk")     return MctsMode::ScoreTopK;
+    if (s == "ClusterValueDeep" || s == "clustervaluedeep") return MctsMode::ClusterValueDeep;
     if (s == "ClusterValue" || s == "clustervalue") return MctsMode::ClusterValue;
     return MctsMode::Proposed;  // 既定 (Proposed / proposed / 未知)
 }
@@ -121,8 +123,10 @@ void ReinvestExperiment::expandNode(
         && node.depth == 0) {
         // root: 得点スクリーン (A7: ①R_pre推定→②ε帯→③リスク多様性 / A8 TopK: ①のみ→E[score]上位K)
         node.medoid_indices = selectScoreScreen(node, sim, gen, rng, root_team);
-    } else if (config_.mode == MctsMode::ClusterValue && node.depth == 0) {
-        // root: A9 = distDeltaクラスタ(外乱込み行動表現) + クラスタ平均E[score]価値付け → 価値上位クラスタの最良メンバー
+    } else if ((config_.mode == MctsMode::ClusterValue && node.depth == 0)
+               || config_.mode == MctsMode::ClusterValueDeep) {
+        // A9: root のみ / A10: 全深さ = distDeltaクラスタ + クラスタ平均E[score]価値付け
+        //  → 価値上位クラスタの最良メンバー (A10 は手番視点で選択・相手番ノードは子数 cv_k_opp)
         node.medoid_indices = selectClusterValue(node, sim, gen, rng, root_team);
     } else if (config_.mode == MctsMode::Proposed
                || config_.mode == MctsMode::ScoreScreen
@@ -174,8 +178,10 @@ void ReinvestExperiment::estimateRootScores(
     dc::Team root_team)
 {
     // ① 安価な E[score]/SD 推定 (result_states[c] = simulateNoRand の決定的着地から継続)
+    // R_pre は深さで逓減 (root:R_pre → 深さd: R_pre-d, 最低1)。深いノードほど数が多く
+    // 残り手数も短いため、逓減でスクリーニング総コストを等予算圏に収める (A10)。
     int N = static_cast<int>(node.candidates.size());
-    int R_pre = std::max(1, config_.score_screen_r_pre);
+    int R_pre = std::max(1, config_.score_screen_r_pre - node.depth);
     int cur_end = static_cast<int>(node.state.end);
     node.e_pre.assign(N, 0.0);
     node.sd_pre.assign(N, 0.0);
@@ -303,6 +309,12 @@ std::vector<int> ReinvestExperiment::selectClusterValue(
     std::vector<int> selected;
     if (N == 0) return selected;
 
+    // 手番視点の符号: e_pre/cluster_value は root_team 視点で格納するが、
+    // 「良い手」の判定はこのノードで打つ側 (to_play) の視点で行う。
+    // 相手番ノード (A10 の深さ1 等) では sign=-1 → 相手最良 = root視点最小 を選ぶ。
+    // これを怠ると相手に悪手を打たせる楽観的な木になる。
+    double sign = (node.to_play == root_team) ? 1.0 : -1.0;
+
     // ① 候補別 E[score]/SD
     estimateRootScores(node, sim, gen, rng, root_team);
 
@@ -312,7 +324,7 @@ std::vector<int> ReinvestExperiment::selectClusterValue(
     Kc = std::min(Kc, N);
     node.clusters = mcts_shared::runClustering(dist_table, Kc);
 
-    // ③ クラスタ価値 (メンバー平均 E[score]) + クラスタ内最良メンバー
+    // ③ クラスタ価値 (メンバー平均 E[score], root視点で格納) + クラスタ内最良メンバー (手番視点)
     int C = static_cast<int>(node.clusters.size());
     node.cluster_value.assign(C, std::numeric_limits<double>::quiet_NaN());
     std::vector<int> best_member(C, -1);
@@ -321,24 +333,28 @@ std::vector<int> ReinvestExperiment::selectClusterValue(
         for (int m : node.clusters[cid]) {
             if (m < 0 || m >= N) continue;
             sum += node.e_pre[m]; cnt++;
-            if (best_member[cid] < 0 || node.e_pre[m] > node.e_pre[best_member[cid]])
+            if (best_member[cid] < 0
+                || sign * node.e_pre[m] > sign * node.e_pre[best_member[cid]])
                 best_member[cid] = m;
         }
         if (cnt > 0) node.cluster_value[cid] = sum / cnt;
     }
 
-    // ④ 価値上位 K_cap クラスタ → 各クラスタの最良メンバー
+    // ④ 価値上位 K クラスタ → 各クラスタの最良メンバー (価値順も手番視点)
+    //    自分番: K = playouts / v_target (予算連動; P=200 → 4)
+    //    相手番: K = cv_k_opp (min側は広めに持ち、最善応手の取りこぼし = 楽観バイアスを防ぐ)
     int v_target = std::max(1, config_.score_screen_v_target);
-    int K_cap = std::max(1, config_.playouts / v_target);
+    int K_cap = (sign > 0) ? std::max(1, config_.playouts / v_target)
+                           : std::max(1, config_.cv_k_opp);
 
     std::vector<int> order;
     for (int cid = 0; cid < C; cid++) if (best_member[cid] >= 0) order.push_back(cid);
     std::sort(order.begin(), order.end(),
-              [&](int a, int b) { return node.cluster_value[a] > node.cluster_value[b]; });
+              [&](int a, int b) { return sign * node.cluster_value[a] > sign * node.cluster_value[b]; });
 
-    // 全体最良 E[score] 候補の属するクラスタを先頭に (安全網: 平均が低くても最良手は残す)
+    // 手番視点で全体最良の候補が属するクラスタを先頭に (安全網: 平均が低くても最良手は残す)
     int g_best = 0;
-    for (int c = 1; c < N; c++) if (node.e_pre[c] > node.e_pre[g_best]) g_best = c;
+    for (int c = 1; c < N; c++) if (sign * node.e_pre[c] > sign * node.e_pre[g_best]) g_best = c;
     int g_cid = -1;
     for (int cid = 0; cid < C; cid++) if (node.clusters[cid].count(g_best)) { g_cid = cid; break; }
     if (g_cid >= 0) {

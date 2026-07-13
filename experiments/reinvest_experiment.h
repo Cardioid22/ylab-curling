@@ -52,6 +52,8 @@ struct ReinvestConfig {
     int score_screen_r_pre = 3;          // root 候補ごとの E[score] 事前推定ロールアウト数 R_pre
     double score_screen_band = 1.0;      // ε帯 Δ: 最良E[score]から Δ 点以内を有望集合に残す
     int score_screen_v_target = 50;      // 子1個に割り当てたい最低訪問数 → K_cap = max(1, playouts / v_target)
+    // ClusterValueDeep (A10) 専用: 相手番ノードの子数 (min側は広めに持ち最善応手の取りこぼしを防ぐ)
+    int cv_k_opp = 8;
     double ucb_c = 1.41;                 // UCB1 の c (≒√2)
     double epsilon = 0.3;                // ロールアウト ε (全アーム共通)
     int n_states = 10;                   // テスト局面数

@@ -837,6 +837,7 @@ int main(int argc, char const* argv[])
         int score_screen_r_pre_arg = 3;                 // ScoreScreen: R_pre
         double score_screen_band_arg = 1.0;             // ScoreScreen: ε帯 Δ
         int score_screen_v_target_arg = 50;             // ScoreScreen: K_cap = playouts / v_target
+        int cv_k_opp_arg = 8;                           // ClusterValueDeep (A10): 相手番ノードの子数
         int depth3_n_states_arg = 100;
         int depth3_proposed_playouts_arg = 500;
         int depth3_allgrid_playouts_arg = 10000;
@@ -966,6 +967,11 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--v-target" && i + 1 < argc) {
                 score_screen_v_target_arg = std::atoi(argv[i + 1]);
                 if (score_screen_v_target_arg < 1) score_screen_v_target_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--k-opp" && i + 1 < argc) {
+                cv_k_opp_arg = std::atoi(argv[i + 1]);
+                if (cv_k_opp_arg < 1) cv_k_opp_arg = 1;
                 i++;
             }
             if (std::string(argv[i]) == "--proposed-playouts" && i + 1 < argc) {
@@ -1745,6 +1751,7 @@ int main(int argc, char const* argv[])
             cfg.score_screen_r_pre = score_screen_r_pre_arg;       // ScoreScreen (A7)
             cfg.score_screen_band = score_screen_band_arg;
             cfg.score_screen_v_target = score_screen_v_target_arg;
+            cfg.cv_k_opp = cv_k_opp_arg;                 // ClusterValueDeep (A10)
             cfg.n_states = depth3_n_states_arg;          // --states を共用
             cfg.num_threads = depth3_threads_arg;        // --threads を共用
             cfg.seed = depth3_seed_arg;                  // --seed を共用
@@ -1785,6 +1792,7 @@ int main(int argc, char const* argv[])
                 c.score_screen_r_pre = score_screen_r_pre_arg;
                 c.score_screen_band = score_screen_band_arg;
                 c.score_screen_v_target = score_screen_v_target_arg;
+                c.cv_k_opp = cv_k_opp_arg;
                 c.num_threads = 1;   // 並列はゲーム単位
                 c.seed = depth3_seed_arg;
                 return c;

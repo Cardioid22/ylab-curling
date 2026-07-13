@@ -29,8 +29,11 @@ enum class MctsMode {
     RandomK,     // K=ceil(N*retention)個を決定的乱択で子ノードに（計算再投資実験 A5: クラスタリング vs 単なる削減）
     ScoreScreen, // root: 安価なE[score]推定→ε帯(有望集合)→リスク多様性保持でK個に間引き。depth>0: distDelta（A7）
     ScoreTopK,   // root: E[score]降順ソート上位K_capのみ（ε帯・リスク多様性・クラスタ無し）。depth>0はA7と同一（A8: A7のablation）
-    ClusterValue // root: distDeltaクラスタ(結果盤面=外乱込み行動表現) + クラスタ平均E[score]で価値付け
-                 //       → 価値上位K_capクラスタから各クラスタ内E[score]最大の手を子に（A9: Proposed改）
+    ClusterValue, // root: distDeltaクラスタ(結果盤面=外乱込み行動表現) + クラスタ平均E[score]で価値付け
+                  //       → 価値上位K_capクラスタから各クラスタ内E[score]最大の手を子に（A9: Proposed改）
+    ClusterValueDeep // A9の価値選択を全深さに適用（A10）。手番視点で選択 (相手番ノードは相手最良=符号反転)。
+                     // 自分ノード K=playouts/v_target、相手ノード K=cv_k_opp (広め: min側の取りこぼし防止)。
+                     // R_pre は深さ逓減 (r_pre - depth, 最低1)。葉ロールアウトは従来通り。
 };
 
 // 展開キャッシュ: 同じ盤面ハッシュなら候補手とシミュ結果を再利用
