@@ -544,9 +544,10 @@ ReinvestResult ReinvestExperiment::runOneState(
     // Proposed: 全候補をクラスタ + 代表点フラグつきで記録 (分離/被覆/collapse 診断の権威マップ)。
     // RandomK : クラスタ概念なし。選んだ K 個を代表として記録 (cluster_id = 選択順)。
     // AllGrid : 全候補が子なので分離対象外 → 空のまま (正解集合 A の供給側)。
-    if ((config_.mode == MctsMode::Proposed || config_.mode == MctsMode::ClusterValue)
+    if ((config_.mode == MctsMode::Proposed || config_.mode == MctsMode::ClusterValue
+         || config_.mode == MctsMode::ClusterValueDeep)
         && !root.clusters.empty()) {
-        // ClusterValue は加えて E[score]/クラスタ価値/無外乱着地座標 (エリア逆射影用) を出力
+        // ClusterValue/Deep は加えて E[score]/クラスタ価値/無外乱着地座標 (エリア逆射影用) を出力
         int team_idx = static_cast<int>(root.to_play);
         int stone_idx = static_cast<int>(root.state.shot) / 2;
         std::set<int> rep_set(root.medoid_indices.begin(), root.medoid_indices.end());
@@ -559,7 +560,8 @@ ReinvestResult ReinvestExperiment::runOneState(
                 ca.is_representative = (rep_set.count(cand_idx) > 0);
                 ca.label = root.candidates[cand_idx].label;
                 ca.shot_type = labelToType(ca.label);
-                if (config_.mode == MctsMode::ClusterValue) {
+                if (config_.mode == MctsMode::ClusterValue
+                    || config_.mode == MctsMode::ClusterValueDeep) {
                     if (cand_idx < static_cast<int>(root.e_pre.size())) {
                         ca.e_score = root.e_pre[cand_idx];
                         ca.e_sd = root.sd_pre[cand_idx];
@@ -823,10 +825,11 @@ void ReinvestExperiment::run() {
     std::string csv_path = config_.output_dir + "/reinvest_results" + suffix + ".csv";
     writeResultsCSV(results, csv_path);
 
-    // モード分離実験用: クラスタ割当テーブル (Proposed/RandomK/ClusterValue のみ中身あり)
-    // ClusterValue は e_score/cluster_value/land_x,y 列 = エリア価値マップの素データ
+    // モード分離実験用: クラスタ割当テーブル (Proposed/RandomK/ClusterValue/Deep のみ中身あり)
+    // ClusterValue/Deep は e_score/cluster_value/land_x,y 列 = エリア価値マップの素データ
     if (config_.mode == MctsMode::Proposed || config_.mode == MctsMode::RandomK
-        || config_.mode == MctsMode::ClusterValue) {
+        || config_.mode == MctsMode::ClusterValue
+        || config_.mode == MctsMode::ClusterValueDeep) {
         std::string ct_path = config_.output_dir + "/cluster_table" + suffix + ".csv";
         writeClusterTableCSV(results, ct_path);
     }
