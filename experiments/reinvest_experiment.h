@@ -189,7 +189,9 @@ private:
         std::mt19937& rng,
         dc::Team root_team);
 
-    int selectBestChildUCB(const TreeNode& node) const;
+    // negamax UCB: 子の mean は root_team 視点。相手番ノード (to_play != root_team) では
+    // 符号反転して「相手最良 = root視点最小」の子を選ぶ (max-max = 協力的相手モデルの修正)。
+    int selectBestChildUCB(const TreeNode& node, dc::Team root_team) const;
     int selectMostVisited(const TreeNode& node) const;
     uint64_t hashGameState(const dc::GameState& s) const;
 

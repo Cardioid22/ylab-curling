@@ -183,7 +183,8 @@ private:
         std::unordered_map<uint64_t, CandidateCacheEntry>& cache);
 
     // UCB1 で子インデックスを選ぶ
-    int selectBestChildUCB(const TreeNode& node) const;
+    // negamax UCB: 相手番ノードでは符号反転して相手最良を選ぶ (reinvest 版と同一の修正)
+    int selectBestChildUCB(const TreeNode& node, dc::Team root_team) const;
 
     // 最多訪問の子を選ぶ（最終決定用）
     int selectMostVisited(const TreeNode& node) const;

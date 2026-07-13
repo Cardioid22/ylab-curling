@@ -372,7 +372,11 @@ std::vector<int> ReinvestExperiment::selectClusterValue(
 
 // ========== UCB1 選択 ==========
 
-int ReinvestExperiment::selectBestChildUCB(const TreeNode& node) const {
+int ReinvestExperiment::selectBestChildUCB(const TreeNode& node, dc::Team root_team) const {
+    // negamax: 子の mean は root_team 視点で格納されている。このノードで打つのは
+    // node.to_play なので、相手番ノードでは符号反転して「相手最良 = root視点最小」を選ぶ。
+    // (修正前は全ノードで root視点最大化 = 相手が root に協力する max-max だった)
+    double sign = (node.to_play == root_team) ? 1.0 : -1.0;
     int best = -1;
     double best_score = -1e18;
     int K = static_cast<int>(node.medoid_indices.size());
@@ -386,7 +390,7 @@ int ReinvestExperiment::selectBestChildUCB(const TreeNode& node) const {
             mean = 0.0;
             visits = 0;
         }
-        double score = mcts_shared::ucb1Score(mean, visits, node.visits, config_.ucb_c);
+        double score = mcts_shared::ucb1Score(sign * mean, visits, node.visits, config_.ucb_c);
         if (score > best_score) { best_score = score; best = i; }
     }
     return best;
@@ -455,7 +459,7 @@ double ReinvestExperiment::runPlayout(
         return mean_reward;
     }
 
-    int idx = selectBestChildUCB(node);
+    int idx = selectBestChildUCB(node, root_team);
     if (idx < 0) idx = 0;
 
     if (!node.children[idx]) {
