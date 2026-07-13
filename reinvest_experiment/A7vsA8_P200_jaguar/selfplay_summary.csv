@@ -1,0 +1,2 @@
+label_a,label_b,method_a,method_b,depth,playouts,rollouts,n_games,a_win,b_win,tie,win_rate,mean_net,binom_p
+ScoreScreen,ScoreTopK,ScoreScreen,ScoreTopK,3,200,3,16,6,4,6,0.6,0.3125,0.527089
