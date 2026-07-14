@@ -117,10 +117,16 @@ def main():
         ax.axis("off")
     for ax, k in zip(axes, keys):
         g, e, s = k
-        plot_one(ax, per_pos.get(k, []), board.get(k),
-                 f"g{g} e{e} s{s}\n星=クラスタ代表(E[score]最大)")
-    fig.suptitle("エリア価値マップ (ClusterValue/A9): 着地点をクラスタ色分け, 色付き=採用クラスタ(価値順)",
-                 fontsize=11)
+        # 手番チーム: batch CSV の team 列 (0=橙/team0, 1=青/team1)。無ければ shot 偶奇で推定
+        row = board.get(k)
+        team = int(row["team"]) if (row and row.get("team") not in (None, "")) else int(s) % 2
+        mover = "橙(team0)" if team == 0 else "青(team1)"
+        plot_one(ax, per_pos.get(k, []), row,
+                 f"g{g} e{e} s{s}  手番={mover}\n★=採用クラスタの代表手(E[score]最大)")
+    # 手法名は cluster_table の method 列から (A9=ClusterValue / A10=ClusterValueDeep)
+    method = next(iter(per_pos.values()))[0].get("method", "ClusterValue") if per_pos else "ClusterValue"
+    fig.suptitle(f"エリア価値マップ ({method}): マーカー=手番チームの候補手の着地点 (色=クラスタ, 灰=不採用)\n"
+                 f"注記の値=そのエンド単体の純得点期待値 (手番チーム視点)", fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     p = os.path.join(args.out, "cluster_value_map.png")
     fig.savefig(p, dpi=150); plt.close(fig)
