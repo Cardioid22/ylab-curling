@@ -822,6 +822,8 @@ int main(int argc, char const* argv[])
         bool score_move_frozen_arg = false; // true: 初手ノイズを固定 (旧挙動)。デフォルトは毎回振り直し
         // 自己対戦ハーネス (勝率評価)
         bool selfplay_mode = false;
+        int selfplay_depth_a = -1;                      // -1 = --depth を共用 (アーム別深さ上書き用)
+        int selfplay_depth_b = -1;
         std::string selfplay_method_a = "ScoreScreen";
         std::string selfplay_method_b = "AllGrid";
         int selfplay_games = 100;
@@ -927,6 +929,12 @@ int main(int argc, char const* argv[])
                 selfplay_ends = std::atoi(argv[i + 1]);
                 if (selfplay_ends < 1) selfplay_ends = 1;
                 i++;
+            }
+            if (std::string(argv[i]) == "--depth-a" && i + 1 < argc) {
+                selfplay_depth_a = std::atoi(argv[i + 1]); i++;
+            }
+            if (std::string(argv[i]) == "--depth-b" && i + 1 < argc) {
+                selfplay_depth_b = std::atoi(argv[i + 1]); i++;
             }
             // ---- 計算再投資実験フラグ ----
             if (std::string(argv[i]) == "--reinvest-arm") {
@@ -1809,6 +1817,16 @@ int main(int argc, char const* argv[])
             sp.b_is_ayumu = is_ayumu_name(selfplay_method_b);
             sp.label_a = selfplay_method_a;
             sp.label_b = selfplay_method_b;
+            // アーム別深さ上書き (--depth-a/-b): 深さ対決 (例: 同一手法の d3 vs d1) 用。
+            // ラベルにも深さを付けて同名手法どうしでも区別できるようにする。
+            if (selfplay_depth_a > 0) {
+                sp.arm_a.depth = selfplay_depth_a;
+                sp.label_a += "-d" + std::to_string(selfplay_depth_a);
+            }
+            if (selfplay_depth_b > 0) {
+                sp.arm_b.depth = selfplay_depth_b;
+                sp.label_b += "-d" + std::to_string(selfplay_depth_b);
+            }
             sp.n_games = selfplay_games;
             sp.n_ends = selfplay_ends;
             sp.num_threads = depth3_threads_arg;   // --threads を共用
