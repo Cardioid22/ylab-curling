@@ -1,4 +1,4 @@
-# プロジェクト現況 (最終更新: 2026-07-14)
+# プロジェクト現況 (最終更新: 2026-07-15)
 
 AIアシスタント (Codex / Claude / Gemini) 向けの現況同期ドキュメント。
 **過去の設計文書ではなく「今」の状態を書く。実験が進んだら必ずここを更新すること。**
@@ -61,9 +61,19 @@ AIアシスタント (Codex / Claude / Gemini) 向けの現況同期ドキュメ
 - 多エンド構造: end0でリード→得点側は次エンドのハンマーを渡す→end1で一部戻る (A7vsA1: end0 +1.11 / end1 −0.28)
 - ハンマー(後攻)効果: P=200では +1.28点 (p=0.006) で有意
 
-### 4.3 木の深さの価値 (treedepth, max-max木時代 → 再測定中)
-Δ = q* − q_ref(depth-k MCTSの手): r=2→2.02, r=3→1.52, r=4→0.24 (r=2,3で木が終端に届くと手が大きく変わる)
-**ただしこれはmax-max木での計測。negamax修正後の再実験が進行中 (下記)**
+### 4.3 木の深さの価値 (treedepth → negamax再測定完了 2026-07-15)
+Δ = q* − q_ref(depth-k MCTSの手)。**max-max版とnegamax版でΔ曲線はほぼ同一**
+(r=2: 2.02→2.23 / r=3: 1.52→1.55 / r=4: 0.24→0.18, CI大きく重複)。
+**しかし選択手そのものは激変**: max-max vs negamax の選択手一致率 r=2で0%, r=3で5%, r=4で54%。
+= バグ修正は終盤の手をほぼ全部変えたが、どちらの手も「審判からの距離」は同じ。
+
+**重要な帰結: Δ(q_ref基準)では深さの価値を判定できない。** Δの正体は
+「ノイズフリー・ミニマックス計画(木)」と「外乱込み・方策継続評価(審判)」の**モデル不一致**であり、
+協力的相手でも敵対的相手でも同程度に審判とズレる。深さの真の価値の決着には
+**negamax版 depth-1 vs depth-3 自己対戦** (要 --depth-a/-b アーム別深さフラグ, 小改修) が必要。
+副次示唆: 木の展開が無外乱(simulateNoRand)なので「精密だが外乱に脆い計画」を立てる可能性
+→ 外乱込み展開 (A9 Phase 2の分布サンプル) が木の質の本命フロンティアかもしれない。
+データ: `reinvest_experiment/treedepth_fix/` + `analysis/` (Δ曲線, before/after比較図, 大小Δ盤面)。
 
 ### 4.4 max-max UCBバグ (発見2026-07-13 → 修正 b84b22b)
 - `selectBestChildUCB` が全ノードでroot視点meanを最大化=**協力的相手モデル**だった (rolloutは正常に敵対的)
@@ -73,11 +83,13 @@ AIアシスタント (Codex / Claude / Gemini) 向けの現況同期ドキュメ
 
 ## 5. 実行中 / 直近タスク
 
-- **[実行中@bear] treedepth_fix**: negamax版で 4.3 を再測定 (AllGrid P=1000 R=10, d2/d3 × seed42-44, test_positions_depth)
-  → 完了後: `analyze_tree_depth.py` (→treedepth_fix向け) + `plot_treedepth_compare.py` でbefore/after Δ曲線比較
-  → 「深さの真の価値」の初の正しい測定。進捗: `grep -c "Arm done" treedepth_fix.log` == 6 で完了
-- **[次候補]** ①6アームregretのnegamax再走 (特にA1が改善するはず) ②A9 Phase2 (分布クラスタリング=候補ごと外乱あり数サンプル)
-  ③depth-1 vs depth-3 自己対戦 (深さの価値を勝率で決着) ④発表図表の更新 (A8/A9追加)
+- (実行中のサーバージョブなし。lion/tiger/jaguar/bear 空き)
+- **[次候補・優先順]**
+  ① **depth-1 vs depth-3 自己対戦 (negamax)** — 4.3の帰結により深さの価値の唯一の決着手段。
+    要小改修: selfplay に --depth-a/--depth-b (アーム別深さ)。
+  ② 6アームregretのnegamax再走 (特に木依存最大のA1が改善するか)
+  ③ A9 Phase 2: 分布クラスタリング (候補ごと外乱あり3-5サンプル) — 4.3の「無外乱計画の脆さ」示唆で動機強化
+  ④ 発表図表の更新 (A8/A9追加、エリア価値ヒートマップ `scripts/plot_area_heatmap.py` 整形)
 
 ## 6. 既知の注意点・ハマりどころ
 
