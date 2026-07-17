@@ -819,6 +819,7 @@ int main(int argc, char const* argv[])
         bool depth3_mcts_mode = false;
         bool score_move_mode = false;
         int score_move_rollouts_arg = 500;  // 審判: 候補1手あたりのロールアウト回数 K
+        double score_move_epsilon_arg = 0.3;  // 審判: 続きロールアウトの ε (感度チェック用に可変)
         bool score_move_frozen_arg = false; // true: 初手ノイズを固定 (旧挙動)。デフォルトは毎回振り直し
         // 自己対戦ハーネス (勝率評価)
         bool selfplay_mode = false;
@@ -905,6 +906,12 @@ int main(int argc, char const* argv[])
             if (std::string(argv[i]) == "--score-rollouts" && i + 1 < argc) {
                 score_move_rollouts_arg = std::atoi(argv[i + 1]);
                 if (score_move_rollouts_arg < 1) score_move_rollouts_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--epsilon" && i + 1 < argc) {
+                score_move_epsilon_arg = std::atof(argv[i + 1]);
+                if (score_move_epsilon_arg < 0.0) score_move_epsilon_arg = 0.0;
+                if (score_move_epsilon_arg > 1.0) score_move_epsilon_arg = 1.0;
                 i++;
             }
             if (std::string(argv[i]) == "--frozen-first-shot") {
@@ -1723,6 +1730,7 @@ int main(int argc, char const* argv[])
             ScoreMoveConfig cfg;
             cfg.n_states = depth3_n_states_arg;
             cfg.score_rollouts = score_move_rollouts_arg;
+            cfg.epsilon = score_move_epsilon_arg;
             cfg.resample_first_shot = !score_move_frozen_arg;
             cfg.num_threads = depth3_threads_arg;
             cfg.seed = depth3_seed_arg;
