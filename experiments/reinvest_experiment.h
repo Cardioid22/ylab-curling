@@ -54,6 +54,11 @@ struct ReinvestConfig {
     int score_screen_v_target = 50;      // 子1個に割り当てたい最低訪問数 → K_cap = max(1, playouts / v_target)
     // ClusterValueDeep (A10) 専用: 相手番ノードの子数 (min側は広めに持ち最善応手の取りこぼしを防ぐ)
     int cv_k_opp = 8;
+    // 開ループ・リサンプリング木 (--noisy-tree): 木の構造(候補/クラスタ/スクリーン)は決定的着地で
+    // 作るが、価値評価は毎訪問エッジを外乱ありで再シミュレーションした実状態で行う。
+    // R_pre推定も候補手を毎回打ち直す (審判の resample_first_shot と同じ規約)。
+    // 無外乱木が立てる「精密だが脆い計画」を、訪問ごとの実行ノイズで自然に罰する。
+    bool noisy_tree = false;
     double ucb_c = 1.41;                 // UCB1 の c (≒√2)
     double epsilon = 0.3;                // ロールアウト ε (全アーム共通)
     int n_states = 10;                   // テスト局面数
@@ -141,6 +146,8 @@ private:
         uint64_t state_seed);
 
     // 1 プレイアウト (選択 → 展開 → ロールアウト → バックプロップ)
+    // actual: noisy_tree 時にエッジを外乱ありで辿った「実状態」(nullptr = node.state を使う)。
+    // 木の構造は node.state (決定的着地) 基準のまま、評価だけ実状態で行う開ループ方式。
     double runPlayout(
         TreeNode& node,
         SimulatorWrapper& sim,
@@ -148,7 +155,8 @@ private:
         std::unordered_map<uint64_t, CandidateCacheEntry>& cache,
         std::mt19937& rng,
         dc::Team root_team,
-        uint64_t state_seed);
+        uint64_t state_seed,
+        const dc::GameState* actual = nullptr);
 
     // ノード展開 (候補生成 + Proposed:クラスタリング / RandomK:決定的乱択 / AllGrid:全候補 / ScoreScreen:得点スクリーン)
     // sim/rng は ScoreScreen の root で E[score] 事前推定ロールアウトに使う

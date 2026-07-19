@@ -203,8 +203,28 @@ void ReinvestExperiment::estimateRootScores(
         int remaining = 16 - static_cast<int>(rs.shot);
         double sum = 0.0, sumsq = 0.0;
         for (int i = 0; i < R_pre; i++) {
-            double v = mcts_shared::rolloutFromState(
-                sim, gen, rs, remaining, root_team, rng, config_.epsilon);
+            double v;
+            if (config_.noisy_tree) {
+                // 候補手自身も毎回外乱ありで打ち直す (審判の resample_first_shot と同じ規約)。
+                // SD は実行リスク込みの分散になる (A7のリスク帯の意味も改善)
+                dc::GameState start = sim.run_single_simulation(node.state, node.candidates[c].shot);
+                if (static_cast<int>(start.end) != cur_end || start.IsGameOver()) {
+                    double diff = 0.0;
+                    if (cur_end >= 0 && cur_end < static_cast<int>(start.scores[0].size())) {
+                        int t0 = start.scores[0][cur_end] ? static_cast<int>(*start.scores[0][cur_end]) : 0;
+                        int t1 = start.scores[1][cur_end] ? static_cast<int>(*start.scores[1][cur_end]) : 0;
+                        diff = static_cast<double>(t0 - t1);
+                    }
+                    v = (root_team == dc::Team::k0) ? diff : -diff;
+                } else {
+                    v = mcts_shared::rolloutFromState(
+                        sim, gen, start, 16 - static_cast<int>(start.shot),
+                        root_team, rng, config_.epsilon);
+                }
+            } else {
+                v = mcts_shared::rolloutFromState(
+                    sim, gen, rs, remaining, root_team, rng, config_.epsilon);
+            }
             sum += v; sumsq += v * v;
         }
         double m = sum / R_pre;
@@ -423,17 +443,21 @@ double ReinvestExperiment::runPlayout(
     std::unordered_map<uint64_t, CandidateCacheEntry>& cache,
     std::mt19937& rng,
     dc::Team root_team,
-    uint64_t state_seed)
+    uint64_t state_seed,
+    const dc::GameState* actual)
 {
     int R = std::max(1, config_.rollouts_per_visit);
 
+    // 評価に使う状態: noisy_tree 時は外乱ありで辿った実状態、通常は参照状態 (決定的着地)
+    const dc::GameState& cur = (config_.noisy_tree && actual) ? *actual : node.state;
+
     // 葉に到達 → ロールアウト (R 回平均)。方策は全アーム共通の ε-greedy 賢い候補。
     if (node.depth >= config_.depth) {
-        int remaining = 16 - static_cast<int>(node.state.shot);
+        int remaining = std::max(0, 16 - static_cast<int>(cur.shot));
         double sum = 0.0;
         for (int i = 0; i < R; i++) {
             sum += mcts_shared::rolloutFromState(
-                sim, gen, node.state, remaining, root_team, rng, config_.epsilon);
+                sim, gen, cur, remaining, root_team, rng, config_.epsilon);
         }
         double mean_reward = sum / R;
         node.visits++;
@@ -447,11 +471,11 @@ double ReinvestExperiment::runPlayout(
     int K = static_cast<int>(node.medoid_indices.size());
     if (K == 0) {
         // 候補なし異常系: ロールアウトのみ
-        int remaining = 16 - static_cast<int>(node.state.shot);
+        int remaining = std::max(0, 16 - static_cast<int>(cur.shot));
         double sum = 0.0;
         for (int i = 0; i < R; i++) {
             sum += mcts_shared::rolloutFromState(
-                sim, gen, node.state, remaining, root_team, rng, config_.epsilon);
+                sim, gen, cur, remaining, root_team, rng, config_.epsilon);
         }
         double mean_reward = sum / R;
         node.visits++;
@@ -470,7 +494,28 @@ double ReinvestExperiment::runPlayout(
         node.children[idx] = std::move(child);
     }
 
-    double reward = runPlayout(*node.children[idx], sim, gen, cache, rng, root_team, state_seed);
+    double reward;
+    if (config_.noisy_tree) {
+        // 開ループ: 選んだ手を「実状態」から外乱ありで打ち直し、サンプルされた次状態を子に運ぶ。
+        dc::GameState next = sim.run_single_simulation(
+            cur, node.candidates[node.medoid_indices[idx]].shot);
+        if (static_cast<int>(next.end) != static_cast<int>(cur.end) || next.IsGameOver()) {
+            // この一打でエンドが確定 (最終ショット跨ぎ): 次エンドを読まず実エンド得点を報酬に
+            // (審判・R_pre と同じ規約)
+            int ce = static_cast<int>(cur.end);
+            double diff = 0.0;
+            if (ce >= 0 && ce < static_cast<int>(next.scores[0].size())) {
+                int t0 = next.scores[0][ce] ? static_cast<int>(*next.scores[0][ce]) : 0;
+                int t1 = next.scores[1][ce] ? static_cast<int>(*next.scores[1][ce]) : 0;
+                diff = static_cast<double>(t0 - t1);
+            }
+            reward = (root_team == dc::Team::k0) ? diff : -diff;
+        } else {
+            reward = runPlayout(*node.children[idx], sim, gen, cache, rng, root_team, state_seed, &next);
+        }
+    } else {
+        reward = runPlayout(*node.children[idx], sim, gen, cache, rng, root_team, state_seed);
+    }
 
     node.visits++;
     node.total_reward += reward;
