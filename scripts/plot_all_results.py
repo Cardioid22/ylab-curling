@@ -31,6 +31,13 @@ MK  = {a: m for a, _, _, m in ARMS}
 LAB = {a: l for a, l, _, _ in ARMS}
 OUT = "reinvest_experiment/figures"
 
+# P=200 のみ存在するアーム込みの拡張リスト (fig2用)。sweep には A8/A9 は無い。
+# 並び = 価値を見ない群 (A1,A2,A5) | 価値を見る群 (A7,A8,A9)
+ARMS_P200 = ARMS + [
+    ("A8", "ScoreTopK (得点ソートのみ)",   "#56B4E9", "v"),
+    ("A9", "ClusterValue (クラスタ×価値)", "#E69F00", "P"),
+]
+
 BUD = {
  50:  "reinvest_experiment/sweep/merged/P50/regret/reinvest_joined.csv",
  100: "reinvest_experiment/sweep/merged/P100/regret/reinvest_joined.csv",
@@ -90,43 +97,51 @@ def fig1():
 # ---------------- fig2: regret bars P=200 + 有意性 ----------------
 def fig2():
     fp = BUD[200]
-    M = {a: pos_means(fp, a) for a, _, _, _ in ARMS}
-    common = sorted(set.intersection(*[set(M[a]) for a, _, _, _ in ARMS]))
+    M = {a: pos_means(fp, a) for a, _, _, _ in ARMS_P200}
+    common = sorted(set.intersection(*[set(M[a]) for a, _, _, _ in ARMS_P200]))
     arr = {a: np.array([M[a][k] for k in common]) for a in M}
-    fig, ax = plt.subplots(figsize=(7.4, 5.2))
-    xs = np.arange(len(ARMS))
-    for i, (a, lab, c, mk) in enumerate(ARMS):
+    fig, ax = plt.subplots(figsize=(9.0, 5.6))
+    xs = np.arange(len(ARMS_P200))
+    for i, (a, lab, c, mk) in enumerate(ARMS_P200):
         m = arr[a].mean(); lo, hi = boot_ci(arr[a])
         ax.bar(i, m, 0.62, color=c, edgecolor="white", lw=1.2, zorder=2)
         ax.errorbar(i, m, yerr=[[m-lo], [hi-m]], color=INK, capsize=4, lw=1.2, zorder=3)
         ax.text(i, m+0.015, f"{m:.2f}", ha="center", va="bottom", color=INK, fontsize=10)
     recessive(ax)
-    ax.set_xticks(xs); ax.set_xticklabels([a for a, _, _, _ in ARMS])
+    short = {"A1": "総当たり", "A2": "盤面類似", "A5": "ランダム", "A7": "スクリーン", "A8": "ソートのみ", "A9": "クラスタ×価値"}
+    ax.set_xticks(xs)
+    ax.set_xticklabels([f"{a}\n{short[a]}" for a, _, _, _ in ARMS_P200], fontsize=9)
     ax.set_ylabel("平均 regret (低いほど良い)", color=INK)
-    ax.set_title("P=200: 手法別 regret と有意性 (n=50局面)", color=INK, fontsize=13)
-    ax.set_ylim(0, max(arr[a].mean() for a in arr)*1.5)
-    # 有意性: 全6ペアの Wilcoxon(局面対応) → Holm補正 → 主要ペアを注記
+    ax.set_title("P=200: 手法別 regret (n=50局面×5seed, 等予算)", color=INK, fontsize=13)
+    ax.set_ylim(0, max(arr[a].mean() for a in arr)*1.62)
+    # 群の区切り: 価値を見ない (A1,A2,A5) | 価値を見る (A7,A8,A9)
+    ax.axvline(2.5, color=GRID, lw=1, ls="--")
+    ytop0 = max(arr[a].mean() for a in arr)
+    ax.text(1.0, ytop0*1.56, "E[score]を見ない", ha="center", color=MUTED, fontsize=9.5)
+    ax.text(4.0, ytop0*1.56, "E[score]で候補を絞る", ha="center", color=MUTED, fontsize=9.5)
+    # 有意性: 全15ペアの Wilcoxon(局面対応) → Holm補正 → 主要ペアを注記
     import itertools
-    arms4 = [a for a,_,_,_ in ARMS]
+    arms6 = [a for a,_,_,_ in ARMS_P200]
     raw = {}
-    for a,b in itertools.combinations(arms4,2):
+    for a,b in itertools.combinations(arms6,2):
         try: raw[(a,b)] = stats.wilcoxon(arr[a], arr[b]).pvalue
         except ValueError: raw[(a,b)] = 1.0
     items = sorted(raw.items(), key=lambda kv: kv[1]); m=len(items); pholm={}; prev=0.0
     for i,(k,p) in enumerate(items):
         v=min(1.0,(m-i)*p); v=max(v,prev); pholm[k]=v; prev=v
     def getp(a,b): return pholm.get((a,b), pholm.get((b,a),1.0))
-    pairs = [("A7","A1"), ("A7","A2")]
-    idx = {a:i for i,(a,_,_,_) in enumerate(ARMS)}
+    pairs = [("A7","A1"), ("A9","A2"), ("A7","A9")]
+    idx = {a:i for i,(a,_,_,_) in enumerate(ARMS_P200)}
     ytop = max(arr[a].mean() for a in arr)
     for j,(a,b) in enumerate(pairs):
         p = getp(a,b); s = "**" if p<0.05 else ("*" if p<0.10 else "n.s.")
-        y = ytop*1.10 + j*ytop*0.14
+        y = ytop*1.08 + j*ytop*0.15
         x1,x2 = idx[a], idx[b]
         ax.plot([x1,x1,x2,x2], [y,y+0.01,y+0.01,y], color=MUTED, lw=1)
         ax.text((x1+x2)/2, y+0.012, f"{a} vs {b}: {s} (p_holm={p:.3f})", ha="center", va="bottom",
                 color=MUTED, fontsize=8.5)
-    fig.text(0.5, 0.01, "凡例: ** p_holm<0.05, * <0.10 (Wilcoxon符号順位・局面対応, Holm補正/全6ペア)",
+    fig.text(0.5, 0.01, "凡例: ** p_holm<0.05, * <0.10 (Wilcoxon符号順位・局面対応, Holm補正/全15ペア)。"
+             "A7 vs A9 n.s. = クラスタ表現の保持は品質コストほぼゼロ",
              ha="center", color=MUTED, fontsize=8)
     fig.tight_layout(rect=[0,0.03,1,1]); p = f"{OUT}/fig2_regret_bars_P200.png"; fig.savefig(p, dpi=160); plt.close(fig)
     print("saved", p)
