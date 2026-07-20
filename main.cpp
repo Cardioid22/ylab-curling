@@ -842,6 +842,11 @@ int main(int argc, char const* argv[])
         int score_screen_v_target_arg = 50;             // ScoreScreen: K_cap = playouts / v_target
         int cv_k_opp_arg = 8;                           // ClusterValueDeep (A10): 相手番ノードの子数
         bool noisy_tree_arg = false;                    // 開ループ・リサンプリング木 (--noisy-tree)
+        bool adaptive_a_arg = false;                    // フェーズ適応探索 (selfplayのアームA)
+        bool adaptive_b_arg = false;                    // 同 アームB
+        int adaptive_p_early_arg = 100;                 // 前半 playouts (depth1固定)
+        int adaptive_p_late_arg = 500;                  // 終盤 playouts (depth=--depth)
+        int adaptive_r_late_arg = 4;                    // 終盤の残り手数閾値
         int depth3_n_states_arg = 100;
         int depth3_proposed_playouts_arg = 500;
         int depth3_allgrid_playouts_arg = 10000;
@@ -992,6 +997,27 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--noisy-tree") {
                 noisy_tree_arg = true;
+            }
+            if (std::string(argv[i]) == "--adaptive-a") {
+                adaptive_a_arg = true;
+            }
+            if (std::string(argv[i]) == "--adaptive-b") {
+                adaptive_b_arg = true;
+            }
+            if (std::string(argv[i]) == "--p-early" && i + 1 < argc) {
+                adaptive_p_early_arg = std::atoi(argv[i + 1]);
+                if (adaptive_p_early_arg < 1) adaptive_p_early_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--p-late" && i + 1 < argc) {
+                adaptive_p_late_arg = std::atoi(argv[i + 1]);
+                if (adaptive_p_late_arg < 1) adaptive_p_late_arg = 1;
+                i++;
+            }
+            if (std::string(argv[i]) == "--r-late" && i + 1 < argc) {
+                adaptive_r_late_arg = std::atoi(argv[i + 1]);
+                if (adaptive_r_late_arg < 1) adaptive_r_late_arg = 1;
+                i++;
             }
             if (std::string(argv[i]) == "--proposed-playouts" && i + 1 < argc) {
                 depth3_proposed_playouts_arg = std::atoi(argv[i + 1]);
@@ -1840,6 +1866,21 @@ int main(int argc, char const* argv[])
             if (selfplay_depth_b > 0) {
                 sp.arm_b.depth = selfplay_depth_b;
                 sp.label_b += "-d" + std::to_string(selfplay_depth_b);
+            }
+            // アーム別フェーズ適応 (--adaptive-a/-b): 前半d1×P_early + 終盤depth×P_late
+            if (adaptive_a_arg) {
+                sp.arm_a.adaptive = true;
+                sp.arm_a.adaptive_p_early = adaptive_p_early_arg;
+                sp.arm_a.adaptive_p_late = adaptive_p_late_arg;
+                sp.arm_a.adaptive_r_late = adaptive_r_late_arg;
+                sp.label_a += "-adpt";
+            }
+            if (adaptive_b_arg) {
+                sp.arm_b.adaptive = true;
+                sp.arm_b.adaptive_p_early = adaptive_p_early_arg;
+                sp.arm_b.adaptive_p_late = adaptive_p_late_arg;
+                sp.arm_b.adaptive_r_late = adaptive_r_late_arg;
+                sp.label_b += "-adpt";
             }
             sp.n_games = selfplay_games;
             sp.n_ends = selfplay_ends;

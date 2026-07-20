@@ -649,6 +649,23 @@ ShotInfo ReinvestExperiment::decideShot(
     const dc::GameState& state, dc::Team to_play, uint64_t state_seed,
     SimulatorWrapper& sim, ShotGenerator& gen, std::mt19937& rng)
 {
+    // フェーズ適応: 前半 (r > 閾値) は depth1×P_early、終盤 (r ≤ 閾値) は depth×P_late。
+    // 局所インスタンス (adaptive=false) に委譲するのでスレッド安全・再帰なし。
+    if (config_.adaptive) {
+        int r = 16 - static_cast<int>(state.shot);
+        ReinvestConfig c = config_;
+        c.adaptive = false;
+        if (r <= config_.adaptive_r_late) {
+            c.depth = std::min(config_.depth, std::max(1, r));
+            c.playouts = config_.adaptive_p_late;
+        } else {
+            c.depth = 1;
+            c.playouts = config_.adaptive_p_early;
+        }
+        ReinvestExperiment sub(game_setting_, c);
+        return sub.decideShot(state, to_play, state_seed, sim, gen, rng);
+    }
+
     std::unordered_map<uint64_t, CandidateCacheEntry> cache;
     TreeNode root;
     root.state = state;

@@ -59,6 +59,16 @@ struct ReinvestConfig {
     // R_pre推定も候補手を毎回打ち直す (審判の resample_first_shot と同じ規約)。
     // 無外乱木が立てる「精密だが脆い計画」を、訪問ごとの実行ノイズで自然に罰する。
     bool noisy_tree = false;
+    // フェーズ適応探索 (--adaptive, decideShot=自己対戦経路のみ):
+    // treedepth の知見「深さが手を変えるのは終盤 (残りr≤4) だけ」に基づき、
+    // 前半 (r > adaptive_r_late) は depth1×adaptive_p_early で安く流し、
+    // 終盤 (r ≤ adaptive_r_late) は depth×adaptive_p_late に集中投資する
+    // (K_cap = P/v_target なので終盤は子の数も自動で増える)。
+    // 既定 100×6手 + 500×2手 = 1600 = 定数P200×8手 と同一総プレイアウト。
+    bool adaptive = false;
+    int adaptive_r_late = 4;     // 終盤とみなす残り手数の閾値
+    int adaptive_p_early = 100;  // 前半の playouts (depth は 1 固定)
+    int adaptive_p_late = 500;   // 終盤の playouts (depth は config.depth)
     double ucb_c = 1.41;                 // UCB1 の c (≒√2)
     double epsilon = 0.3;                // ロールアウト ε (全アーム共通)
     int n_states = 10;                   // テスト局面数
