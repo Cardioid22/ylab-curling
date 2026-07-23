@@ -27,7 +27,9 @@ plt.rcParams["font.family"] = "MS Gothic"; plt.rcParams["axes.unicode_minus"] = 
 
 RUN50 = "reinvest_experiment/scorescreen/run50"
 OUT = f"{RUN50}/d3_failure"
-os.makedirs(OUT, exist_ok=True)
+ARM_BASE = RUN50                                          # main() の引数で上書き
+REFEREE_CSV = f"{RUN50}/referee/score_move_qtable.csv"
+BATCH_CSV = "test_positions50/batch_0001.csv"
 C_D1, C_D3 = "#009E73", "#D55E00"   # d1=緑, d3=橙 (CVD-safe)
 
 BUCKETS = [(2, 4, "終盤 r=2-4"), (5, 8, "中盤 r=5-8"), (9, 16, "序盤 r=9+")]
@@ -39,7 +41,7 @@ def bucket(r):
 
 def load_moves(arm):
     mv = {}
-    for fp in glob.glob(f"{RUN50}/{arm}/seed_*/reinvest_results.csv"):
+    for fp in glob.glob(f"{ARM_BASE}/{arm}/seed_*/reinvest_results.csv"):
         for row in csv.DictReader(open(fp, encoding="utf-8")):
             mv[(row["game_id"], row["end"], row["shot_num"], row["seed"])] = int(row["candidate_idx"])
     return mv
@@ -47,7 +49,7 @@ def load_moves(arm):
 
 def load_referee():
     q = defaultdict(dict)
-    for row in csv.DictReader(open(f"{RUN50}/referee/score_move_qtable.csv", encoding="utf-8")):
+    for row in csv.DictReader(open(REFEREE_CSV, encoding="utf-8")):
         hist = {}
         if row["score_hist"]:
             for tok in row["score_hist"].split(";"):
@@ -64,12 +66,16 @@ def load_referee():
 def main():
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm-d3", default="A1", help="d3側アームのディレクトリ名 (run50配下)")
+    ap.add_argument("--arm-d3", default="A1", help="d3側アームのディレクトリ名")
     ap.add_argument("--arm-d1", default="A1d1", help="d1側アームのディレクトリ名")
-    ap.add_argument("--out-name", default="d3_failure", help="出力サブディレクトリ名")
+    ap.add_argument("--base", default=RUN50, help="アームディレクトリの親 (seed_* を含む階層の親)")
+    ap.add_argument("--referee-csv", default=f"{RUN50}/referee/score_move_qtable.csv")
+    ap.add_argument("--batch-csv", default="test_positions50/batch_0001.csv")
+    ap.add_argument("--out-name", default="d3_failure", help="出力サブディレクトリ名 (--base配下)")
     args = ap.parse_args()
-    global OUT
-    OUT = f"{RUN50}/{args.out_name}"
+    global OUT, ARM_BASE, REFEREE_CSV, BATCH_CSV
+    ARM_BASE, REFEREE_CSV, BATCH_CSV = args.base, args.referee_csv, args.batch_csv
+    OUT = f"{args.base}/{args.out_name}"
     os.makedirs(OUT, exist_ok=True)
 
     d3 = load_moves(args.arm_d3)
@@ -166,7 +172,7 @@ def main():
 
     # ---- 図2: 終盤で最も損した分岐の盤面 (d1の手 vs d3の手) ----
     board = {(r["match_id"], r["end"], r["shot_num"]): r
-             for r in csv.DictReader(open("test_positions50/batch_0001.csv", newline="", encoding="utf-8"))}
+             for r in csv.DictReader(open(BATCH_CSV, newline="", encoding="utf-8"))}
     cases = []
     for k, m3 in d3.items():
         if k not in d1 or d1[k] == m3: continue
