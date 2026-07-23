@@ -207,6 +207,28 @@ double DepthNMctsExperiment::runPlayout(
         node.children[idx] = std::move(child);
     }
 
+    // 【重要バグ修正】エンド跨ぎはここで打ち切り実エンド得点を報酬に (reinvest版と同一の修正)。
+    // 修正前は次エンドを展開して次エンドのロールアウト得点を価値にしていた。
+    // 跨ぎ子は「終端の葉」として子の統計も更新 (しないとUCB優先度∞のまま探索が壊れる)。
+    {
+        const dc::GameState& cs = node.children[idx]->state;
+        if (static_cast<int>(cs.end) != static_cast<int>(node.state.end) || cs.IsGameOver()) {
+            int ce = static_cast<int>(node.state.end);
+            double diff = 0.0;
+            if (ce >= 0 && ce < static_cast<int>(cs.scores[0].size())) {
+                int t0 = cs.scores[0][ce] ? static_cast<int>(*cs.scores[0][ce]) : 0;
+                int t1 = cs.scores[1][ce] ? static_cast<int>(*cs.scores[1][ce]) : 0;
+                diff = static_cast<double>(t0 - t1);
+            }
+            double reward_t = (root_team == dc::Team::k0) ? diff : -diff;
+            node.children[idx]->visits++;
+            node.children[idx]->total_reward += reward_t;
+            node.visits++;
+            node.total_reward += reward_t;
+            return reward_t;
+        }
+    }
+
     // 子に再帰
     double reward = runPlayout(*node.children[idx], max_depth, mode, sim, gen, cache, rng, root_team);
 

@@ -62,8 +62,18 @@ def load_referee():
 
 
 def main():
-    d3 = load_moves("A1")     # A1 = AllGrid depth3
-    d1 = load_moves("A1d1")   # A1d1 = AllGrid depth1
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arm-d3", default="A1", help="d3側アームのディレクトリ名 (run50配下)")
+    ap.add_argument("--arm-d1", default="A1d1", help="d1側アームのディレクトリ名")
+    ap.add_argument("--out-name", default="d3_failure", help="出力サブディレクトリ名")
+    args = ap.parse_args()
+    global OUT
+    OUT = f"{RUN50}/{args.out_name}"
+    os.makedirs(OUT, exist_ok=True)
+
+    d3 = load_moves(args.arm_d3)
+    d1 = load_moves(args.arm_d1)
     ref = load_referee()
     rep = []
     def pr(s): rep.append(s); print(s)

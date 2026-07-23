@@ -494,6 +494,23 @@ double ReinvestExperiment::runPlayout(
         node.children[idx] = std::move(child);
     }
 
+    // エンド跨ぎ終端の得点抽出 (現エンド ce の純得点, root_team視点)
+    auto endScore = [&](const dc::GameState& s, int ce) {
+        double diff = 0.0;
+        if (ce >= 0 && ce < static_cast<int>(s.scores[0].size())) {
+            int t0 = s.scores[0][ce] ? static_cast<int>(*s.scores[0][ce]) : 0;
+            int t1 = s.scores[1][ce] ? static_cast<int>(*s.scores[1][ce]) : 0;
+            diff = static_cast<double>(t0 - t1);
+        }
+        return (root_team == dc::Team::k0) ? diff : -diff;
+    };
+    // 跨ぎ子は「終端の葉」として子の統計も更新する (更新しないと visits=0 のまま
+    // UCB優先度∞で同じ子だけが選ばれ続け、相手最終ショットの探索が壊れる)
+    auto terminalVisit = [&](int child_idx, double reward_t) {
+        node.children[child_idx]->visits++;
+        node.children[child_idx]->total_reward += reward_t;
+    };
+
     double reward;
     if (config_.noisy_tree) {
         // 開ループ: 選んだ手を「実状態」から外乱ありで打ち直し、サンプルされた次状態を子に運ぶ。
@@ -501,20 +518,24 @@ double ReinvestExperiment::runPlayout(
             cur, node.candidates[node.medoid_indices[idx]].shot);
         if (static_cast<int>(next.end) != static_cast<int>(cur.end) || next.IsGameOver()) {
             // この一打でエンドが確定 (最終ショット跨ぎ): 次エンドを読まず実エンド得点を報酬に
-            // (審判・R_pre と同じ規約)
-            int ce = static_cast<int>(cur.end);
-            double diff = 0.0;
-            if (ce >= 0 && ce < static_cast<int>(next.scores[0].size())) {
-                int t0 = next.scores[0][ce] ? static_cast<int>(*next.scores[0][ce]) : 0;
-                int t1 = next.scores[1][ce] ? static_cast<int>(*next.scores[1][ce]) : 0;
-                diff = static_cast<double>(t0 - t1);
-            }
-            reward = (root_team == dc::Team::k0) ? diff : -diff;
+            // (審判・R_pre と同じ規約)。noisy では毎訪問サンプルが異なる=外乱込みの終端分布
+            reward = endScore(next, static_cast<int>(cur.end));
+            terminalVisit(idx, reward);
         } else {
             reward = runPlayout(*node.children[idx], sim, gen, cache, rng, root_team, state_seed, &next);
         }
     } else {
-        reward = runPlayout(*node.children[idx], sim, gen, cache, rng, root_team, state_seed);
+        const dc::GameState& cs = node.children[idx]->state;
+        if (static_cast<int>(cs.end) != static_cast<int>(cur.end) || cs.IsGameOver()) {
+            // 【重要バグ修正】決定的木でもエンド跨ぎはここで打ち切り、実エンド得点を報酬にする。
+            // 修正前は次エンドの盤面を展開して「次エンドのロールアウト得点」を価値にしていた
+            // (現エンドの得点が価値に入らない上、得点するとハンマーを失うため
+            //  「今得点しない消極手」を系統的に選好する誤った目的関数になっていた)。
+            reward = endScore(cs, static_cast<int>(cur.end));
+            terminalVisit(idx, reward);
+        } else {
+            reward = runPlayout(*node.children[idx], sim, gen, cache, rng, root_team, state_seed);
+        }
     }
 
     node.visits++;
