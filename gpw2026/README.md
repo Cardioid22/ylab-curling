@@ -2,14 +2,25 @@
 
 ## Overleafでの使い方
 1. このディレクトリ (`gpw2026/`) の中身を丸ごとzipにするか、Overleafで新規プロジェクトを作って
-   `draft.tex`, `ipsj.cls`, `ipsjtech.sty`, `figures/` をアップロード。
+   `main.tex`, `ipsj.cls`, `ipsjtech.sty`, `figures/` (`.xbb`ファイル含む) をアップロード。
 2. Overleafのコンパイラを **pLaTeX** に設定（メニュー "Menu" → "Compiler"）。
    IPSJスタイル(`ipsj.cls`)は和文pLaTeX前提。
-3. `draft.tex` をメインファイルに指定してコンパイル。
+3. `main.tex` をメインファイルに指定してコンパイル。
 4. ページ数・フォントサイズ(10pt以上)を確認し、はみ出す場合は本文を削るか図を縮小。
 
+### 画像がはみ出す/正しいサイズで挿入されない場合
+pLaTeX+dvipdfmxはPNG/JPEGのDPI情報を読まないため、`\includegraphics`に`bb=`(pt単位の
+bounding box)を明示しないと正しくスケールされない(GI58の`main.tex`と同じ問題)。
+`figures/*.xbb`を同梱済みなのでOverleaf側のextractbbが効けば自動で拾われるはずだが、
+効かない場合は`main.tex`側で`\includegraphics[width=\columnwidth, bb=0 0 <W> <H>]`のように
+明示している(既存の2枚は対応済み)。新しい画像を追加する場合の計算式:
+```
+bb_pt_width  = 画像の横px * 72 / 画像のDPI (matplotlib既定 dpi=150 で保存している場合が多い)
+bb_pt_height = 画像の縦px * 72 / 画像のDPI
+```
+
 ## 現状の未確定事項 (締切前に確認・更新すること)
-- `draft.tex` 冒頭の `\newcommand` 群は **seed42のみの速報値**。
+- `main.tex` 冒頭の `\newcommand` 群は **seed42のみの速報値**。
   bearで実行中の `A1d1` 残り4シード (43-46) が揃ったら:
   ```
   python scripts/analyze_cluster_switch.py \
@@ -22,7 +33,7 @@
   を再実行し、`\switchEndgame` 等と `\agreeEndgame` 等の値を更新。
   図も `figures/cluster_switch_draft_seed42.png` 等を新しい出力で差し替え
   (ファイル名の `_seed42` は外して良い)。
-- 著者所属・メールアドレスはGI58から流用。変更があれば `draft.tex` の `\author`/`\affiliate` を修正。
+- 著者所属・メールアドレスはGI58から流用。変更があれば `main.tex` の `\author`/`\affiliate` を修正。
 - 参考文献 `naka_gi58` の巻号ページはGI58の正式な発行情報が確定次第、埋める。
 - 図1 (`area_map_B_hull_draft.png`) は3局面を横に並べた版。2段組の1カラム幅に収めると
   小さくなりすぎる場合は、1局面だけの単独版を作り直すことを検討
