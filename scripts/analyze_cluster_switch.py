@@ -89,6 +89,8 @@ def main():
 
     stats = defaultdict(lambda: dict(n=0, agree=0, same_cluster=0, diff_cluster=0,
                                      sizes_from=[], sizes_to=[], trans=Counter()))
+    # 残り手数1刻みの集計 (粗い3区分の内訳を見る用)
+    fine = defaultdict(lambda: dict(n=0, agree=0, same_cluster=0, diff_cluster=0))
     for seed in seeds:
         for key, m3 in d3[seed].items():
             if key not in d1[seed] or key not in clus[seed]:
@@ -100,8 +102,10 @@ def main():
                 continue
             st = stats[b]
             st["n"] += 1
+            fst = fine[r]; fst["n"] += 1
             if m3 == m1:
                 st["agree"] += 1
+                fst["agree"] += 1
                 continue
             c = clus[seed][key]
             if m3 not in c or m1 not in c:
@@ -111,8 +115,10 @@ def main():
             types = ctype[seed][key]
             if cid3 == cid1:
                 st["same_cluster"] += 1
+                fst["same_cluster"] += 1
             else:
                 st["diff_cluster"] += 1
+                fst["diff_cluster"] += 1
                 st["sizes_from"].append(sizes.get(cid1, 1))
                 st["sizes_to"].append(sizes.get(cid3, 1))
                 st["trans"][(types.get(m1, "?"), types.get(m3, "?"))] += 1
@@ -151,47 +157,78 @@ def main():
     with open(f"{args.out}/cluster_switch_report.txt", "w", encoding="utf-8") as f:
         f.write("\n".join(rep) + "\n")
 
-    # 図: フェーズ別 同一クラスタ/別クラスタ 積み上げ棒
+    # 統合図: (左)残り手数別の一致率 + (右)手が分かれた場合のクラスタ乗換 積み上げ棒
+    # 2枚を1つのfigureにまとめてページ面積を節約 (内容も「同じ3区分」で対応しているため統合が自然)
     names = [b for _, _, b in BUCKETS]
     same = [stats[b]["same_cluster"] for b in names]
     diff = [stats[b]["diff_cluster"] for b in names]
-    fig, ax = plt.subplots(figsize=(7, 5))
+    agree_rate = [stats[b]["agree"] / stats[b]["n"] if stats[b]["n"] else 0 for b in names]
+    ns = [stats[b]["n"] for b in names]
     x = np.arange(3)
-    ax.bar(x, same, 0.55, label="同一クラスタ内の微調整", color="#0072B2")
-    ax.bar(x, diff, 0.55, bottom=same, label="別クラスタへの乗り換え", color="#D55E00")
+
+    fig, (axL, axR) = plt.subplots(1, 2, figsize=(9.5, 4.6))
+    axL.bar(x, agree_rate, 0.55, color="#009E73")
+    for i, (v, n) in enumerate(zip(agree_rate, ns)):
+        axL.text(i, v + 0.02, f"{v:.0%}\n(n={n})", ha="center", fontsize=8.5)
+    axL.set_xticks(x); axL.set_xticklabels(names, fontsize=8.5)
+    axL.set_ylim(0, 1.05)
+    axL.set_ylabel("d3/d1 選択一致率", fontsize=9)
+    axL.set_title("(a) 深さで選ぶ手はどこで変わるか", fontsize=9.5)
+    for s in ("top", "right"):
+        axL.spines[s].set_visible(False)
+    axL.grid(axis="y", alpha=0.3)
+
+    axR.bar(x, same, 0.55, label="同一クラスタ内", color="#0072B2")
+    axR.bar(x, diff, 0.55, bottom=same, label="別クラスタへ乗換", color="#D55E00")
     for i in range(3):
         tot = same[i] + diff[i]
         if tot:
-            ax.text(i, tot + 0.5, f"{diff[i]/tot:.0%}が乗換", ha="center", fontsize=9)
-    ax.set_xticks(x); ax.set_xticklabels(names)
-    ax.set_ylabel("手が分かれた局面数 (d3 vs d1)")
-    ax.set_title("深さで手が変わるとき、クラスタ(戦術)ごと乗り換わるか")
-    ax.legend(frameon=False)
+            axR.text(i, tot + 0.5, f"{diff[i]/tot:.0%}", ha="center", fontsize=8.5)
+    axR.set_xticks(x); axR.set_xticklabels(names, fontsize=8.5)
+    axR.set_ylabel("手が分かれた局面数", fontsize=9)
+    axR.set_title("(b) クラスタ(戦術)ごと乗り換わるか", fontsize=9.5)
+    axR.legend(frameon=False, fontsize=7.5, loc="upper left")
     for s in ("top", "right"):
-        ax.spines[s].set_visible(False)
-    ax.grid(axis="y", alpha=0.3)
+        axR.spines[s].set_visible(False)
+    axR.grid(axis="y", alpha=0.3)
+
     fig.tight_layout()
-    fig.savefig(f"{args.out}/cluster_switch.png", dpi=150)
+    fig.savefig(f"{args.out}/agreement_and_switch.png", dpi=150)
     plt.close(fig)
 
-    # 図2: 残り手数別の d3/d1 選択一致率 (「後半で著しく変わる」の直接根拠)
-    agree_rate = [stats[b]["agree"] / stats[b]["n"] if stats[b]["n"] else 0 for b in names]
-    ns = [stats[b]["n"] for b in names]
-    fig2, ax2 = plt.subplots(figsize=(6.5, 5))
-    ax2.bar(x, agree_rate, 0.55, color="#009E73")
-    for i, (v, n) in enumerate(zip(agree_rate, ns)):
-        ax2.text(i, v + 0.02, f"{v:.0%}\n(n={n})", ha="center", fontsize=9)
-    ax2.set_xticks(x); ax2.set_xticklabels(names)
-    ax2.set_ylim(0, 1.05)
-    ax2.set_ylabel("depth3とdepth1の選択一致率")
-    ax2.set_title("残り手数別: 深さで選ぶ手はどこで変わるか")
+    # 図3: 残り手数1刻みの一致率+乗換率 (2段組)
+    rs = sorted(r for r in fine if fine[r]["n"] >= 3)  # サンプル数3未満は棒を出さない (誇張防止)
+    agree_r = [fine[r]["agree"] / fine[r]["n"] for r in rs]
+    n_r = [fine[r]["n"] for r in rs]
+    switch_r, switch_n = [], []
+    for r in rs:
+        tot = fine[r]["same_cluster"] + fine[r]["diff_cluster"]
+        switch_r.append(fine[r]["diff_cluster"] / tot if tot else float("nan"))
+        switch_n.append(tot)
+    fig3, (axa, axb) = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
+    axa.bar(rs, agree_r, color="#009E73")
+    for r, v, n in zip(rs, agree_r, n_r):
+        axa.text(r, v + 0.02, f"n={n}", ha="center", fontsize=6.5, rotation=90, va="bottom")
+    axa.set_ylim(0, 1.15); axa.set_ylabel("d3/d1 選択一致率")
+    axa.set_title("残り手数(1刻み)別: 選択一致率と別クラスタ乗換率 (速報値, seed42)")
     for s in ("top", "right"):
-        ax2.spines[s].set_visible(False)
-    ax2.grid(axis="y", alpha=0.3)
-    fig2.tight_layout()
-    fig2.savefig(f"{args.out}/agreement_by_phase.png", dpi=150)
-    plt.close(fig2)
-    print(f"\n[out] -> {args.out}/ (cluster_switch_report.txt, cluster_switch.png, agreement_by_phase.png)")
+        axa.spines[s].set_visible(False)
+    axa.grid(axis="y", alpha=0.3)
+    axb.bar(rs, switch_r, color="#D55E00")
+    for r, v, n in zip(rs, switch_r, switch_n):
+        if not np.isnan(v):
+            axb.text(r, v + 0.02, f"n={n}", ha="center", fontsize=6.5, rotation=90, va="bottom")
+    axb.set_ylim(0, 1.15); axb.set_ylabel("不一致時の別クラスタ乗換率")
+    axb.set_xlabel("残り手数 r"); axb.set_xticks(rs)
+    for s in ("top", "right"):
+        axb.spines[s].set_visible(False)
+    axb.grid(axis="y", alpha=0.3)
+    fig3.tight_layout()
+    fig3.savefig(f"{args.out}/agreement_by_remaining_fine.png", dpi=150)
+    plt.close(fig3)
+
+    print(f"\n[out] -> {args.out}/ (cluster_switch_report.txt, agreement_and_switch.png, "
+         f"agreement_by_remaining_fine.png)")
 
 
 if __name__ == "__main__":
