@@ -21,7 +21,7 @@
 #   ./scripts/run_reinvest.sh --arms "A3"          [OPTIONS]   # bear (深さ5担当)
 #
 # Options:
-#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9R025/A9R05/A9R10) [必須]
+#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9P5, A9R025/A9R05/A9R10) [必須]
 #                            A7=ScoreScreen (得点スクリーン型 Proposed; root で E[score] ε帯+リスク多様性選別)
 #   --base-seed S            先頭 seed; S..S+K-1 を使う (default: 42)
 #   --num-seeds K            seed 数 (default: 5)
@@ -68,9 +68,12 @@ arm_spec() {
         A8) echo "ScoreTopK 3 $P_BASE $R_BASE $RETENTION" ;;    # A7 の ablation (E[score] 上位 K_cap のみ; P≥100 必須)
         A9) echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION" ;; # ClusterValue (λ=0): クラスタ平均 E[score] で上位K採用
         # ---- リスク統合クラスタ価値 (GPW本論文): クラスタ価値 = μ_c − λ·σ_c ----
-        A9R025) echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --risk-lambda 0.25" ;;
-        A9R05)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --risk-lambda 0.5" ;;
-        A9R10)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --risk-lambda 1.0" ;;
+        # sd_i の推定を安定させるため R_pre=5 (A9 は 3)。λ の効果を単離するため λ=0 の R_pre=5 対照 (A9P5) を必ず一緒に回す。
+        # R_pre 3→5 の追加コストは ~2N ロールアウト ≈ +3% sims (run50v2: A9−A2 差が R_pre=3 の全コスト ≈ 4%)。
+        A9P5)   echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --r-pre 5" ;;                     # λ=0 対照 (cluster_sd も出る → λ のオフライン掃引に使える)
+        A9R025) echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --risk-lambda 0.25" ;;
+        A9R05)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --risk-lambda 0.5" ;;   # 主アーム
+        A9R10)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --risk-lambda 1.0" ;;   # 任意
         *)  return 1 ;;
     esac
 }
@@ -166,7 +169,7 @@ mkdir -p "$PARENT_DIR"
 IFS=',' read -ra ARM_LIST <<< "$ARMS"
 for ARM in "${ARM_LIST[@]}"; do
     if ! arm_spec "$ARM" >/dev/null 2>&1; then
-        echo "Error: unknown arm '$ARM' (valid: A1..A9, A9R025, A9R05, A9R10)" >&2
+        echo "Error: unknown arm '$ARM' (valid: A1..A9, A9P5, A9R025, A9R05, A9R10)" >&2
         exit 1
     fi
 done
