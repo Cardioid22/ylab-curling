@@ -203,13 +203,20 @@ GPW 本論文 (`scripts/README_run200.md` が runbook):
 
 ## 5. 実行中 / 直近タスク
 
-- (実行中のサーバージョブなし。全マシン空き)
-- **【次】run200 キャンペーン投入** (`scripts/README_run200.md` の手順そのまま):
-  1. 各サーバー `git pull` → `rm -f build/ylab_client && cmake --build build --config Release --target ylab_client` → 1局面スモーク
-  2. `./scripts/run200_reuse_first50.sh` (先頭50流用)
-  3. bear: 審判 K=200 (新規150局面, `--start-index 50 --max-positions 150`, ~10h) + A9R05/A9R10 (200局面)
-     jaguar: A1/A9 (150局面) / lion: A2 (150局面) / tiger: A5 (150局面)。全体 ~1.5-2 日。
-  4. 回収 → `aggregate_reinvest.py --risk-lambda 0.5` → `regret_stats.py` (regret / regret_adj) → `position_features.py` → `analyze_when_clustering_helps.py`
+- **【実行中】run200 キャンペーン (2026-08-25 19:10 JST 投入, 出力 `reinvest_experiment/run200/`, 新バイナリ 08-25 19:04 ビルド)**
+  | マシン | ジョブ | 進捗の見方 |
+  |---|---|---|
+  | bear | 審判 K=200 新規150局面 (`referee/referee_idx50.log`, 64thr) + **A9R05** 200局面×5seed (12thr/seed) | `grep -ac "^\[done" run200/A9R05/seed_*/run.log` |
+  | jaguar | **A9P5** 200局面×5seed (12thr/seed)。**A1,A5 (150局面) は未投入** → 空きコア60で追加投入すること | 同上 |
+  | lion | **A2** 新規150局面×5seed (18thr/seed) | 同上 (150 で完了) |
+  | tiger | **A9** 新規150局面×5seed (18thr/seed) | 同上 |
+  - 全アーム P=200 R=10。A9R05/A9P5 は `--r-pre 5` (launch_*.log で確認済み)。ログの eta は序盤の軽い局面基準で過小 (実際は 12-20h)。
+  - **サーバー運用の事実 (2026-08-25 判明)**: 4台の `/home` は同一 NFS → リポジトリ/バイナリ/出力は共有。pull・ビルドは1回でよい。
+    ビルド用 docker イメージ `ylab-project` は **lion のみ** (bear は docker 権限なし):
+    `docker run --rm -v "$(pwd):/app" ylab-project bash -c 'cd /app/build && cmake --build . --config Release --target ylab_client -j 48'`
+    (`cmake` はホストに無い。`rm -f build/ylab_client` を先に)。スクリプトは実行ビットが無いので `bash scripts/...` で起動。
+- 回収後 (ローカル): `rsync` で run200 を取得 → `bash scripts/run200_reuse_first50.sh` → `aggregate_reinvest.py --risk-lambda 0.5`
+  → `regret_stats.py` (regret / regret_adj) → `position_features.py` → `analyze_when_clustering_helps.py` (`scripts/README_run200.md` §4)
 - 本論文の執筆 (10/23): 4.5 の 3 点 + アブスト図の更新 (エリア価値マップ, クラスタ乗り換え率を 200 局面で)。
 - 保留 (GPW 後): Ward/complete linkage で巨大クラスタ退化の救済 / K (v_target) 感度 / A9 vs A1 修正木自己対戦 / A9 Phase 2 / 学習化。
 
