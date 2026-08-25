@@ -1,17 +1,19 @@
-# プロジェクト現況 (最終更新: 2026-07-27)
+# プロジェクト現況 (最終更新: 2026-08-25)
 
 AIアシスタント (Codex / Claude / Gemini) 向けの現況同期ドキュメント。
 **過去の設計文書ではなく「今」の状態を書く。実験が進んだら必ずここを更新すること。**
 
 ## 1. 研究の主線 (何を証明しようとしているか)
 
-デジタルカーリングのMCTSにおいて、**候補手の削減（枝刈り）は「盤面類似クラスタリング」ではなく
-「得点期待値 E[score] による価値スクリーン」で行うべき**、が中心的主張。
-ただし盤面類似クラスタは**価値選択と組み合わせれば意思決定品質のコストほぼゼロで**、
-説明可能性（エリア価値マップ）と網羅性を足せる（=Proposedの名誉回復）。
+**【2026-07-27 転換】性能優位では語らない。** 修正木では全削減方式の regret が横並び (4.1) なので、
+主張は「盤面類似クラスタ + 価値選択 (ClusterValue/A9) は **性能を損なわずに** 候補手を意味のある
+エリアへ分類し (エリア価値マップ・クラスタ価値の妥当性 ρ)、探索深さによる手の変化をクラスタ単位で
+説明できる」という **分析的価値** に置く。GPW2026 拡張アブストはこの線で 7/31 提出済み
+(`gpw2026/`, 提出 PDF `仲_202611_GPW.pdf`)。
 
-- 出口: 大会優勝 + 学会発表（GPW2026、締切7月中旬）
-- 3本柱の論拠: ①regret（審判基準の手の質） ②予算スイープ ③自己対戦勝率（バイアスフリー）
+- 出口: GPW2026 本論文 (採否 9/4 → **最終原稿 10/23** → 発表 11/20-22 箱根) + 大会
+- アブストで約束した本論文の内容 (= 4.5 の run200 キャンペーン):
+  ① 局面 50→200 での統計的評価 ② 得点期待値と実行リスクを統合したクラスタ価値 ③ どんな局面で候補削減が有効か
 
 ## 2. アーム用語集
 
@@ -177,21 +179,39 @@ d3敗因解剖の追跡中に決定的木の重大バグを発見:
 - **実害の因果的証明**: A10 同一条件(seed42, 1.72倍予算)で regret 0.776(max-max) → **0.655(negamax)** (25勝14敗)
 - **b84b22b以前の木系結果 (4.1-4.3の全て) はmax-max木での計測**。相対比較は公平(全アーム同一コード)だが絶対値は要注意
 
+### 4.5 run200 キャンペーンの準備 (2026-08-25) — 実装完了・サーバー投入待ち
+GPW 本論文 (`scripts/README_run200.md` が runbook):
+- **局面 200**: `test_positions200/` (先頭50 = `test_positions50` と同一順序 → run50v2 の結果と審判を
+  `scripts/run200_reuse_first50.sh` で `*_idx0.csv` として流用。+150 は `pick_more_positions.py --seed 23` の層化サンプル)。
+- **リスク統合クラスタ価値**: `--risk-lambda λ` (ClusterValue 系のみ有効)。クラスタ価値 = μ_c − λσ_c、
+  σ_c = メンバー全ロールアウト標本のプールSD (= √mean(sd_i² + (e_i−μ_c)²))。代表手も e_i − λ·sd_i 最大。λ=0 は A9 と完全一致。
+  `cluster_table.csv` に `cluster_sd, cluster_value_risk, risk_lambda` 列、`reinvest_results.csv` に `risk_lambda` 列を追加。
+  アーム `A9R025/A9R05/A9R10` を `run_reinvest.sh` に追加 (6語目以降が追加フラグ)。`--start-index/--max-positions` も通した。
+  スモーク (λ=0/0.5, 2局面, P=40) で配管確認済み。
+- **リスク調整 regret**: `aggregate_reinvest.py --risk-lambda λ` → `regret_adj` 列 (q_adj = q_ref_mean − λ·q_ref_sd)。
+  `regret_stats.py --metric regret_adj` で検定。run50v2 では λ=0.5 でも 7 アーム横並び (Friedman p=0.72)。
+- **局面特徴**: `scripts/position_features.py` (盤面 38 列 + 審判由来の多峰性/リスク + クラスタ構造 η²/巨大クラスタ率/妥当性ρ/被覆 screen_loss
+  + アーム別 regret 差) → `scripts/analyze_when_clustering_helps.py` (Spearman 相関・層別 Kruskal・図)。
+  列の意味は出力先の `feature_dictionary.md`。
+- **50 局面の予備結果** (`reinvest_experiment/run50v2/features/analysis/`, n=50 なので確定ではない):
+  - `d_A9_A1` (A9−A1 の regret 差) と最も相関するのは `best_is_rep` (審判最良手がスクリーンに残ったか, ρ=−0.31 p=0.03) と
+    `best_type_margin` (ρ=−0.26): **戦術種別間の差が大きい局面ほど A9 が A1 に勝つ**。
+  - `d_A9_A2`: `md_screen_loss` ρ=−0.50 (medoid が最良手を落とす局面ほど A9 が A2 に勝つ)。
+  - `screen_loss` は `n_near_best_050` (q* 近傍候補数) と負相関 = **正解が一意な局面ほどスクリーンで落とす**。
+  - `rho_gain` (クラスタ平均の分散削減) は `n_house`/`n_within_0.61` と負相関 (混雑ハウスで消える; crowded_house Kruskal p=0.005)。
+  - `eta2_q` は `largest_frac` と負相関、巨大クラスタ退化 (largest_frac≥0.5, 8/50 局面) で ≈0.05 (p<0.001)。ハンマー保持側で低い (0.43 vs 0.66, p=0.007)。
+
 ## 5. 実行中 / 直近タスク
 
 - (実行中のサーバージョブなし。全マシン空き)
-- **【要・方針判断】再建実験①②は完了し、いずれも主張を救えなかった (4.1b)。ここでユーザーとの
-  ナラティブ再設計が必須のマイルストーン。** 選択肢:
-  - **案a (方法論主軸)**: 「候補削減方式は等予算で有意差なし (P=50/200両方で確認)」を主結果とし、
-    2つの木バグ (max-max UCB, エンド跨ぎ汚染) の発見・診断・因果検証プロセスを研究の核に据える。
-    GPW/計算知能特論いずれにも「MCTS実装検証の方法論」として提出可能。作業量少・確度高。
-  - **案b (追加実験で活路)**: 中間予算(P=100/500)・別局面セット・別ハイパラ(retention等)で
-    分離を探索。理論的動機は弱まっているが完全否定もされていない。作業量中、成功確度は不明。
-  - **案c (アプローチ転換)**: A9のエリア価値マップ等、regret以外の評価軸 (説明可能性・分析価値)
-    を主軸に再構成。性能優位ではなく分析ツールとしての貢献を主張。
-  - 締切 (GPW ~7月中旬は経過、計算知能特論 7-30) を踏まえ、次のユーザー発言で方針を確定させる。
-- 保留: 深さ対決再々戦 (d3fix vs d1fix) / treedepth修正版再走 / A9 Phase 2 / 学習化
-  — いずれも③の方針が決まってから優先度再評価。
+- **【次】run200 キャンペーン投入** (`scripts/README_run200.md` の手順そのまま):
+  1. 各サーバー `git pull` → `rm -f build/ylab_client && cmake --build build --config Release --target ylab_client` → 1局面スモーク
+  2. `./scripts/run200_reuse_first50.sh` (先頭50流用)
+  3. bear: 審判 K=200 (新規150局面, `--start-index 50 --max-positions 150`, ~10h) + A9R05/A9R10 (200局面)
+     jaguar: A1/A9 (150局面) / lion: A2 (150局面) / tiger: A5 (150局面)。全体 ~1.5-2 日。
+  4. 回収 → `aggregate_reinvest.py --risk-lambda 0.5` → `regret_stats.py` (regret / regret_adj) → `position_features.py` → `analyze_when_clustering_helps.py`
+- 本論文の執筆 (10/23): 4.5 の 3 点 + アブスト図の更新 (エリア価値マップ, クラスタ乗り換え率を 200 局面で)。
+- 保留 (GPW 後): Ward/complete linkage で巨大クラスタ退化の救済 / K (v_target) 感度 / A9 vs A1 修正木自己対戦 / A9 Phase 2 / 学習化。
 
 ## 6. 既知の注意点・ハマりどころ
 
@@ -201,6 +221,10 @@ d3敗因解剖の追跡中に決定的木の重大バグを発見:
 - **実行中バイナリの上書き**: Linuxで `cmake --build` は ETXTBSY で失敗 → `rm -f build/ylab_client` してからビルド (実行中プロセスは旧inodeで安全に継続)
 - **結果ファイルのgit衝突**: サーバーで生成→ローカルで回収コミット→サーバーpull時に "untracked would be overwritten" → サーバー側で `mv` 退避してから pull
 - 2エンド対戦は ef187f4 のクラッシュ修正が前提 (`game is already over`)
+- `--risk-lambda` は ClusterValue/ClusterValueDeep のみ有効 (他モードでは無視、ログに注記が出る)
+- `position_features.py --arms` は **基準→提案の順** に並べる (差分列は d_後_前 = 後のregret − 前のregret。正なら後が悪い)
+- `test_positions200` の先頭50行は `test_positions50` と同一。局面数=行数なら `sampleTestPositions` はシャッフルしない
+- 提出版 `gpw2026/main.tex` (7/31) は working copy にあり **HEAD (7/28) より新しい・未コミット** (A1/A2/A9 コードネーム入り版が提出版)
 - CSVは**全局面/全ゲーム完了後に一括書き出し** (途中killで全損)。treedepth系の [done N/M] が長時間止まるのは末尾の重い局面 (混戦盤面は1局面4-8h) で正常
 
 ## 7. 主要パス
@@ -217,6 +241,8 @@ d3敗因解剖の追跡中に決定的木の重大バグを発見:
 | treedepth (max-max版) | `reinvest_experiment/treedepth/` + `analysis/` |
 | treedepth (negamax版, 回収予定) | `reinvest_experiment/treedepth_fix/` |
 | 分析スクリプト | `scripts/aggregate_reinvest.py, regret_stats.py, aggregate_selfplay_2end.py, analyze_tree_depth.py, plot_treedepth_compare.py, plot_cluster_value_map.py, plot_board.py` |
+| run200 (GPW本論文) | `test_positions200/`, `scripts/README_run200.md`, `scripts/run200_reuse_first50.sh`, `scripts/position_features.py`, `scripts/analyze_when_clustering_helps.py`; 予備結果 `reinvest_experiment/run50v2/features/` |
+| GPW2026 アブスト | `gpw2026/` (main.tex, 提出PDF, DATA_INDEX.md, data/, figures/) |
 
 ## 8. 代表的な実行コマンド
 
