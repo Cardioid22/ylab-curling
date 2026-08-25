@@ -18,6 +18,10 @@
 | A4 | Proposed | 3 | ロールアウト再投資 (R増・P減) | 評価精度再投資 |
 | A5 | RandomK  | 3 | A2と同じ | クラスタリング vs 単なる削減 |
 | A6 | AllGrid  | 5 | (任意) | 深さ5が予算内で破綻する実証 |
+| A7 | ScoreScreen | 3 | A1と同じ | 得点スクリーン (E[score] ε帯 + リスク多様性) |
+| A8 | ScoreTopK | 3 | A1と同じ | A7 の ablation (E[score] 上位 K_cap のみ; P≥100 必須) |
+| A9 | ClusterValue | 3 | A1と同じ | クラスタ平均 E[score] で上位 K 採用、クラスタ内最良を代表に (GPW アブストの提案手法) |
+| A9R025 / A9R05 / A9R10 | ClusterValue `--risk-lambda` 0.25/0.5/1.0 | 3 | A1と同じ | **リスク統合クラスタ価値** μ_c − λσ_c (GPW 本論文; 手順は `scripts/README_run200.md`) |
 
 **比較の読み:** A2 vs A1=クラスタリングの寄与 / A3 vs A2=深さ再投資 / A4 vs A2=ロールアウト再投資 /
 **A3 vs A4=本実験の主問い** / A5=賢い削減(クラスタリング)が効いているか。

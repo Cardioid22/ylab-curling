@@ -1,0 +1,198 @@
+==============================================================================
+どんな局面でクラスタリングが有効か — n=50 局面, targets=['d_A9_A1', 'd_A2_A1', 'd_A9_A2', 'dadj_A9_A1', 'screen_loss', 'rho_gain']
+==============================================================================
+d_A_B = regret_A − regret_B (正 = A が悪い)。screen_loss = q* − 代表手最良 q (小さいほど被覆が良い)。
+
+--- d_A9_A1: Spearman ρ 上位 (|ρ| 順) ---
+  feature                         n     rho        p
+  best_is_rep                    50  -0.305    0.031 **
+  best_type_margin               50  -0.261    0.067 *
+  true_top_cluster_selected      50  +0.180    0.212 
+  no1_no2_gap                    47  -0.149    0.319 
+  q_gap12                        50  +0.132    0.362 
+  topk_overlap_l0.5              50  +0.121    0.402 
+  counting_op                    50  -0.110    0.446 
+  x_spread                       48  -0.107    0.468 
+  house_diff                     50  +0.107    0.460 
+  counting_my                    50  +0.105    0.467 
+  md_screen_loss                 50  +0.104    0.471 
+  no1_mine                       50  +0.103    0.477 
+
+--- d_A2_A1: Spearman ρ 上位 (|ρ| 順) ---
+  feature                         n     rho        p
+  md_screen_loss                 50  +0.478    0.000 **
+  true_top_cluster_selected      50  +0.352    0.012 **
+  between_range_q                50  -0.349    0.013 **
+  best_cluster_size              50  +0.319    0.024 **
+  eta2_q                         50  -0.263    0.065 *
+  best_is_rep                    50  -0.235    0.101 
+  n_front_house                  50  -0.187    0.192 
+  n_within_1.22                  50  -0.177    0.220 
+  n_stones                       50  -0.173    0.229 
+  n_cand                         50  -0.173    0.229 
+  n_cand_ct                      50  -0.173    0.229 
+  house_mean_nn_dist             47  +0.171    0.249 
+
+--- d_A9_A2: Spearman ρ 上位 (|ρ| 順) ---
+  feature                         n     rho        p
+  md_screen_loss                 50  -0.504    0.000 **
+  between_range_q                50  +0.351    0.013 **
+  no1_no2_gap                    47  -0.300    0.040 **
+  mean_nn_dist                   48  -0.274    0.060 *
+  house_mean_nn_dist             47  -0.268    0.068 *
+  best_cluster_size              50  -0.242    0.091 *
+  x_spread                       48  -0.215    0.143 
+  n_within_1.22                  50  +0.208    0.147 
+  n_front_house                  50  +0.203    0.158 
+  true_top_cluster_selected      50  -0.199    0.166 
+  eta2_q                         50  +0.196    0.172 
+  n_within_0.61                  50  +0.187    0.193 
+
+--- dadj_A9_A1: Spearman ρ 上位 (|ρ| 順) ---
+  feature                         n     rho        p
+  best_is_rep                    50  -0.295    0.038 **
+  true_top_cluster_selected      50  +0.219    0.126 
+  no1_no2_gap                    47  -0.203    0.171 
+  best_type_margin               50  -0.194    0.177 
+  x_spread                       48  -0.169    0.250 
+  q_gap12                        50  +0.157    0.276 
+  mean_nn_dist                   48  -0.151    0.307 
+  topk_overlap_l0.5              50  +0.128    0.376 
+  best_p_negative                50  -0.124    0.391 
+  n_within_0.61                  50  +0.121    0.403 
+  house_diff                     50  +0.120    0.408 
+  counting_op                    50  -0.117    0.416 
+
+--- screen_loss: Spearman ρ 上位 (|ρ| 順) ---
+  feature                         n     rho        p
+  best_is_rep                    50  -0.487    0.000 **
+  md_screen_loss                 50  +0.405    0.004 **
+  n_near_best_025                50  -0.360    0.010 **
+  frac_near_best_050             50  -0.360    0.010 **
+  q_star_minus_median            50  +0.340    0.016 **
+  n_near_best_050                50  -0.321    0.023 **
+  n_types_near_best_050          50  -0.289    0.042 **
+  best_type_margin               50  +0.284    0.045 **
+  no1_no2_gap                    47  +0.269    0.067 *
+  best_p_ge2                     50  +0.245    0.086 *
+  q_sd_best                      50  +0.244    0.087 *
+  y_spread                       48  +0.224    0.125 
+
+--- rho_gain: Spearman ρ 上位 (|ρ| 順) ---
+  feature                         n     rho        p
+  rho_cluster                    49  +0.626    0.000 **
+  n_within_0.61                  49  -0.577    0.000 **
+  best_cluster_rank              49  -0.504    0.000 **
+  mean_nn_dist                   47  +0.493    0.000 **
+  house_mean_nn_dist             46  +0.475    0.001 **
+  rho_cluster_risk_l0.5          49  +0.466    0.001 **
+  frac_draw                      49  +0.466    0.001 **
+  n_house                        49  -0.458    0.001 **
+  house_density                  49  -0.458    0.001 **
+  n_op_house                     49  -0.455    0.001 **
+  n_stones                       49  -0.453    0.001 **
+  n_cand                         49  -0.451    0.001 **
+
+--- 層別: phase_r ---
+  d_A9_A1        early_r9+: +0.020±0.049 (n=15)  late_r2-4: -0.035±0.080 (n=16)  mid_r5-8: -0.001±0.075 (n=11)  r1: +0.000±0.000 (n=8)   [Kruskal p=0.962]
+  d_A2_A1        early_r9+: +0.009±0.045 (n=15)  late_r2-4: -0.268±0.170 (n=16)  mid_r5-8: -0.034±0.091 (n=11)  r1: +0.522±0.307 (n=8)   [Kruskal p=0.180]
+  d_A9_A2        early_r9+: +0.012±0.041 (n=15)  late_r2-4: +0.233±0.143 (n=16)  mid_r5-8: +0.032±0.071 (n=11)  r1: -0.522±0.307 (n=8)   [Kruskal p=0.260]
+  dadj_A9_A1     early_r9+: +0.003±0.048 (n=15)  late_r2-4: -0.032±0.093 (n=16)  mid_r5-8: -0.014±0.090 (n=11)  r1: +0.000±0.000 (n=8)   [Kruskal p=0.971]
+  screen_loss    early_r9+: +0.216±0.025 (n=15)  late_r2-4: +0.219±0.050 (n=16)  mid_r5-8: +0.278±0.053 (n=11)  r1: +0.409±0.184 (n=8)   [Kruskal p=0.743]
+  rho_gain       early_r9+: +0.091±0.040 (n=15)  late_r2-4: +0.117±0.045 (n=16)  mid_r5-8: +0.143±0.033 (n=11)  r1: -0.099±0.241 (n=7)   [Kruskal p=0.765]
+
+--- 層別: phase_shot ---
+  d_A9_A1        early: +0.026±0.040 (n=11)  late: -0.023±0.053 (n=24)  mid: +0.000±0.068 (n=15)   [Kruskal p=0.903]
+  d_A2_A1        early: +0.034±0.048 (n=11)  late: -0.005±0.168 (n=24)  mid: -0.041±0.071 (n=15)   [Kruskal p=0.369]
+  d_A9_A2        early: -0.008±0.046 (n=11)  late: -0.019±0.155 (n=24)  mid: +0.041±0.056 (n=15)   [Kruskal p=0.741]
+  dadj_A9_A1     early: +0.011±0.040 (n=11)  late: -0.021±0.061 (n=24)  mid: -0.015±0.076 (n=15)   [Kruskal p=0.983]
+  screen_loss    early: +0.216±0.029 (n=11)  late: +0.282±0.070 (n=24)  mid: +0.261±0.041 (n=15)   [Kruskal p=0.673]
+  rho_gain       early: +0.093±0.044 (n=11)  late: +0.052±0.079 (n=23)  mid: +0.128±0.035 (n=15)   [Kruskal p=0.779]
+
+--- 層別: has_hammer ---
+  d_A9_A1        0: -0.001±0.062 (n=22)  1: -0.009±0.035 (n=28)   [Kruskal p=0.969]
+  d_A2_A1        0: -0.188±0.128 (n=22)  1: +0.135±0.103 (n=28)   [Kruskal p=0.531]
+  d_A9_A2        0: +0.187±0.106 (n=22)  1: -0.144±0.101 (n=28)   [Kruskal p=0.130]
+  dadj_A9_A1     0: -0.022±0.072 (n=22)  1: -0.005±0.037 (n=28)   [Kruskal p=0.583]
+  screen_loss    0: +0.223±0.036 (n=22)  1: +0.292±0.058 (n=28)   [Kruskal p=0.868]
+  rho_gain       0: +0.111±0.036 (n=22)  1: +0.062±0.066 (n=27)   [Kruskal p=0.856]
+
+--- 層別: n_stones_bin ---
+  d_A9_A1        0-1: +0.013±0.044 (n=2)  13-16: -0.062±0.039 (n=8)  2-4: +0.011±0.054 (n=16)  5-8: -0.003±0.088 (n=14)  9-12: +0.005±0.073 (n=10)   [Kruskal p=0.875]
+  d_A2_A1        0-1: +0.115±0.049 (n=2)  13-16: -0.376±0.269 (n=8)  2-4: +0.140±0.150 (n=16)  5-8: -0.077±0.115 (n=14)  9-12: +0.126±0.191 (n=10)   [Kruskal p=0.452]
+  d_A9_A2        0-1: -0.101±0.093 (n=2)  13-16: +0.315±0.271 (n=8)  2-4: -0.129±0.150 (n=16)  5-8: +0.074±0.051 (n=14)  9-12: -0.120±0.178 (n=10)   [Kruskal p=0.539]
+  dadj_A9_A1     0-1: -0.000±0.041 (n=2)  13-16: -0.064±0.042 (n=8)  2-4: -0.022±0.054 (n=16)  5-8: +0.003±0.105 (n=14)  9-12: +0.021±0.083 (n=10)   [Kruskal p=0.835]
+  screen_loss    0-1: +0.127±0.045 (n=2)  13-16: +0.214±0.104 (n=8)  2-4: +0.186±0.030 (n=16)  5-8: +0.255±0.030 (n=14)  9-12: +0.455±0.136 (n=10)   [Kruskal p=0.174]
+  rho_gain       0-1: +0.359±0.028 (n=2)  13-16: +0.005±0.050 (n=7)  2-4: +0.172±0.039 (n=16)  5-8: +0.086±0.035 (n=14)  9-12: -0.059±0.166 (n=10)   [Kruskal p=0.027**]
+
+--- 層別: no1_mine ---
+  d_A9_A1        -1: +0.013±0.044 (n=2)  0: -0.027±0.033 (n=26)  1: +0.018±0.065 (n=22)   [Kruskal p=0.693]
+  d_A2_A1        -1: +0.115±0.049 (n=2)  0: -0.067±0.112 (n=26)  1: +0.053±0.136 (n=22)   [Kruskal p=0.465]
+  d_A9_A2        -1: -0.101±0.093 (n=2)  0: +0.040±0.109 (n=26)  1: -0.035±0.117 (n=22)   [Kruskal p=0.532]
+  dadj_A9_A1     -1: -0.000±0.041 (n=2)  0: -0.037±0.035 (n=26)  1: +0.015±0.075 (n=22)   [Kruskal p=0.727]
+  screen_loss    -1: +0.127±0.045 (n=2)  0: +0.289±0.058 (n=26)  1: +0.241±0.044 (n=22)   [Kruskal p=0.583]
+  rho_gain       -1: +0.359±0.028 (n=2)  0: +0.078±0.070 (n=25)  1: +0.066±0.036 (n=22)   [Kruskal p=0.045**]
+
+--- 層別: best_type_is_hit ---
+  d_A9_A1        0: +0.025±0.037 (n=23)  1: -0.031±0.053 (n=27)   [Kruskal p=0.459]
+  d_A2_A1        0: -0.014±0.149 (n=23)  1: -0.002±0.090 (n=27)   [Kruskal p=0.946]
+  d_A9_A2        0: +0.039±0.147 (n=23)  1: -0.030±0.067 (n=27)   [Kruskal p=0.606]
+  dadj_A9_A1     0: +0.025±0.040 (n=23)  1: -0.044±0.061 (n=27)   [Kruskal p=0.292]
+  screen_loss    0: +0.181±0.029 (n=23)  1: +0.330±0.059 (n=27)   [Kruskal p=0.072*]
+  rho_gain       0: +0.133±0.036 (n=23)  1: +0.041±0.067 (n=26)   [Kruskal p=0.357]
+
+--- 層別: multimodal (n_near_best_050 >= 3 (q* から 0.5 点以内に 3 候補以上)) ---
+  d_A9_A1        0: +0.015±0.043 (n=6)  1: -0.008±0.037 (n=44)   [Kruskal p=0.846]
+  d_A2_A1        0: +0.344±0.615 (n=6)  1: -0.055±0.050 (n=44)   [Kruskal p=0.256]
+  d_A9_A2        0: -0.329±0.620 (n=6)  1: +0.047±0.032 (n=44)   [Kruskal p=0.256]
+  dadj_A9_A1     0: +0.029±0.031 (n=6)  1: -0.018±0.042 (n=44)   [Kruskal p=0.482]
+  screen_loss    0: +0.566±0.224 (n=6)  1: +0.220±0.023 (n=44)   [Kruskal p=0.210]
+  rho_gain       0: -0.125±0.282 (n=6)  1: +0.113±0.024 (n=43)   [Kruskal p=0.647]
+
+--- 層別: multitype (n_types_near_best_050 >= 2 (q* 近傍に複数の戦術種別)) ---
+  d_A9_A1        0: -0.052±0.053 (n=12)  1: +0.009±0.041 (n=38)   [Kruskal p=0.345]
+  d_A2_A1        0: +0.074±0.312 (n=12)  1: -0.033±0.053 (n=38)   [Kruskal p=0.964]
+  d_A9_A2        0: -0.126±0.308 (n=12)  1: +0.042±0.031 (n=38)   [Kruskal p=0.510]
+  dadj_A9_A1     0: -0.046±0.053 (n=12)  1: -0.002±0.047 (n=38)   [Kruskal p=0.657]
+  screen_loss    0: +0.432±0.121 (n=12)  1: +0.207±0.024 (n=38)   [Kruskal p=0.152]
+  rho_gain       0: +0.021±0.145 (n=12)  1: +0.105±0.026 (n=37)   [Kruskal p=0.745]
+
+--- 層別: degenerate (largest_frac >= 0.5 (最大クラスタが候補の半分以上)) ---
+  d_A9_A1        0: -0.007±0.040 (n=42)  1: +0.000±0.000 (n=8)   [Kruskal p=1.000]
+  d_A2_A1        0: -0.108±0.072 (n=42)  1: +0.522±0.307 (n=8)   [Kruskal p=0.072*]
+  d_A9_A2        0: +0.101±0.060 (n=42)  1: -0.522±0.307 (n=8)   [Kruskal p=0.095*]
+  dadj_A9_A1     0: -0.015±0.045 (n=42)  1: +0.000±0.000 (n=8)   [Kruskal p=0.671]
+  screen_loss    0: +0.233±0.025 (n=42)  1: +0.409±0.184 (n=8)   [Kruskal p=0.968]
+  rho_gain       0: +0.115±0.024 (n=42)  1: -0.099±0.241 (n=7)   [Kruskal p=0.587]
+
+--- 層別: crowded_house (n_house >= 5) ---
+  d_A9_A1        0: +0.011±0.048 (n=18)  1: -0.015±0.045 (n=32)   [Kruskal p=0.976]
+  d_A2_A1        0: +0.137±0.133 (n=18)  1: -0.088±0.105 (n=32)   [Kruskal p=0.134]
+  d_A9_A2        0: -0.126±0.133 (n=18)  1: +0.074±0.091 (n=32)   [Kruskal p=0.143]
+  dadj_A9_A1     0: -0.019±0.048 (n=18)  1: -0.008±0.053 (n=32)   [Kruskal p=0.620]
+  screen_loss    0: +0.179±0.027 (n=18)  1: +0.307±0.053 (n=32)   [Kruskal p=0.160]
+  rho_gain       0: +0.193±0.037 (n=18)  1: +0.021±0.056 (n=31)   [Kruskal p=0.005**]
+
+--- 層別: center_lane_blocked ---
+  d_A9_A1        0: -0.028±0.063 (n=11)  1: +0.001±0.039 (n=39)   [Kruskal p=0.474]
+  d_A2_A1        0: -0.045±0.056 (n=11)  1: +0.004±0.105 (n=39)   [Kruskal p=0.699]
+  d_A9_A2        0: +0.018±0.051 (n=11)  1: -0.003±0.097 (n=39)   [Kruskal p=0.708]
+  dadj_A9_A1     0: -0.049±0.063 (n=11)  1: -0.002±0.045 (n=39)   [Kruskal p=0.597]
+  screen_loss    0: +0.207±0.039 (n=11)  1: +0.277±0.045 (n=39)   [Kruskal p=0.752]
+  rho_gain       0: +0.228±0.039 (n=11)  1: +0.043±0.048 (n=38)   [Kruskal p=0.006**]
+
+--- d_A9_A1 が最も負 (=前者が良い) / 最も正 (=前者が悪い) の局面 ---
+  [前者が良い]
+   game_id=1938  end=0  shot_num=14  d_A9_A1=-0.823  n_stones=8  n_house=8  remaining=2  n_near_best_050=76  largest_frac=0.301  screen_loss=0.134  best_type=Hit
+   game_id=3732  end=7  shot_num=7  d_A9_A1=-0.414  n_stones=2  n_house=2  remaining=9  n_near_best_050=28  largest_frac=0.204  screen_loss=0.113  best_type=Hit
+   game_id=3926  end=6  shot_num=11  d_A9_A1=-0.391  n_stones=11  n_house=11  remaining=5  n_near_best_050=8  largest_frac=0.260  screen_loss=0.414  best_type=Hit
+   game_id=4157  end=3  shot_num=12  d_A9_A1=-0.312  n_stones=9  n_house=9  remaining=4  n_near_best_050=4  largest_frac=0.280  screen_loss=0.123  best_type=Hit
+   game_id=2596  end=1  shot_num=14  d_A9_A1=-0.305  n_stones=14  n_house=14  remaining=2  n_near_best_050=87  largest_frac=0.248  screen_loss=0.386  best_type=PostGuard
+   game_id=6132  end=0  shot_num=13  d_A9_A1=-0.296  n_stones=7  n_house=7  remaining=3  n_near_best_050=52  largest_frac=0.276  screen_loss=0.286  best_type=Draw
+  [前者が悪い]
+   game_id=9206  end=3  shot_num=13  d_A9_A1=0.248  n_stones=2  n_house=2  remaining=3  n_near_best_050=7  largest_frac=0.224  screen_loss=0.152  best_type=Hit
+   game_id=7373  end=1  shot_num=11  d_A9_A1=0.263  n_stones=9  n_house=9  remaining=5  n_near_best_050=31  largest_frac=0.252  screen_loss=0.217  best_type=Freeze
+   game_id=1845  end=7  shot_num=14  d_A9_A1=0.355  n_stones=3  n_house=3  remaining=2  n_near_best_050=9  largest_frac=0.255  screen_loss=0.458  best_type=PostGuard
+   game_id=5807  end=0  shot_num=8  d_A9_A1=0.383  n_stones=6  n_house=6  remaining=8  n_near_best_050=57  largest_frac=0.247  screen_loss=0.280  best_type=Hit
+   game_id=5859  end=1  shot_num=6  d_A9_A1=0.387  n_stones=4  n_house=4  remaining=10  n_near_best_050=18  largest_frac=0.369  screen_loss=0.365  best_type=Draw
+   game_id=9231  end=5  shot_num=14  d_A9_A1=0.571  n_stones=8  n_house=8  remaining=2  n_near_best_050=15  largest_frac=0.218  screen_loss=0.428  best_type=Hit

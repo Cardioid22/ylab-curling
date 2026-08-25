@@ -344,23 +344,42 @@ std::vector<int> ReinvestExperiment::selectClusterValue(
     Kc = std::min(Kc, N);
     node.clusters = mcts_shared::runClustering(dist_table, Kc);
 
-    // ③ クラスタ価値 (メンバー平均 E[score], root視点で格納) + クラスタ内最良メンバー (手番視点)
+    // ③ クラスタ価値 μ_c (メンバー平均 E[score], root視点で格納) とプールSD σ_c
+    //      σ_c² = (1/n) Σ_i [ sd_i² + (e_i − μ_c)² ]   (各候補 R_pre 標本の同数プール
+    //      = 候補間の期待値ばらつき + 候補内の実行/継続ばらつき)
+    //    リスク調整価値 (手番視点): adj_c = sign·μ_c − λ·σ_c、候補も adj_i = sign·e_i − λ·sd_i
+    //    (λ = risk_lambda。λ=0 なら従来の A9 = 平均 E[score] のみ)
+    const double lam = config_.risk_lambda;
+    auto adj_cand = [&](int m) { return sign * node.e_pre[m] - lam * node.sd_pre[m]; };
+
     int C = static_cast<int>(node.clusters.size());
     node.cluster_value.assign(C, std::numeric_limits<double>::quiet_NaN());
+    node.cluster_sd.assign(C, std::numeric_limits<double>::quiet_NaN());
+    std::vector<double> cluster_adj(C, -std::numeric_limits<double>::infinity());
     std::vector<int> best_member(C, -1);
     for (int cid = 0; cid < C; cid++) {
         double sum = 0.0; int cnt = 0;
         for (int m : node.clusters[cid]) {
             if (m < 0 || m >= N) continue;
             sum += node.e_pre[m]; cnt++;
-            if (best_member[cid] < 0
-                || sign * node.e_pre[m] > sign * node.e_pre[best_member[cid]])
+            if (best_member[cid] < 0 || adj_cand(m) > adj_cand(best_member[cid]))
                 best_member[cid] = m;
         }
-        if (cnt > 0) node.cluster_value[cid] = sum / cnt;
+        if (cnt == 0) continue;
+        double mu = sum / cnt;
+        double var = 0.0;
+        for (int m : node.clusters[cid]) {
+            if (m < 0 || m >= N) continue;
+            double d = node.e_pre[m] - mu;
+            var += node.sd_pre[m] * node.sd_pre[m] + d * d;
+        }
+        double sd = std::sqrt(std::max(0.0, var / cnt));
+        node.cluster_value[cid] = mu;
+        node.cluster_sd[cid] = sd;
+        cluster_adj[cid] = sign * mu - lam * sd;
     }
 
-    // ④ 価値上位 K クラスタ → 各クラスタの最良メンバー (価値順も手番視点)
+    // ④ リスク調整価値上位 K クラスタ → 各クラスタの最良メンバー (順位も手番視点)
     //    自分番: K = playouts / v_target (予算連動; P=200 → 4)
     //    相手番: K = cv_k_opp (min側は広めに持ち、最善応手の取りこぼし = 楽観バイアスを防ぐ)
     int v_target = std::max(1, config_.score_screen_v_target);
@@ -370,11 +389,11 @@ std::vector<int> ReinvestExperiment::selectClusterValue(
     std::vector<int> order;
     for (int cid = 0; cid < C; cid++) if (best_member[cid] >= 0) order.push_back(cid);
     std::sort(order.begin(), order.end(),
-              [&](int a, int b) { return sign * node.cluster_value[a] > sign * node.cluster_value[b]; });
+              [&](int a, int b) { return cluster_adj[a] > cluster_adj[b]; });
 
-    // 手番視点で全体最良の候補が属するクラスタを先頭に (安全網: 平均が低くても最良手は残す)
+    // 手番視点で全体最良 (リスク調整値) の候補が属するクラスタを先頭に (安全網: 平均が低くても最良手は残す)
     int g_best = 0;
-    for (int c = 1; c < N; c++) if (sign * node.e_pre[c] > sign * node.e_pre[g_best]) g_best = c;
+    for (int c = 1; c < N; c++) if (adj_cand(c) > adj_cand(g_best)) g_best = c;
     int g_cid = -1;
     for (int cid = 0; cid < C; cid++) if (node.clusters[cid].count(g_best)) { g_cid = cid; break; }
     if (g_cid >= 0) {
@@ -638,6 +657,11 @@ ReinvestResult ReinvestExperiment::runOneState(
                     }
                     if (cid < static_cast<int>(root.cluster_value.size()))
                         ca.cluster_value = root.cluster_value[cid];
+                    if (cid < static_cast<int>(root.cluster_sd.size())) {
+                        ca.cluster_sd = root.cluster_sd[cid];
+                        if (!std::isnan(ca.cluster_value) && !std::isnan(ca.cluster_sd))
+                            ca.cluster_value_risk = ca.cluster_value - config_.risk_lambda * ca.cluster_sd;
+                    }
                     // 投球石の無外乱着地 (アウトなら NaN のまま)
                     const auto& rs = root.result_states[cand_idx];
                     if (team_idx >= 0 && team_idx < 2 && stone_idx >= 0 && stone_idx < 8) {
@@ -716,7 +740,7 @@ void ReinvestExperiment::writeResultsCSV(
         return;
     }
     ofs << "game_id,end,shot_num,method,depth,playouts,rollouts_per_visit,seed,"
-        << "candidate_idx,label,actual_total_sims,time_sec\n";
+        << "candidate_idx,label,actual_total_sims,time_sec,risk_lambda\n";
     ofs << std::setprecision(6);
 
     std::string method = methodName(config_.mode);
@@ -726,7 +750,8 @@ void ReinvestExperiment::writeResultsCSV(
             << method << "," << config_.depth << "," << config_.playouts << ","
             << config_.rollouts_per_visit << "," << config_.seed << ","
             << r.best_idx << ",\"" << r.label << "\","
-            << r.actual_total_sims << "," << r.time_sec << "\n";
+            << r.actual_total_sims << "," << r.time_sec << ","
+            << config_.risk_lambda << "\n";
     }
     std::cout << "  [csv] wrote " << results.size() << " records to " << path << std::endl;
 }
@@ -744,7 +769,8 @@ void ReinvestExperiment::writeClusterTableCSV(
     }
     ofs << "game_id,end,shot_num,method,seed,candidate_idx,cluster_id,"
         << "is_representative,shot_type,label,"
-        << "e_score,e_sd,cluster_value,land_x,land_y\n";
+        << "e_score,e_sd,cluster_value,land_x,land_y,"
+        << "cluster_sd,cluster_value_risk,risk_lambda\n";
 
     // NaN は空欄で出力 (ClusterValue 以外のモード / アウトになった投球石)
     auto num = [](double v) {
@@ -762,7 +788,9 @@ void ReinvestExperiment::writeClusterTableCSV(
                 << (ca.is_representative ? 1 : 0) << ","
                 << "\"" << ca.shot_type << "\",\"" << ca.label << "\","
                 << num(ca.e_score) << "," << num(ca.e_sd) << ","
-                << num(ca.cluster_value) << "," << num(ca.land_x) << "," << num(ca.land_y) << "\n";
+                << num(ca.cluster_value) << "," << num(ca.land_x) << "," << num(ca.land_y) << ","
+                << num(ca.cluster_sd) << "," << num(ca.cluster_value_risk) << ","
+                << config_.risk_lambda << "\n";
             rows++;
         }
     }
@@ -785,6 +813,9 @@ void ReinvestExperiment::run() {
     std::cout << "  retention_rate     = " << config_.retention_rate << std::endl;
     std::cout << "  ucb_c              = " << config_.ucb_c << std::endl;
     std::cout << "  epsilon            = " << config_.epsilon << std::endl;
+    std::cout << "  risk_lambda        = " << config_.risk_lambda
+              << (config_.mode == MctsMode::ClusterValue || config_.mode == MctsMode::ClusterValueDeep
+                  ? "" : "  (ClusterValue 系以外では無効)") << std::endl;
     std::cout << "  n_states           = " << config_.n_states << std::endl;
     std::cout << "  num_threads        = " << config_.num_threads << std::endl;
     std::cout << "  seed               = " << config_.seed << std::endl;

@@ -21,7 +21,7 @@
 #   ./scripts/run_reinvest.sh --arms "A3"          [OPTIONS]   # bear (深さ5担当)
 #
 # Options:
-#   --arms LIST              実行するアーム (カンマ区切り; A1..A7) [必須]
+#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9R025/A9R05/A9R10) [必須]
 #                            A7=ScoreScreen (得点スクリーン型 Proposed; root で E[score] ε帯+リスク多様性選別)
 #   --base-seed S            先頭 seed; S..S+K-1 を使う (default: 42)
 #   --num-seeds K            seed 数 (default: 5)
@@ -54,16 +54,23 @@ R_RINV=20
 P_RINV=100
 RETENTION=0.20
 
-# アーム定義: "METHOD DEPTH PLAYOUTS ROLLOUTS RETENTION" を返す
+# アーム定義: "METHOD DEPTH PLAYOUTS ROLLOUTS RETENTION [EXTRA FLAGS...]" を返す
+#   6 語目以降はそのまま ylab_client に渡す追加フラグ (例: --risk-lambda 0.5)
 arm_spec() {
     case "$1" in
         A1) echo "AllGrid  3 $P_BASE $R_BASE $RETENTION" ;;  # 基準 (削減なし)
-        A2) echo "Proposed 3 $P_BASE $R_BASE $RETENTION" ;;  # クラスタリング効果単離 (A1と同配分)
+        A2) echo "Proposed 3 $P_BASE $R_BASE $RETENTION" ;;  # クラスタリング効果単離 (A1と同配分) = ClusterMedoid
         A3) echo "Proposed 5 $P_DEEP $R_BASE $RETENTION" ;;  # 深さ再投資
         A4) echo "Proposed 3 $P_RINV $R_RINV $RETENTION" ;;  # ロールアウト再投資
         A5) echo "RandomK  3 $P_BASE $R_BASE $RETENTION" ;;  # クラスタリング vs 単なる削減
         A6) echo "AllGrid  5 $P_DEEP $R_BASE $RETENTION" ;;  # (任意) 深さ5が予算内で破綻する実証
         A7) echo "ScoreScreen 3 $P_BASE $R_BASE $RETENTION" ;;  # 得点スクリーン (root: E[score]ε帯+リスク多様性; defaults R_pre=3,Δ=1.0,V_target=50)
+        A8) echo "ScoreTopK 3 $P_BASE $R_BASE $RETENTION" ;;    # A7 の ablation (E[score] 上位 K_cap のみ; P≥100 必須)
+        A9) echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION" ;; # ClusterValue (λ=0): クラスタ平均 E[score] で上位K採用
+        # ---- リスク統合クラスタ価値 (GPW本論文): クラスタ価値 = μ_c − λ·σ_c ----
+        A9R025) echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --risk-lambda 0.25" ;;
+        A9R05)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --risk-lambda 0.5" ;;
+        A9R10)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --risk-lambda 1.0" ;;
         *)  return 1 ;;
     esac
 }
@@ -80,6 +87,8 @@ BINARY=""
 PARENT_DIR=""
 PLAYOUTS_OVERRIDE=""   # 予算スイープ用: 全アームの P を上書き (空なら arm_spec の既定)
 ROLLOUTS_OVERRIDE=""   # 同上: 全アームの R を上書き
+START_INDEX=""         # 局面スライス: サンプリング後リストの開始 index (出力は reinvest_results_idx<S>.csv)
+MAX_POSITIONS=""       # 同上: 担当局面数。既存結果 (先頭50局面等) を再利用して差分だけ回すときに使う
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -94,6 +103,8 @@ while [[ $# -gt 0 ]]; do
         --parent-dir)       PARENT_DIR="$2"; shift 2 ;;
         --playouts)         PLAYOUTS_OVERRIDE="$2"; shift 2 ;;
         --rollouts)         ROLLOUTS_OVERRIDE="$2"; shift 2 ;;
+        --start-index)      START_INDEX="$2"; shift 2 ;;
+        --max-positions)    MAX_POSITIONS="$2"; shift 2 ;;
         -h|--help)
             grep '^#' "$0" | sed 's/^# \?//'
             exit 0 ;;
@@ -155,7 +166,7 @@ mkdir -p "$PARENT_DIR"
 IFS=',' read -ra ARM_LIST <<< "$ARMS"
 for ARM in "${ARM_LIST[@]}"; do
     if ! arm_spec "$ARM" >/dev/null 2>&1; then
-        echo "Error: unknown arm '$ARM' (valid: A1..A7)" >&2
+        echo "Error: unknown arm '$ARM' (valid: A1..A9, A9R025, A9R05, A9R10)" >&2
         exit 1
     fi
 done
@@ -196,11 +207,17 @@ declare -a PID_TAG=()
 
 launch_job() {
     local arm="$1" seed="$2"
-    read -r method depth playouts rollouts retention <<< "$(arm_spec "$arm")"
+    local method depth playouts rollouts retention extra
+    # 6 語目以降 (extra) はアーム固有の追加フラグ (例: --risk-lambda 0.5)。word split して渡す
+    read -r method depth playouts rollouts retention extra <<< "$(arm_spec "$arm")"
     [ -n "$PLAYOUTS_OVERRIDE" ] && playouts="$PLAYOUTS_OVERRIDE"   # 予算スイープ: P 上書き
     [ -n "$ROLLOUTS_OVERRIDE" ] && rollouts="$ROLLOUTS_OVERRIDE"   # R 上書き
+    local -a slice_args=()
+    [ -n "$START_INDEX" ]   && slice_args+=(--start-index "$START_INDEX")
+    [ -n "$MAX_POSITIONS" ] && slice_args+=(--max-positions "$MAX_POSITIONS")
     local out_dir="$PARENT_DIR/$arm/seed_${seed}"
     mkdir -p "$out_dir"
+    # shellcheck disable=SC2086  # $extra は意図的に word split
     nohup "$BINARY" \
         --reinvest-arm \
         --method "$method" \
@@ -214,11 +231,13 @@ launch_job() {
         --seed "$seed" \
         --load-positions "$POSITIONS_DIR" \
         --output-dir "$out_dir" \
+        ${slice_args[@]+"${slice_args[@]}"} \
+        $extra \
         < /dev/null > "$out_dir/run.log" 2>&1 &
     local pid=$!
     PIDS+=("$pid")
     PID_TAG+=("$arm/seed_$seed")
-    echo "  launched $arm seed=$seed pid=$pid ($method d$depth P=$playouts R=$rollouts) -> $out_dir"
+    echo "  launched $arm seed=$seed pid=$pid ($method d$depth P=$playouts R=$rollouts ${extra:-}${START_INDEX:+ slice=$START_INDEX+$MAX_POSITIONS}) -> $out_dir"
 }
 
 for ARM in "${ARM_LIST[@]}"; do

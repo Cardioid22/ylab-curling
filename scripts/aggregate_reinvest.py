@@ -42,7 +42,10 @@ def load_referee(referee_dir: Path) -> pd.DataFrame:
         sys.exit(f"No referee Q table found under {referee_dir} (score_move_qtable*.csv)")
     df = pd.concat([pd.read_csv(p) for p in parts], ignore_index=True)
     # 同一キーが複数 (分割実行の重複) あれば平均で畳む
-    df = df.groupby(KEY, as_index=False).agg(q_ref_mean=("q_ref_mean", "mean"))
+    agg = {"q_ref_mean": ("q_ref_mean", "mean")}
+    if "q_ref_sd" in df.columns:
+        agg["q_ref_sd"] = ("q_ref_sd", "mean")
+    df = df.groupby(KEY, as_index=False).agg(**agg)
     return df
 
 
@@ -72,6 +75,8 @@ def main() -> None:
     ap.add_argument("--budget-tol", type=float, default=0.10,
                     help="等予算判定の許容相対差 (default: 0.10 = ±10%)")
     ap.add_argument("--out", type=Path, default=None, help="集計 CSV の出力先ディレクトリ (任意)")
+    ap.add_argument("--risk-lambda", type=float, default=0.0,
+                    help="リスク調整 regret も出す: q_adj = q_ref_mean − λ·q_ref_sd, regret_adj = max q_adj − q_adj(選択手)")
     args = ap.parse_args()
 
     ref = load_referee(args.referee_dir)
@@ -89,6 +94,19 @@ def main() -> None:
     merged = merged.dropna(subset=["q_ref_mean", "q_best"]).copy()
     merged["regret"] = merged["q_best"] - merged["q_ref_mean"]
 
+    # ---------- リスク調整 regret (--risk-lambda > 0) ----------
+    lam = args.risk_lambda
+    if lam > 0:
+        if "q_ref_sd" not in ref.columns:
+            sys.exit("--risk-lambda には審判 CSV の q_ref_sd 列が必要です")
+        ref["q_adj"] = ref["q_ref_mean"] - lam * ref["q_ref_sd"]
+        q_adj_best = ref.groupby(POS, as_index=False).agg(q_adj_best=("q_adj", "max"))
+        merged["q_adj"] = merged["q_ref_mean"] - lam * merged["q_ref_sd"]
+        merged = merged.merge(q_adj_best, on=POS, how="left")
+        merged["regret_adj"] = merged["q_adj_best"] - merged["q_adj"]
+        print(f"[info] risk-adjusted regret with λ={lam:g} added as column 'regret_adj' "
+              f"(regret_stats.py --metric regret_adj で検定)")
+
     # ---------- アームごとサマリ ----------
     g = merged.groupby("arm")
     summary = g.agg(
@@ -100,6 +118,7 @@ def main() -> None:
         mean_regret=("regret", "mean"),
         sd_regret=("regret", "std"),
         mean_q=("q_ref_mean", "mean"),
+        **({"mean_regret_adj": ("regret_adj", "mean")} if "regret_adj" in merged.columns else {}),
         mean_sims=("actual_total_sims", "mean"),
         min_sims=("actual_total_sims", "min"),
         max_sims=("actual_total_sims", "max"),

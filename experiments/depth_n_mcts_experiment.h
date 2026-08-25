@@ -69,6 +69,8 @@ struct TreeNode {
     std::vector<double> sd_pre;
     // クラスタ価値 = メンバー e_pre の平均 (ClusterValue の root のみ; index = cluster_id)
     std::vector<double> cluster_value;
+    // クラスタのプールSD σ_c (ClusterValue の root のみ; --risk-lambda のリスク項)
+    std::vector<double> cluster_sd;
 
     // 子ノード（lazy allocation）
     std::vector<std::unique_ptr<TreeNode>> children;

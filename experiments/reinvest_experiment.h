@@ -54,6 +54,11 @@ struct ReinvestConfig {
     int score_screen_v_target = 50;      // 子1個に割り当てたい最低訪問数 → K_cap = max(1, playouts / v_target)
     // ClusterValueDeep (A10) 専用: 相手番ノードの子数 (min側は広めに持ち最善応手の取りこぼしを防ぐ)
     int cv_k_opp = 8;
+    // ClusterValue (A9) のリスク統合 (--risk-lambda λ):
+    //   クラスタ価値 = μ_c − λ·σ_c。σ_c はメンバー全ロールアウト標本のプールSD
+    //   (候補間の期待値ばらつき + 候補内の実行/継続ばらつきを両方含む)。
+    //   代表手も e_i − λ·sd_i (リスク調整値) が最大の候補。λ=0 で従来の A9 と完全一致。
+    double risk_lambda = 0.0;
     // 開ループ・リサンプリング木 (--noisy-tree): 木の構造(候補/クラスタ/スクリーン)は決定的着地で
     // 作るが、価値評価は毎訪問エッジを外乱ありで再シミュレーションした実状態で行う。
     // R_pre推定も候補手を毎回打ち直す (審判の resample_first_shot と同じ規約)。
@@ -96,6 +101,9 @@ struct ClusterAssign {
     double cluster_value = std::numeric_limits<double>::quiet_NaN();  // 所属クラスタの平均 E[score]
     double land_x = std::numeric_limits<double>::quiet_NaN();         // 投球石の無外乱着地 x (エリア逆射影用)
     double land_y = std::numeric_limits<double>::quiet_NaN();         // 同 y (アウトなら NaN)
+    // --- リスク統合 (--risk-lambda) ---
+    double cluster_sd = std::numeric_limits<double>::quiet_NaN();          // 所属クラスタのプールSD σ_c
+    double cluster_value_risk = std::numeric_limits<double>::quiet_NaN();  // μ_c − λ·σ_c (λ=0 なら cluster_value と同値)
 };
 
 // 1 局面分の選択結果 (§4 出力スキーマに対応)
