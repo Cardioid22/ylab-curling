@@ -6,6 +6,7 @@
 2. **リスク統合クラスタ価値** `ClusterValue --risk-lambda λ`: クラスタ価値 = μ_c − λ·σ_c
    (σ_c = メンバー全ロールアウト標本のプールSD)。リスク系は sd_i 安定化のため **R_pre=5**:
    `A9P5`(λ=0, 対照) / `A9R05`(λ=0.5, 主) / `A9R10`(任意)。`A9`(R_pre=3, λ=0) はアブストのまま。
+   **実測**: R_pre 3→5 で actual_total_sims は **+8%** (A9 59.3k → A9P5 64.4k, 200局面)。A9P5/A9R05 は A1/A2/A9 より 8% 多く計算している点を本文で明記 (等予算判定 ±10% 内)。
    **λ のオフライン掃引**: A9P5 の cluster_table には cluster_sd が入るので、λ を変えたとき採用クラスタが
    どれだけ変わるか (`topk_overlap_l{λ}`) や μ−λσ の妥当性 ρ は **λ アームを回さなくても** position_features.py で計算できる。
    λ アームが必要なのは「木を通した最終的な手の質 (regret)」への影響だけ。
@@ -75,24 +76,29 @@ CSV は **全局面完了後に一括書き出し** (途中 kill で全損) な�
 余裕があれば A9R10 / A7 (ScoreScreen) も同じ形で追加。
 
 ## 4. 回収と集計 (ローカル)
-各サーバーの `reinvest_experiment/run200/` をローカルに集めてから:
+サーバー側の出力 `reinvest_experiment/run200/` (共有FS なのでどのサーバーからでも可) をローカルの **`gpw_experiment/`** に集める:
+```bash
+rsync -av lion:~/ylab-curling/reinvest_experiment/run200/ gpw_experiment/
+bash scripts/run200_reuse_first50.sh --dst gpw_experiment     # 先頭50局面 (run50v2) を *_idx0.csv として流用
+```
+そのあと:
 ```bash
 # regret (通常 + リスク調整 λ=0.5)
-python scripts/aggregate_reinvest.py --reinvest-dir reinvest_experiment/run200 \
-    --referee-dir reinvest_experiment/run200/referee --pair A9R05,A9 --risk-lambda 0.5 \
-    --out reinvest_experiment/run200/regret
-python scripts/regret_stats.py --joined reinvest_experiment/run200/regret/reinvest_joined.csv --out reinvest_experiment/run200/regret
-python scripts/regret_stats.py --joined reinvest_experiment/run200/regret/reinvest_joined.csv --metric regret_adj --out reinvest_experiment/run200/regret_adj
+python scripts/aggregate_reinvest.py --reinvest-dir gpw_experiment \
+    --referee-dir gpw_experiment/referee --pair A9R05,A9 --risk-lambda 0.5 \
+    --out gpw_experiment/regret
+python scripts/regret_stats.py --joined gpw_experiment/regret/reinvest_joined.csv --out gpw_experiment/regret
+python scripts/regret_stats.py --joined gpw_experiment/regret/reinvest_joined.csv --metric regret_adj --out gpw_experiment/regret_adj
 
 # 局面特徴 (盤面 + 審判 + クラスタ構造 + 成果) → どんな局面で効くか
 python scripts/position_features.py --positions-dir test_positions200 \
-    --referee-csv reinvest_experiment/run200/referee \
-    --cluster-dir reinvest_experiment/run200/A9 --medoid-dir reinvest_experiment/run200/A2 \
-    --joined reinvest_experiment/run200/regret/reinvest_joined.csv \
-    --arms A1,A5,A2,A9,A9P5,A9R05 --risk-lambda 0.5 --out reinvest_experiment/run200/features
+    --referee-csv gpw_experiment/referee \
+    --cluster-dir gpw_experiment/A9 --medoid-dir gpw_experiment/A2 \
+    --joined gpw_experiment/regret/reinvest_joined.csv \
+    --arms A1,A5,A2,A9,A9P5,A9R05 --risk-lambda 0.5 --out gpw_experiment/features
 python scripts/analyze_when_clustering_helps.py \
-    --features reinvest_experiment/run200/features/position_features.csv \
-    --out reinvest_experiment/run200/features/analysis \
+    --features gpw_experiment/features/position_features.csv \
+    --out gpw_experiment/features/analysis \
     --targets d_A9_A1,d_A2_A1,d_A9_A2,d_A9R05_A9P5,dadj_A9R05_A9P5,screen_loss,rho_gain,eta2_q
 # クラスタ価値の妥当性 (ρ) は position_features.csv の rho_cand / rho_cluster / rho_cluster_risk_l0.5 列に局面ごと入っている
 ```
