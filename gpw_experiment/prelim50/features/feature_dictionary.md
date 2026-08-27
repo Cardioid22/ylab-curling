@@ -1,0 +1,183 @@
+# position_features.csv 列の意味
+
+## A. 盤面 (batch_*.csv 由来)
+- `remaining` = 16 − shot_num (残り手数, 投げる手を含む)。`phase_shot` early(≤5)/mid(6-11)/late(≥12)。
+  `phase_r` early_r9+/mid_r5-8/late_r2-4/r1 (cluster_switch 分析と同じ区分)。
+- `has_hammer`: 奇数ショットを投げる側 = 最終ショットを持つ側。
+- `n_*_house`: ハウス内 (ティーから 1.829+0.145m 以内)。`n_*_guard`: ハウス外でホッグ〜ハウス前端の間。
+- `n_center_guard`: |x|<0.5 のガード。`center_lane_blocked`: |x|<0.3 かつティー手前に石 (センター経路が塞がれている)。
+- `d_no1/no1_mine/d_no2/no1_no2_gap`: ハウス内 No.1/No.2 石 (no1_mine=1 なら自分の石, -1 はハウス空)。
+- `counting_my/counting_op/score_now`: 今エンドが終わった場合の仮得点 (投げる側視点)。
+- `n_within_0.61/1.22`: 4ft/8ft 円内の石数。`min_pair_dist/mean_nn_dist/house_mean_nn_dist`: 密集度。
+- `x_spread/y_spread`: 石座標の標準偏差。`house_density`: ハウス内石数/面積。
+
+## B. 候補集合 (審判 Q テーブル由来。q = 単一エンド純得点期待値 (K=200, 実行不確実性込み))
+- `n_cand`: 候補数 N。`q_star`: 最良候補の q。`q_gap12`: 1位−2位。`q_star_minus_median`: 最良と中央値の差 (=良手の希少さ)。
+- `n_near_best_025/050`: q* から 0.25/0.5 点以内の候補数 (**多峰性**: 正解が一意か)。`n_types_near_best_050`: その戦術種別数。
+- `q_sd_mean/median/best`: 審判 SD (実行リスクの水準)。`best_type`, `best_type_is_hit`, `best_type_margin` (戦術種別間の最良差)。
+- `frac_hit/draw/guard`: 候補プール内の種別比率。`lookahead_gain_*`: q − 即時評価 (審判に q_immediate がある場合のみ)。
+- `best_hist_entropy/best_p_negative/best_p_ge2`: 最良手の得点分布のエントロピー/失点確率/2点以上確率。
+- `qadj_star_l{λ}`, `qadj_best_same_as_q_best_l{λ}`: リスク調整真値 q−λs の最良と、その手が q 最良と同じか。
+
+## C. クラスタ構造 (ClusterValue の cluster_table 由来; seed 平均)
+- `K_clusters`, `largest_frac` (最大クラスタの占有率 = **巨大クラスタ退化**), `n_singleton/singleton_frac`, `size_entropy_norm`, `type_purity`。
+- `eta2_q`: 真値 q の分散のうちクラスタ間で説明される割合 (**クラスタが価値的に意味ある区分か**)。`within_sd_q`: クラスタ内の q の SD。
+- `rho_cand/rho_cluster/rho_gain`: 候補単位/クラスタ単位の推定値 vs 真値の Spearman ρ とその差 (分散削減効果)。
+- `best_is_rep`: 審判最良手が代表手に残ったか。`best_cluster_selected`: 最良手のクラスタが採用されたか。`best_cluster_rank`: 価値順位。
+- `rep_q_max`, `screen_loss` = q* − max(代表手の q) (**スクリーンで失った上限**; regret = screen_loss + 探索損)。
+- `true_top_cluster_selected`: 真値平均が最良のクラスタが採用されたか。`cluster_sd_mean`: プールSD σ_c の平均。
+- `rho_cluster_risk_l{λ}` / `rho_cand_risk_l{λ}`: リスク調整値 (μ−λσ) の妥当性。`topk_overlap_l{λ}`: λ で上位K採用クラスタがどれだけ変わるか。
+- `md_*`: Proposed(A2, medoid 代表) の同指標。
+
+## D. 成果 (reinvest_joined.csv 由来)
+- `regret_<arm>` (seed 平均), `regret_<arm>_sd`, `n_seeds_<arm>`。`d_A_B` = regret_A − regret_B (**正なら A が悪い**)。
+- `regret_adj_<arm>`, `dadj_A_B`: aggregate_reinvest.py --risk-lambda 指定時のリスク調整 regret とその差。
+
+
+## この出力に含まれる列
+
+- `game_id`
+- `end`
+- `shot_num`
+- `team`
+- `remaining`
+- `has_hammer`
+- `phase_shot`
+- `phase_r`
+- `n_stones`
+- `n_stones_bin`
+- `n_my`
+- `n_op`
+- `n_my_house`
+- `n_op_house`
+- `n_house`
+- `house_diff`
+- `n_my_guard`
+- `n_op_guard`
+- `n_guard`
+- `n_center_guard`
+- `center_lane_blocked`
+- `n_front_house`
+- `n_back_house`
+- `n_within_0.61`
+- `n_within_1.22`
+- `d_no1`
+- `no1_mine`
+- `d_no2`
+- `no1_no2_gap`
+- `counting_my`
+- `counting_op`
+- `score_now`
+- `min_pair_dist`
+- `mean_nn_dist`
+- `x_spread`
+- `y_spread`
+- `house_mean_nn_dist`
+- `house_density`
+- `n_cand`
+- `q_star`
+- `q_2nd`
+- `q_gap12`
+- `q_median`
+- `q_mean`
+- `q_min`
+- `q_range`
+- `q_iqr`
+- `q_star_minus_median`
+- `n_near_best_025`
+- `n_near_best_050`
+- `frac_near_best_050`
+- `q_sd_mean`
+- `q_sd_median`
+- `q_sd_best`
+- `best_type`
+- `n_types`
+- `frac_hit`
+- `frac_draw`
+- `frac_guard`
+- `best_type_margin`
+- `n_types_near_best_050`
+- `best_type_is_hit`
+- `best_hist_entropy`
+- `best_p_negative`
+- `best_p_ge2`
+- `qadj_star_l0.5`
+- `qadj_best_same_as_q_best_l0.5`
+- `qadj_best_type_l0.5`
+- `n_cand_ct`
+- `K_clusters`
+- `n_reps`
+- `largest_frac`
+- `n_singleton`
+- `singleton_frac`
+- `size_entropy_norm`
+- `mean_cluster_size`
+- `type_purity`
+- `eta2_q`
+- `within_sd_q`
+- `between_range_q`
+- `best_is_rep`
+- `best_cluster_selected`
+- `best_cluster_size`
+- `rep_q_max`
+- `screen_loss`
+- `true_top_cluster_selected`
+- `rho_cand`
+- `rho_cluster`
+- `rho_gain`
+- `cluster_sd_mean`
+- `best_cluster_rank`
+- `rho_cluster_risk_l0.5`
+- `rho_cand_risk_l0.5`
+- `topk_overlap_l0.5`
+- `n_seeds_ct`
+- `rho_gain_sd`
+- `md_best_is_rep`
+- `md_best_cluster_selected`
+- `md_rep_q_max`
+- `md_screen_loss`
+- `regret_A1`
+- `regret_A1_sd`
+- `n_seeds_A1`
+- `regret_adj_A1`
+- `regret_adj_A1_sd`
+- `regret_A5`
+- `regret_A5_sd`
+- `n_seeds_A5`
+- `regret_adj_A5`
+- `regret_adj_A5_sd`
+- `regret_A2`
+- `regret_A2_sd`
+- `n_seeds_A2`
+- `regret_adj_A2`
+- `regret_adj_A2_sd`
+- `regret_A9`
+- `regret_A9_sd`
+- `n_seeds_A9`
+- `regret_adj_A9`
+- `regret_adj_A9_sd`
+- `regret_A9P5`
+- `regret_A9P5_sd`
+- `n_seeds_A9P5`
+- `regret_adj_A9P5`
+- `regret_adj_A9P5_sd`
+- `d_A5_A1`
+- `d_A2_A1`
+- `d_A2_A5`
+- `d_A9_A1`
+- `d_A9_A5`
+- `d_A9_A2`
+- `d_A9P5_A1`
+- `d_A9P5_A5`
+- `d_A9P5_A2`
+- `d_A9P5_A9`
+- `dadj_A5_A1`
+- `dadj_A2_A1`
+- `dadj_A2_A5`
+- `dadj_A9_A1`
+- `dadj_A9_A5`
+- `dadj_A9_A2`
+- `dadj_A9P5_A1`
+- `dadj_A9P5_A5`
+- `dadj_A9P5_A2`
+- `dadj_A9P5_A9`

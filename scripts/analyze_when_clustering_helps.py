@@ -30,6 +30,7 @@ from scipy import stats
 
 ID_COLS = {"game_id", "end", "shot_num", "team"}
 GROUPS = [
+    ("problem_type", "degenerate(最終ショット/巨大クラスタ) / needle(正解一意) / multi_area(別エリアの良手複数) / flat(何でも同じ)"),
     ("phase_r", None),
     ("phase_shot", None),
     ("has_hammer", None),
@@ -54,7 +55,65 @@ def derive_groups(df: pd.DataFrame) -> pd.DataFrame:
         df["degenerate"] = (df["largest_frac"] >= 0.5).astype(int)
     if "n_house" in df:
         df["crowded_house"] = (df["n_house"] >= 5).astype(int)
+    # 「問題の形」4分類 (審判テーブル + クラスタ構造から):
+    #   degenerate : 最終ショット or 巨大クラスタ (距離関数が潰れる)
+    #   needle     : q* 近傍 (0.5点以内) の候補が 2 個以下 = 正解が一意 → 被覆 (screen_loss) で決まる
+    #   multi_area : 近傍候補が 3 個以上かつ戦術種別が 2 種以上 = 別エリアの良手が複数 → 表現で決まる
+    #   flat       : 近傍候補が多数で戦術種別は 1 種 = 何を選んでも同じ
+    if {"n_near_best_050", "n_types_near_best_050"} <= set(df.columns):
+        deg = (df.get("remaining", 99) <= 1) | (df.get("largest_frac", 0) >= 0.5)
+        needle = df["n_near_best_050"] <= 2
+        multi = (df["n_near_best_050"] >= 3) & (df["n_types_near_best_050"] >= 2)
+        df["problem_type"] = np.select([deg, needle, multi], ["degenerate", "needle", "multi_area"], default="flat")
     return df
+
+
+def interaction_section(df: pd.DataFrame, value_arms, blind_arms, base_arm, P):
+    """選択規則 (価値ベース vs 価値盲目 vs 全探索) × 局面群の交互作用。regret_<arm> 列を使う。"""
+    va = [a for a in value_arms if f"regret_{a}" in df.columns]
+    ba = [a for a in blind_arms if f"regret_{a}" in df.columns]
+    if not va or not ba or f"regret_{base_arm}" not in df.columns:
+        return
+    d = df.copy()
+    d["value_based"] = d[[f"regret_{a}" for a in va]].mean(axis=1)
+    d["value_blind"] = d[[f"regret_{a}" for a in ba]].mean(axis=1)
+    d["base"] = d[f"regret_{base_arm}"]
+    d["d_vb_vbl"] = d["value_based"] - d["value_blind"]
+    d["d_vbl_base"] = d["value_blind"] - d["base"]
+    d["d_vb_base"] = d["value_based"] - d["base"]
+    P("")
+    P(f"--- 選択規則 × 局面群 (価値ベース={va} / 価値盲目={ba} / 基準={base_arm}; regret の平均, 低いほど良い) ---")
+    for gcol in ["crowded_house", "problem_type", "phase_r", "n_stones_bin"]:
+        if gcol not in d.columns:
+            continue
+        P(f"  [{gcol}]")
+        for lv, g in d.groupby(gcol):
+            def wp(col):
+                x = g[col].dropna()
+                return stats.wilcoxon(x).pvalue if len(x) >= 6 and (x != 0).any() else float("nan")
+            P(f"    {str(lv):<12} n={len(g):3d}  base={g['base'].mean():.3f}  blind={g['value_blind'].mean():.3f}  value={g['value_based'].mean():.3f}"
+              f"  | value-blind={g['d_vb_vbl'].mean():+.3f} (p={wp('d_vb_vbl'):.3f})"
+              f"  blind-base={g['d_vbl_base'].mean():+.3f} (p={wp('d_vbl_base'):.3f})"
+              f"  value-base={g['d_vb_base'].mean():+.3f} (p={wp('d_vb_base'):.3f})")
+        if d[gcol].nunique() == 2:
+            lv = sorted(d[gcol].unique(), key=str)
+            for col, nm in [("d_vb_vbl", "value-blind"), ("d_vbl_base", "blind-base"), ("d_vb_base", "value-base")]:
+                a = d[d[gcol] == lv[0]][col].dropna(); b = d[d[gcol] == lv[1]][col].dropna()
+                if len(a) >= 3 and len(b) >= 3:
+                    P(f"    {nm}: {lv[0]} vs {lv[1]} Mann-Whitney p={stats.mannwhitneyu(a, b).pvalue:.3f}")
+    for f in ["n_house", "n_cand", "n_near_best_050", "q_range", "rho_cand", "q_sd_mean"]:
+        if f in d.columns:
+            r, p = stats.spearmanr(d[f], d["d_vb_vbl"], nan_policy="omit")
+            P(f"  spearman({f}, value-blind) = {r:+.2f} (p={p:.3f})")
+
+
+def filter_positions(df: pd.DataFrame, pos_dir: Path, invert: bool) -> pd.DataFrame:
+    keys = set()
+    for fp in sorted(pos_dir.glob("batch_*.csv")):
+        sub = pd.read_csv(fp, usecols=["match_id", "end", "shot_num"])
+        keys |= set(map(tuple, sub[["match_id", "end", "shot_num"]].values))
+    m = df[["game_id", "end", "shot_num"]].apply(tuple, axis=1).isin(keys)
+    return df[~m] if invert else df[m]
 
 
 def numeric_features(df: pd.DataFrame, targets: list) -> list:
@@ -79,9 +138,18 @@ def main():
     ap.add_argument("--targets", default="d_A9_A1,d_A2_A1,d_A9_A2,screen_loss,rho_gain,eta2_q")
     ap.add_argument("--min-n", type=int, default=8)
     ap.add_argument("--no-fig", action="store_true")
+    ap.add_argument("--only-positions", type=Path, default=None, help="この batch_*.csv に含まれる局面だけを使う (例: test_positions50 = パイロット)")
+    ap.add_argument("--exclude-positions", type=Path, default=None, help="この batch_*.csv の局面を除外 (例: test_positions50 → 新規150 = 検証用)")
+    ap.add_argument("--value-arms", default="A9,A9P5,A9R05", help="価値ベース選択のアーム (交互作用の節)")
+    ap.add_argument("--blind-arms", default="A2,A5", help="価値盲目削減のアーム")
+    ap.add_argument("--base-arm", default="A1")
     args = ap.parse_args()
 
     df = derive_groups(pd.read_csv(args.features))
+    if args.only_positions:
+        df = filter_positions(df, args.only_positions, invert=False)
+    if args.exclude_positions:
+        df = filter_positions(df, args.exclude_positions, invert=True)
     targets = [t for t in args.targets.split(",") if t and t in df.columns]
     missing = [t for t in args.targets.split(",") if t and t not in df.columns]
     if missing:
@@ -159,6 +227,10 @@ def main():
                 flag = "**" if kp < 0.05 else "*" if kp < 0.10 else ""
                 cells = "  ".join(f"{r['level']}: {r['mean']:+.3f}±{r['se']:.3f} (n={int(r['n'])})" for _, r in st.iterrows())
                 P(f"  {t:<14} {cells}   [Kruskal p={kp:.3f}{flag}]")
+
+    # ---------- 2b. 選択規則 × 局面群 の交互作用 ----------
+    interaction_section(df, [a.strip() for a in args.value_arms.split(",")],
+                        [a.strip() for a in args.blind_arms.split(",")], args.base_arm, P)
 
     # ---------- 3. 良い/悪い局面の一覧 (主目的変数) ----------
     main_t = targets[0]
