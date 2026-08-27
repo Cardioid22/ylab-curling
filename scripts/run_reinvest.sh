@@ -21,7 +21,7 @@
 #   ./scripts/run_reinvest.sh --arms "A3"          [OPTIONS]   # bear (深さ5担当)
 #
 # Options:
-#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9P5, A9R025/A9R05/A9R10) [必須]
+#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN) [必須]
 #                            A7=ScoreScreen (得点スクリーン型 Proposed; root で E[score] ε帯+リスク多様性選別)
 #   --base-seed S            先頭 seed; S..S+K-1 を使う (default: 42)
 #   --num-seeds K            seed 数 (default: 5)
@@ -74,6 +74,12 @@ arm_spec() {
         A9R025) echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --risk-lambda 0.25" ;;
         A9R05)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --risk-lambda 0.5" ;;   # 主アーム
         A9R10)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --risk-lambda 1.0" ;;   # 任意
+        # ---- run500 (GPW本論文 第2弾): 実現性込みスクリーン と progressive widening ----
+        A9P5N)  echo "ClusterValue 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --noisy-tree" ;;        # スクリーンの e_i を「試みる価値」に (候補手を外乱ありで打ち直す)
+        A11a)   echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 1 --pw-alpha 0.5 --pw-k0 2" ;;  # PW 積極: k(200)=15
+        A11b)   echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 2 --pw-alpha 0.3 --pw-k0 2" ;;  # PW 保守: k(200)=10
+        A11c)   echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 1 --pw-alpha 0.3 --pw-k0 2" ;;  # PW 最小: k(200)=5
+        A11aN)  echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 1 --pw-alpha 0.5 --pw-k0 2 --noisy-tree" ;;  # PW + 実現性込み
         *)  return 1 ;;
     esac
 }
@@ -169,7 +175,7 @@ mkdir -p "$PARENT_DIR"
 IFS=',' read -ra ARM_LIST <<< "$ARMS"
 for ARM in "${ARM_LIST[@]}"; do
     if ! arm_spec "$ARM" >/dev/null 2>&1; then
-        echo "Error: unknown arm '$ARM' (valid: A1..A9, A9P5, A9R025, A9R05, A9R10)" >&2
+        echo "Error: unknown arm '$ARM' (valid: A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN)" >&2
         exit 1
     fi
 done

@@ -59,6 +59,11 @@ struct ReinvestConfig {
     //   (候補間の期待値ばらつき + 候補内の実行/継続ばらつきを両方含む)。
     //   代表手も e_i − λ·sd_i (リスク調整値) が最大の候補。λ=0 で従来の A9 と完全一致。
     double risk_lambda = 0.0;
+    // ClusterPW (A11) の progressive widening: 開く子数 k(N) = max(pw_k0, ceil(pw_c · N^pw_alpha)), N = root 訪問数。
+    // 例 (P=200): C=1,α=0.5 → 2,4,7,10,15 (N=4,16,50,100,200) / C=2,α=0.3 → 4,5,7,8,10 / C=1,α=0.3 → 2,3,4,4,5
+    double pw_c = 1.0;
+    double pw_alpha = 0.5;
+    int pw_k0 = 2;
     // 開ループ・リサンプリング木 (--noisy-tree): 木の構造(候補/クラスタ/スクリーン)は決定的着地で
     // 作るが、価値評価は毎訪問エッジを外乱ありで再シミュレーションした実状態で行う。
     // R_pre推定も候補手を毎回打ち直す (審判の resample_first_shot と同じ規約)。
@@ -104,6 +109,9 @@ struct ClusterAssign {
     // --- リスク統合 (--risk-lambda) ---
     double cluster_sd = std::numeric_limits<double>::quiet_NaN();          // 所属クラスタのプールSD σ_c
     double cluster_value_risk = std::numeric_limits<double>::quiet_NaN();  // μ_c − λ·σ_c (λ=0 なら cluster_value と同値)
+    // --- 代表手の木内統計 (代表でなければ NaN) ---
+    int rep_rank = -1;       // 子として開かれた順 (0 始まり; ClusterValue/PW では価値順 = 開いた順)
+    int rep_visits = -1;     // その子の root からの訪問数 (PW のパターン分析用: どのクラスタがどれだけ調べられたか)
 };
 
 // 1 局面分の選択結果 (§4 出力スキーマに対応)
@@ -214,6 +222,9 @@ private:
         ShotGenerator& gen,
         std::mt19937& rng,
         dc::Team root_team);
+
+    // ClusterPW (A11): root の訪問数に応じて pw_queue から次のクラスタ代表を子に追加する
+    void widenRoot(TreeNode& node) const;
 
     // negamax UCB: 子の mean は root_team 視点。相手番ノード (to_play != root_team) では
     // 符号反転して「相手最良 = root視点最小」の子を選ぶ (max-max = 協力的相手モデルの修正)。

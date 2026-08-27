@@ -40,12 +40,14 @@ std::string ReinvestExperiment::methodName(MctsMode m) {
         case MctsMode::ScoreTopK:   return "ScoreTopK";
         case MctsMode::ClusterValue: return "ClusterValue";
         case MctsMode::ClusterValueDeep: return "ClusterValueDeep";
+        case MctsMode::ClusterPW:   return "ClusterPW";
     }
     return "Proposed";
 }
 
 MctsMode parseMctsMode(const std::string& s) {
     if (s == "AllGrid" || s == "allgrid")         return MctsMode::AllGrid;
+    if (s == "ClusterPW" || s == "clusterpw")     return MctsMode::ClusterPW;
     if (s == "RandomK" || s == "randomk")         return MctsMode::RandomK;
     if (s == "ScoreScreen" || s == "scorescreen") return MctsMode::ScoreScreen;
     if (s == "ScoreTopK" || s == "scoretopk")     return MctsMode::ScoreTopK;
@@ -123,15 +125,17 @@ void ReinvestExperiment::expandNode(
         && node.depth == 0) {
         // root: 得点スクリーン (A7: ①R_pre推定→②ε帯→③リスク多様性 / A8 TopK: ①のみ→E[score]上位K)
         node.medoid_indices = selectScoreScreen(node, sim, gen, rng, root_team);
-    } else if ((config_.mode == MctsMode::ClusterValue && node.depth == 0)
+    } else if (((config_.mode == MctsMode::ClusterValue || config_.mode == MctsMode::ClusterPW) && node.depth == 0)
                || config_.mode == MctsMode::ClusterValueDeep) {
         // A9: root のみ / A10: 全深さ = distDeltaクラスタ + クラスタ平均E[score]価値付け
         //  → 価値上位クラスタの最良メンバー (A10 は手番視点で選択・相手番ノードは子数 cv_k_opp)
+        // A11 (ClusterPW): 同じ順位付けで先頭 pw_k0 個だけ開き、残りは pw_queue に積む (runPlayout で widening)
         node.medoid_indices = selectClusterValue(node, sim, gen, rng, root_team);
     } else if (config_.mode == MctsMode::Proposed
                || config_.mode == MctsMode::ScoreScreen
                || config_.mode == MctsMode::ScoreTopK
-               || config_.mode == MctsMode::ClusterValue) {
+               || config_.mode == MctsMode::ClusterValue
+               || config_.mode == MctsMode::ClusterPW) {
         // distDelta クラスタリング (Proposed 全ノード / ScoreScreen・ScoreTopK・ClusterValue の depth>0 ノード)
         auto dist_table = mcts_shared::makeDistanceTableDelta(node.state, node.result_states);
         int K = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
@@ -403,10 +407,36 @@ std::vector<int> ReinvestExperiment::selectClusterValue(
         best_member[g_cid] = g_best;  // このクラスタの代表は全体最良で確定
     }
 
+    if (config_.mode == MctsMode::ClusterPW && node.depth == 0) {
+        // A11: 全クラスタの最良メンバーを価値順にキューへ。先頭 pw_k0 個だけ最初に開く
+        node.pw_queue.clear();
+        for (int cid : order) node.pw_queue.push_back(best_member[cid]);
+        int k0 = std::min(static_cast<int>(node.pw_queue.size()), std::max(1, config_.pw_k0));
+        selected.assign(node.pw_queue.begin(), node.pw_queue.begin() + k0);
+        node.pw_opened = k0;
+        return selected;
+    }
+
     for (int i = 0; i < static_cast<int>(order.size()) && static_cast<int>(selected.size()) < K_cap; i++) {
         selected.push_back(best_member[order[i]]);
     }
     return selected;
+}
+
+// ========== ClusterPW: root の progressive widening (A11) ==========
+// 開く子数 k(N) = max(k0, ceil(C · N^α)) (N = root の訪問数)。増えた分だけ pw_queue から価値順に子を追加する。
+// 新しい子は visits=0 なので UCB の未訪問優先で直後に 1 回は必ず調べられる (標準的な PW の挙動)。
+void ReinvestExperiment::widenRoot(TreeNode& node) const {
+    int total = static_cast<int>(node.pw_queue.size());
+    if (node.pw_opened >= total) return;
+    double target = config_.pw_c * std::pow(static_cast<double>(node.visits) + 1.0, config_.pw_alpha);
+    int k = std::max(std::max(1, config_.pw_k0), static_cast<int>(std::ceil(target - 1e-9)));
+    k = std::min(k, total);
+    while (node.pw_opened < k) {
+        node.medoid_indices.push_back(node.pw_queue[node.pw_opened]);
+        node.children.push_back(nullptr);
+        node.pw_opened++;
+    }
 }
 
 // ========== UCB1 選択 ==========
@@ -486,6 +516,9 @@ double ReinvestExperiment::runPlayout(
 
     if (!node.expanded) {
         expandNode(node, sim, gen, cache, rng, root_team, state_seed);
+    }
+    if (config_.mode == MctsMode::ClusterPW && node.depth == 0) {
+        widenRoot(node);  // A11: 訪問数に応じて次のクラスタ代表を開く
     }
     int K = static_cast<int>(node.medoid_indices.size());
     if (K == 0) {
@@ -633,24 +666,31 @@ ReinvestResult ReinvestExperiment::runOneState(
     // Proposed: 全候補をクラスタ + 代表点フラグつきで記録 (分離/被覆/collapse 診断の権威マップ)。
     // RandomK : クラスタ概念なし。選んだ K 個を代表として記録 (cluster_id = 選択順)。
     // AllGrid : 全候補が子なので分離対象外 → 空のまま (正解集合 A の供給側)。
-    if ((config_.mode == MctsMode::Proposed || config_.mode == MctsMode::ClusterValue
-         || config_.mode == MctsMode::ClusterValueDeep)
-        && !root.clusters.empty()) {
-        // ClusterValue/Deep は加えて E[score]/クラスタ価値/無外乱着地座標 (エリア逆射影用) を出力
+    const bool value_mode = (config_.mode == MctsMode::ClusterValue
+                             || config_.mode == MctsMode::ClusterValueDeep
+                             || config_.mode == MctsMode::ClusterPW);
+    if ((config_.mode == MctsMode::Proposed || value_mode) && !root.clusters.empty()) {
+        // ClusterValue/Deep/PW は加えて E[score]/クラスタ価値/無外乱着地座標 (エリア逆射影用) を出力
         int team_idx = static_cast<int>(root.to_play);
         int stone_idx = static_cast<int>(root.state.shot) / 2;
-        std::set<int> rep_set(root.medoid_indices.begin(), root.medoid_indices.end());
+        // 代表手 → (開いた順, 子の訪問数)。PW では「何番目に開かれ、どれだけ調べられたか」の素データ
+        std::unordered_map<int, std::pair<int, int>> rep_info;
+        for (int j = 0; j < static_cast<int>(root.medoid_indices.size()); j++) {
+            int v = (j < static_cast<int>(root.children.size()) && root.children[j]) ? root.children[j]->visits : 0;
+            rep_info[root.medoid_indices[j]] = {j, v};
+        }
         for (int cid = 0; cid < static_cast<int>(root.clusters.size()); cid++) {
             for (int cand_idx : root.clusters[cid]) {
                 if (cand_idx < 0 || cand_idx >= static_cast<int>(root.candidates.size())) continue;
                 ClusterAssign ca;
                 ca.candidate_idx = cand_idx;
                 ca.cluster_id = cid;
-                ca.is_representative = (rep_set.count(cand_idx) > 0);
+                auto ri = rep_info.find(cand_idx);
+                ca.is_representative = (ri != rep_info.end());
+                if (ca.is_representative) { ca.rep_rank = ri->second.first; ca.rep_visits = ri->second.second; }
                 ca.label = root.candidates[cand_idx].label;
                 ca.shot_type = labelToType(ca.label);
-                if (config_.mode == MctsMode::ClusterValue
-                    || config_.mode == MctsMode::ClusterValueDeep) {
+                if (value_mode) {
                     if (cand_idx < static_cast<int>(root.e_pre.size())) {
                         ca.e_score = root.e_pre[cand_idx];
                         ca.e_sd = root.sd_pre[cand_idx];
@@ -740,7 +780,7 @@ void ReinvestExperiment::writeResultsCSV(
         return;
     }
     ofs << "game_id,end,shot_num,method,depth,playouts,rollouts_per_visit,seed,"
-        << "candidate_idx,label,actual_total_sims,time_sec,risk_lambda\n";
+        << "candidate_idx,label,actual_total_sims,time_sec,risk_lambda,num_candidates,num_children\n";
     ofs << std::setprecision(6);
 
     std::string method = methodName(config_.mode);
@@ -751,7 +791,7 @@ void ReinvestExperiment::writeResultsCSV(
             << config_.rollouts_per_visit << "," << config_.seed << ","
             << r.best_idx << ",\"" << r.label << "\","
             << r.actual_total_sims << "," << r.time_sec << ","
-            << config_.risk_lambda << "\n";
+            << config_.risk_lambda << "," << r.num_candidates << "," << r.num_children << "\n";
     }
     std::cout << "  [csv] wrote " << results.size() << " records to " << path << std::endl;
 }
@@ -770,7 +810,7 @@ void ReinvestExperiment::writeClusterTableCSV(
     ofs << "game_id,end,shot_num,method,seed,candidate_idx,cluster_id,"
         << "is_representative,shot_type,label,"
         << "e_score,e_sd,cluster_value,land_x,land_y,"
-        << "cluster_sd,cluster_value_risk,risk_lambda\n";
+        << "cluster_sd,cluster_value_risk,risk_lambda,rep_rank,rep_visits\n";
 
     // NaN は空欄で出力 (ClusterValue 以外のモード / アウトになった投球石)
     auto num = [](double v) {
@@ -790,7 +830,9 @@ void ReinvestExperiment::writeClusterTableCSV(
                 << num(ca.e_score) << "," << num(ca.e_sd) << ","
                 << num(ca.cluster_value) << "," << num(ca.land_x) << "," << num(ca.land_y) << ","
                 << num(ca.cluster_sd) << "," << num(ca.cluster_value_risk) << ","
-                << config_.risk_lambda << "\n";
+                << config_.risk_lambda << ","
+                << (ca.rep_rank >= 0 ? std::to_string(ca.rep_rank) : std::string()) << ","
+                << (ca.rep_visits >= 0 ? std::to_string(ca.rep_visits) : std::string()) << "\n";
             rows++;
         }
     }
@@ -815,7 +857,15 @@ void ReinvestExperiment::run() {
     std::cout << "  epsilon            = " << config_.epsilon << std::endl;
     std::cout << "  risk_lambda        = " << config_.risk_lambda
               << (config_.mode == MctsMode::ClusterValue || config_.mode == MctsMode::ClusterValueDeep
+                  || config_.mode == MctsMode::ClusterPW
                   ? "" : "  (ClusterValue 系以外では無効)") << std::endl;
+    if (config_.mode == MctsMode::ClusterPW) {
+        std::cout << "  pw (C, alpha, k0)  = " << config_.pw_c << ", " << config_.pw_alpha << ", " << config_.pw_k0
+                  << "  -> k(N)=max(k0, ceil(C*N^alpha)); k(" << config_.playouts << ")="
+                  << std::max(config_.pw_k0, static_cast<int>(std::ceil(config_.pw_c * std::pow(config_.playouts, config_.pw_alpha) - 1e-9)))
+                  << std::endl;
+    }
+    std::cout << "  noisy_tree         = " << (config_.noisy_tree ? "true" : "false") << std::endl;
     std::cout << "  n_states           = " << config_.n_states << std::endl;
     std::cout << "  num_threads        = " << config_.num_threads << std::endl;
     std::cout << "  seed               = " << config_.seed << std::endl;
@@ -947,7 +997,8 @@ void ReinvestExperiment::run() {
     // ClusterValue/Deep は e_score/cluster_value/land_x,y 列 = エリア価値マップの素データ
     if (config_.mode == MctsMode::Proposed || config_.mode == MctsMode::RandomK
         || config_.mode == MctsMode::ClusterValue
-        || config_.mode == MctsMode::ClusterValueDeep) {
+        || config_.mode == MctsMode::ClusterValueDeep
+        || config_.mode == MctsMode::ClusterPW) {
         std::string ct_path = config_.output_dir + "/cluster_table" + suffix + ".csv";
         writeClusterTableCSV(results, ct_path);
     }

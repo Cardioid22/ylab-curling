@@ -842,6 +842,9 @@ int main(int argc, char const* argv[])
         int score_screen_v_target_arg = 50;             // ScoreScreen: K_cap = playouts / v_target
         int cv_k_opp_arg = 8;                           // ClusterValueDeep (A10): 相手番ノードの子数
         double risk_lambda_arg = 0.0;                   // ClusterValue: クラスタ価値 = μ − λσ の λ (--risk-lambda)
+        double pw_c_arg = 1.0;                          // ClusterPW (A11): k(N)=max(k0, ceil(C·N^α))
+        double pw_alpha_arg = 0.5;
+        int pw_k0_arg = 2;
         bool noisy_tree_arg = false;                    // 開ループ・リサンプリング木 (--noisy-tree)
         bool adaptive_a_arg = false;                    // フェーズ適応探索 (selfplayのアームA)
         bool adaptive_b_arg = false;                    // 同 アームB
@@ -998,6 +1001,19 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--risk-lambda" && i + 1 < argc) {
                 risk_lambda_arg = std::atof(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--pw-c" && i + 1 < argc) {
+                pw_c_arg = std::atof(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--pw-alpha" && i + 1 < argc) {
+                pw_alpha_arg = std::atof(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--pw-k0" && i + 1 < argc) {
+                pw_k0_arg = std::atoi(argv[i + 1]);
+                if (pw_k0_arg < 1) pw_k0_arg = 1;
                 i++;
             }
             if (std::string(argv[i]) == "--noisy-tree") {
@@ -1804,6 +1820,7 @@ int main(int argc, char const* argv[])
             cfg.score_screen_v_target = score_screen_v_target_arg;
             cfg.cv_k_opp = cv_k_opp_arg;                 // ClusterValueDeep (A10)
             cfg.risk_lambda = risk_lambda_arg;           // ClusterValue リスク統合 (μ − λσ)
+            cfg.pw_c = pw_c_arg; cfg.pw_alpha = pw_alpha_arg; cfg.pw_k0 = pw_k0_arg;  // ClusterPW (A11)
             cfg.noisy_tree = noisy_tree_arg;             // 開ループ・リサンプリング木
             cfg.n_states = depth3_n_states_arg;          // --states を共用
             cfg.num_threads = depth3_threads_arg;        // --threads を共用
@@ -1847,6 +1864,7 @@ int main(int argc, char const* argv[])
                 c.score_screen_v_target = score_screen_v_target_arg;
                 c.cv_k_opp = cv_k_opp_arg;
                 c.risk_lambda = risk_lambda_arg;
+                c.pw_c = pw_c_arg; c.pw_alpha = pw_alpha_arg; c.pw_k0 = pw_k0_arg;
                 c.noisy_tree = noisy_tree_arg;
                 c.num_threads = 1;   // 並列はゲーム単位
                 c.seed = depth3_seed_arg;

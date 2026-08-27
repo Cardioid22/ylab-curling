@@ -1,0 +1,74 @@
+# run500 キャンペーン — GPW2026 本論文 第2弾 (層化300局面 × 実現性込みスクリーン × progressive widening)
+
+run200 の結果 (`docs/PROJECT_STATUS.md` §4.6) を受けた追加実験。締切: 採否 9/4 → **最終原稿 10/23**。
+
+## 問い
+1. **検出力**: 同予算の A9(R_pre=3) vs A2、A1 vs A2/A5 (d≈0.14-0.19, 必要 n≈220-400) を決着させる。
+   A1 vs A9P5 (d=0.03) は 500 でも決まらない = 「同等」のまま。
+2. **層の補強**: run200 で薄かった層 (needle=正解一意 5局面、空ハウス序盤 2局面) を意図的に足す。
+3. **被覆の改善 (A11 ClusterPW)**: 審判最良手が代表 4 手に残る率が 20% しかない (screen_loss が regret の 56%)。
+   root の子をクラスタ価値順に progressive widening で徐々に開く: k(N) = max(k0, ceil(C·N^α))。
+4. **実現性込みスクリーン (A9P5N)**: 現行の e_i は無外乱着地からの継続値 (=狙いどおり決まった前提)、
+   審判 q は「試みる価値」(初手を外乱ありで振り直す) で不整合。`--noisy-tree` で R_pre も候補手を外乱ありで打ち直す。
+
+## 局面セット `test_positions500`
+先頭 200 = `test_positions200` と同一順序 (run200 の結果と審判を流用)。+300 は `scripts/pick_positions_stratified.py --seed 31` の層化:
+| 層 | 定義 | 数 |
+|---|---|---|
+| empty_early | 石 0-1, shot≤3 (「空のハウス」) | 40 |
+| sparse_early | 石 2-4, shot≤5 | 30 |
+| takeout_mid / takeout_late | 相手 No.1 を除去する形, shot 6-11 / 12-14 (needle の代理) | 40 / 40 |
+| freeze_mid / freeze_late | 相手 No.1 に密着できる形 | 30 / 30 |
+| draw_mid / draw_late | No.1 が遠く空きが多い | 20 / 20 |
+| crowded_mid / crowded_late | 石 6 個以上 | 25 / 25 |
+最終ショット (shot 15) は除外 (退化層; run200 に 32 局面あり十分)。1 game 1 局面、既存 200 と game_id 重複なし。
+
+## アーム (P=200 R=10, 5 seed)
+| アーム | 内容 | 走らせる局面 |
+|---|---|---|
+| A1 / A2 / A9 / (A5) | 既存 (先頭200は流用) | 新規 300 (`--start-index 200 --max-positions 300`) |
+| A9P5 | ClusterValue R_pre=5 (run200 の最良) | 新規 300 |
+| **A9P5N** | A9P5 + `--noisy-tree` (実現性込みスクリーン) | 全 500 |
+| **A11a** | ClusterPW C=1 α=0.5 k0=2 → k(200)=15 (積極) | 全 500 |
+| **A11b** | ClusterPW C=2 α=0.3 k0=2 → k(200)=10 (保守) | 全 500 |
+| A11c / A11aN | k(200)=5 (最小) / PW+noisy | 任意 |
+PW の開き方 (k(N), N=root 訪問数): A11a 2,4,8,10,15 (N=4,50,100,200) / A11b 2,4,7,8,10 / A11c 2,2,4,4,5。比較対象 A9P5 は 4 固定。
+
+## 手順
+```bash
+# 0. lion で pull + docker ビルド (共有FS なので1回) — scripts/README_run200.md §0 と同じ
+# 1. 先頭200の流用 (ローカル or 集計マシン)
+bash scripts/reuse_prefix_results.sh --src gpw_experiment --dst gpw_experiment500 --arms "A1,A2,A5,A9,A9P5"
+# 2. 審判 (新規300局面, K=200): 2台に分割 (各150局面, ~14h)
+cd ~/ylab-curling && mkdir -p reinvest_experiment/run500/referee
+nohup ./build/ylab_client --score-move --score-rollouts 200 --states 500 --threads 64 --seed 42 \
+  --load-positions test_positions500 --start-index 200 --max-positions 150 \
+  --output-dir reinvest_experiment/run500/referee > reinvest_experiment/run500/referee/referee_idx200.log 2>&1 &   # bear
+nohup ./build/ylab_client --score-move --score-rollouts 200 --states 500 --threads 64 --seed 42 \
+  --load-positions test_positions500 --start-index 350 --max-positions 150 \
+  --output-dir reinvest_experiment/run500/referee > reinvest_experiment/run500/referee/referee_idx350.log 2>&1 &   # jaguar
+# 3. アーム (例。マシン割当は空き次第)
+mkdir -p reinvest_experiment/run500
+nohup bash scripts/run_reinvest.sh --arms "A1,A2" --positions-dir test_positions500 --n-states 500 \
+  --start-index 200 --max-positions 300 --num-seeds 5 --max-parallel 5 --threads-per-seed 18 \
+  --parent-dir reinvest_experiment/run500 > reinvest_experiment/run500/launch_X.log 2>&1 &
+nohup bash scripts/run_reinvest.sh --arms "A11a" --positions-dir test_positions500 --n-states 500 \
+  --num-seeds 5 --max-parallel 5 --threads-per-seed 12 \
+  --parent-dir reinvest_experiment/run500 > reinvest_experiment/run500/launch_Y.log 2>&1 &
+# 4. 回収・集計 (ローカル)
+rsync -av lion:~/ylab-curling/reinvest_experiment/run500/ gpw_experiment500/
+python scripts/aggregate_reinvest.py --reinvest-dir gpw_experiment500 --referee-dir gpw_experiment500/referee --pair A11a,A9P5 --risk-lambda 0.5 --out gpw_experiment500/regret
+python scripts/regret_stats.py --joined gpw_experiment500/regret/reinvest_joined.csv --out gpw_experiment500/regret
+python scripts/position_features.py --positions-dir test_positions500 --referee-csv gpw_experiment500/referee \
+  --cluster-dir gpw_experiment500/A11a --medoid-dir gpw_experiment500/A2 --joined gpw_experiment500/regret/reinvest_joined.csv \
+  --arms A1,A2,A9,A9P5,A9P5N,A11b,A11a --risk-lambda 0.5 --out gpw_experiment500/features
+python scripts/analyze_when_clustering_helps.py --features gpw_experiment500/features/position_features.csv \
+  --out gpw_experiment500/features/analysis_new300 --exclude-positions test_positions200 \
+  --targets d_A11a_A9P5,d_A9P5N_A9P5,d_A9P5_A2,d_A9_A2,screen_loss,rho_gain,eta2_q --value-arms A9P5,A11a --blind-arms A2
+```
+`cluster_table.csv` の `rep_rank` (開いた順) と `rep_visits` (root からの訪問数) で、PW がどのクラスタをいつ開き
+どれだけ調べたかが局面ごとに追える。`reinvest_results.csv` の `num_children` = 最終的に開いた子数。
+
+## 計算量の目安 (run200 = 5,000 局面·seed 単位で 4 台 1.5 日)
+- 既存4アーム × 300 × 5 = 6,000、新3アーム × 500 × 5 = 7,500、審判 300 局面 ≈ 3,200 相当 → **run200 の約 3.3 倍 ≈ 4-5 日** (4台)。
+  任意アーム (A5/A11c/A11aN) を足すと +2,500 ずつ。

@@ -31,9 +31,12 @@ enum class MctsMode {
     ScoreTopK,   // root: E[score]降順ソート上位K_capのみ（ε帯・リスク多様性・クラスタ無し）。depth>0はA7と同一（A8: A7のablation）
     ClusterValue, // root: distDeltaクラスタ(結果盤面=外乱込み行動表現) + クラスタ平均E[score]で価値付け
                   //       → 価値上位K_capクラスタから各クラスタ内E[score]最大の手を子に（A9: Proposed改）
-    ClusterValueDeep // A9の価値選択を全深さに適用（A10）。手番視点で選択 (相手番ノードは相手最良=符号反転)。
+    ClusterValueDeep, // A9の価値選択を全深さに適用（A10）。手番視点で選択 (相手番ノードは相手最良=符号反転)。
                      // 自分ノード K=playouts/v_target、相手ノード K=cv_k_opp (広め: min側の取りこぼし防止)。
                      // R_pre は深さ逓減 (r_pre - depth, 最低1)。葉ロールアウトは従来通り。
+    ClusterPW        // A11: A9 のクラスタ価値順に root の子を progressive widening で徐々に開く。
+                     // 開く数 k(N) = max(k0, ceil(C · N^α)) (N = root 訪問数)。被覆 (最良手が代表に残る率 20%) の改善が狙い。
+                     // depth>0 は A9 と同じ (distDelta medoid)。
 };
 
 // 展開キャッシュ: 同じ盤面ハッシュなら候補手とシミュ結果を再利用
@@ -71,6 +74,9 @@ struct TreeNode {
     std::vector<double> cluster_value;
     // クラスタのプールSD σ_c (ClusterValue の root のみ; --risk-lambda のリスク項)
     std::vector<double> cluster_sd;
+    // ClusterPW (A11): 価値順に並べた「各クラスタの最良メンバー」のキュー。先頭 pw_opened 個が medoid_indices に開かれている
+    std::vector<int> pw_queue;
+    int pw_opened = 0;
 
     // 子ノード（lazy allocation）
     std::vector<std::unique_ptr<TreeNode>> children;
