@@ -21,7 +21,7 @@
 #   ./scripts/run_reinvest.sh --arms "A3"          [OPTIONS]   # bear (深さ5担当)
 #
 # Options:
-#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN) [必須]
+#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN, A1N, A2N) [必須]
 #                            A7=ScoreScreen (得点スクリーン型 Proposed; root で E[score] ε帯+リスク多様性選別)
 #   --base-seed S            先頭 seed; S..S+K-1 を使う (default: 42)
 #   --num-seeds K            seed 数 (default: 5)
@@ -80,6 +80,9 @@ arm_spec() {
         A11b)   echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 2 --pw-alpha 0.3 --pw-k0 2" ;;  # PW 保守: k(200)=10
         A11c)   echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 1 --pw-alpha 0.3 --pw-k0 2" ;;  # PW 最小: k(200)=5
         A11aN)  echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 1 --pw-alpha 0.5 --pw-k0 2 --noisy-tree" ;;  # PW + 実現性込み
+        # ---- noisy-tree の対照 (A9P5N の利得が「スクリーンの実現性」か「木の外乱評価一般」かを分離) ----
+        A1N)    echo "AllGrid  3 $P_BASE $R_BASE $RETENTION --noisy-tree" ;;   # 全探索 + 外乱評価木 (スクリーン無し)
+        A2N)    echo "Proposed 3 $P_BASE $R_BASE $RETENTION --noisy-tree" ;;   # medoid + 外乱評価木 (任意)
         *)  return 1 ;;
     esac
 }
@@ -175,7 +178,7 @@ mkdir -p "$PARENT_DIR"
 IFS=',' read -ra ARM_LIST <<< "$ARMS"
 for ARM in "${ARM_LIST[@]}"; do
     if ! arm_spec "$ARM" >/dev/null 2>&1; then
-        echo "Error: unknown arm '$ARM' (valid: A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN)" >&2
+        echo "Error: unknown arm '$ARM' (valid: A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN, A1N, A2N)" >&2
         exit 1
     fi
 done
