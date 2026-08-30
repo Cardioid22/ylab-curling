@@ -38,7 +38,8 @@ PW の開き方 (k(N), N=root 訪問数): A11a 2,4,8,10,15 (N=4,50,100,200) / A1
 ```bash
 # 0. lion で pull + docker ビルド (共有FS なので1回) — scripts/README_run200.md §0 と同じ
 # 1. 先頭200の流用 (ローカル or 集計マシン)
-bash scripts/reuse_prefix_results.sh --src gpw_experiment --dst gpw_experiment500 --arms "A1,A2,A5,A9,A9P5"
+# (実際の運用: run500 の回収先も gpw_experiment/ に統合した。run200 と run500 のファイル名は衝突しない
+#  (*_idx0/_idx50/無印 = run200, *_idx200 = 新規300, 500局面アームは無印))
 # 2. 審判 (新規300局面, K=200): 2台に分割 (各150局面, ~14h)
 cd ~/ylab-curling && mkdir -p reinvest_experiment/run500/referee
 nohup ./build/ylab_client --score-move --score-rollouts 200 --states 500 --threads 64 --seed 42 \
@@ -56,18 +57,22 @@ nohup bash scripts/run_reinvest.sh --arms "A11a" --positions-dir test_positions5
   --num-seeds 5 --max-parallel 5 --threads-per-seed 12 \
   --parent-dir reinvest_experiment/run500 > reinvest_experiment/run500/launch_Y.log 2>&1 &
 # 4. 回収・集計 (ローカル)
-rsync -av lion:~/ylab-curling/reinvest_experiment/run500/ gpw_experiment500/
-python scripts/aggregate_reinvest.py --reinvest-dir gpw_experiment500 --referee-dir gpw_experiment500/referee --pair A11a,A9P5 --risk-lambda 0.5 --out gpw_experiment500/regret
-python scripts/regret_stats.py --joined gpw_experiment500/regret/reinvest_joined.csv --out gpw_experiment500/regret
-python scripts/position_features.py --positions-dir test_positions500 --referee-csv gpw_experiment500/referee \
-  --cluster-dir gpw_experiment500/A11a --medoid-dir gpw_experiment500/A2 --joined gpw_experiment500/regret/reinvest_joined.csv \
-  --arms A1,A2,A9,A9P5,A9P5N,A11b,A11a --risk-lambda 0.5 --out gpw_experiment500/features
-python scripts/analyze_when_clustering_helps.py --features gpw_experiment500/features/position_features.csv \
-  --out gpw_experiment500/features/analysis_new300 --exclude-positions test_positions200 \
+rsync -av lion:~/ylab-curling/reinvest_experiment/run500/ gpw_experiment/
+python scripts/aggregate_reinvest.py --reinvest-dir gpw_experiment --referee-dir gpw_experiment/referee --pair A11a,A9P5 --risk-lambda 0.5 --out gpw_experiment/regret
+python scripts/regret_stats.py --joined gpw_experiment/regret/reinvest_joined.csv --out gpw_experiment/regret
+python scripts/position_features.py --positions-dir test_positions500 --referee-csv gpw_experiment/referee \
+  --cluster-dir gpw_experiment/A11a --medoid-dir gpw_experiment/A2 --joined gpw_experiment/regret/reinvest_joined.csv \
+  --arms A1,A2,A9,A9P5,A9P5N,A11b,A11a --risk-lambda 0.5 --out gpw_experiment/features
+python scripts/analyze_when_clustering_helps.py --features gpw_experiment/features/position_features.csv \
+  --out gpw_experiment/features/analysis_new300 --exclude-positions test_positions200 \
   --targets d_A11a_A9P5,d_A9P5N_A9P5,d_A9P5_A2,d_A9_A2,screen_loss,rho_gain,eta2_q --value-arms A9P5,A11a --blind-arms A2
 ```
 `cluster_table.csv` の `rep_rank` (開いた順) と `rep_visits` (root からの訪問数) で、PW がどのクラスタをいつ開き
 どれだけ調べたかが局面ごとに追える。`reinvest_results.csv` の `num_children` = 最終的に開いた子数。
+
+## 第1波の結果 (2026-08-30) → `gpw_experiment/regret500/WAVE1_SUMMARY.md`
+A9P5N (noisy-tree) 0.309 ≪ A1 0.418 ≈ A9P5 0.423 ≈ A11a/b 0.425-0.427 (Holm p<1e-10)。利得は木の評価 (tree_loss 0.19→0.10)。
+PW は被覆 0.20→0.29 だが tree_loss が同じだけ悪化し regret 不変。**第2波に A1N (対照) を必ず入れる**。
 
 ## 計算量の目安 (run200 = 5,000 局面·seed 単位で 4 台 1.5 日)
 - 既存4アーム × 300 × 5 = 6,000、新3アーム × 500 × 5 = 7,500、審判 300 局面 ≈ 3,200 相当 → **run200 の約 3.3 倍 ≈ 4-5 日** (4台)。

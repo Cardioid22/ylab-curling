@@ -227,9 +227,26 @@ Friedman **p=0.002**。Holm後有意: **A2 vs A9P5 (p=0.022, 110勝75敗)**、**
 - 分析ツール: `analyze_when_clustering_helps.py` に problem_type 4分類 (degenerate/needle/multi_area/flat)・選択規則×局面群の交互作用・
   `--only-positions/--exclude-positions` (パイロット/検証分割) を追加。
 
+### 4.7 run500 第1波 (2026-08-30 回収) — 【外乱込み木 A9P5N が regret 0.31 で他を圧倒。PW は効かず】
+詳細 `gpw_experiment/regret500/WAVE1_SUMMARY.md`。局面 500 (= run200 の 200 + 層化 300 `test_positions500`)、5 seed、審判 K=200 全 500 局面。
+- **regret**: A1 0.418 ≈ A9P5 0.423 ≈ A11b 0.425 ≈ A11a 0.427 ≫ **A9P5N 0.309** (Friedman p=3e-18; A9P5N は全対に Holm p<1e-10, d≈0.4)。
+  先頭 200 局面 (9 アーム) でも A9P5N 0.324 ≪ A1 0.472 ≈ A9P5 0.480 < A9 0.506 < A5 0.540 < A2 0.578。
+- **A9P5N の利得は木の評価から**: スクリーン指標 (ρ, 被覆, screen_loss) は A9P5 とほぼ同じ、tree_loss が 0.19→0.10。
+  = 決定的木の「精密だが脆い計画」を外乱込み評価が罰する (7月の d3 解剖と同じ機構)。利得は混雑・終盤に集中
+  (crowded_late −0.34, freeze_late −0.23, takeout_late −0.15; 序盤・疎は ≈0)。**A1N (AllGrid+noisy) の対照が未走 = 現時点では
+  「外乱込み評価」の効果であってクラスタリング固有とは言えない**。
+- **PW (A11)**: 被覆 0.20→0.29、screen_loss 0.23→0.15 だが tree_loss 0.19→0.27 で相殺、regret 不変。sims +5-6%。
+  P=200 を 12 子に割ると 1 子 15 訪問で評価しきれない (幅/深さトレードオフ)。
+- 空ハウス序盤 (n=40): 全アーム 0.30-0.34、A9P5 が A1 より 0.04 良い (p=0.015)。候補の 73% が q* 近傍 = flat。ユーザー仮説を支持。
+- 出力: `regret500/stats_500main` (regret), `stats_500main_adj`, `stats_200all`; `features500_{A9P5,A9P5N,A11a,A11b}/`。
+
 ## 5. 実行中 / 直近タスク
 
-- (実行中のサーバージョブなし。run200 は全完了・回収済み)
+- **【第2波 未投入 (サーバー4台アイドル, 2026-08-30)】** 審判 idx200/idx350 完了、A1 新規300 完了。投入するもの:
+  **A1N (500局面, 対照, 最優先)**、A2 / A9 / A5 (新規300, `--start-index 200 --max-positions 300`)。任意: A2N, A11aN。
+  `run_reinvest.sh` に A1N/A2N 追加済み (commit 4354443; サーバーで `git pull` 要、再ビルド不要)。
+- 第2波回収後: `aggregate_reinvest.py --reinvest-dir gpw_experiment` → A1N vs A9P5N で「外乱込み評価の利得がクラスタ固有か」を決着。
+- 論文の図表化 (具体例・どこで効くか・r=1 退化・PW の訪問分布) は並行して着手可。
 - **【次】GPW 本論文の図表化**: (a) 具体例 3 局面 (盤面+エリア価値マップ+候補 q のクラスタ色分け) を新規150から作図
   (`scripts/plot_area_variants.py`), (b) 「どこで効くか」の図 (q_range / n_near_best vs 価値−盲目差, problem_type 別), (c) r=1 退化の図,
   (d) λ 掃引の図 (overlap vs 審判SD)。(e) クラスタ「カード」出力 (`cluster_cards.py`, 未作成)。
