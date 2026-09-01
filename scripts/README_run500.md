@@ -74,6 +74,18 @@ python scripts/analyze_when_clustering_helps.py --features gpw_experiment/featur
 A9P5N (noisy-tree) 0.309 ≪ A1 0.418 ≈ A9P5 0.423 ≈ A11a/b 0.425-0.427 (Holm p<1e-10)。利得は木の評価 (tree_loss 0.19→0.10)。
 PW は被覆 0.20→0.29 だが tree_loss が同じだけ悪化し regret 不変。**第2波に A1N (対照) を必ず入れる**。
 
+## 第3弾 (2026-09-01 実装): A12 ClusterTS = 階層ベイズ縮約 + Thompson sampling
+先生の「ベイジアンアプローチ」の具体化。root のみ、depth>0 は A9 と同じ。
+1. 縮約: 候補 i の真値に 事前 N(μ_c, τ_c²) (μ_c=クラスタ平均, τ_c²=クラスタ内分散)、観測 e_i ~ N(·, sd_i²/R_pre)
+   → 事後 m̃_i (少標本で上振れた候補ほどクラスタ平均へ引き戻される = winner's curse 対策)。
+2. 代表 = クラスタ内 m̃ 最大。**全クラスタ (~15-30) を子に持ち**、事前 N(m̃_rep, prior_scale·ṽ_rep) を付与。
+3. 訪問配分 = Thompson sampling (事後 = 事前 ⊕ 子の訪問統計, 観測分散 ts_obs_var)。未訪問の低事前クラスタは
+   自然に切られ、有望クラスタに厚く配る = **ベイズ版 progressive widening** (A11 の決め打ち式 k(N) の置き換え)。
+4. 最終着手 = 事後平均最大の子 (最多訪問ではない)。
+フラグ: `--method ClusterTS --ts-obs-var 2.0 --ts-prior-scale 2.0`。アーム: **A12N** (noisy, 主; vs A9P5N/A1N) / A12 (決定的; vs A9P5)。
+検証: A12N が A9P5N (0.309) を下回るか。被覆 (best_is_rep) と screen_loss は position_features.py がそのまま出す。
+**注意: C++ 変更ありのため各サーバーで git pull + lion の docker リビルドが必要。**
+
 ## 計算量の目安 (run200 = 5,000 局面·seed 単位で 4 台 1.5 日)
 - 既存4アーム × 300 × 5 = 6,000、新3アーム × 500 × 5 = 7,500、審判 300 局面 ≈ 3,200 相当 → **run200 の約 3.3 倍 ≈ 4-5 日** (4台)。
   任意アーム (A5/A11c/A11aN) を足すと +2,500 ずつ。

@@ -34,8 +34,13 @@ enum class MctsMode {
     ClusterValueDeep, // A9の価値選択を全深さに適用（A10）。手番視点で選択 (相手番ノードは相手最良=符号反転)。
                      // 自分ノード K=playouts/v_target、相手ノード K=cv_k_opp (広め: min側の取りこぼし防止)。
                      // R_pre は深さ逓減 (r_pre - depth, 最低1)。葉ロールアウトは従来通り。
-    ClusterPW        // A11: A9 のクラスタ価値順に root の子を progressive widening で徐々に開く。
+    ClusterPW,       // A11: A9 のクラスタ価値順に root の子を progressive widening で徐々に開く。
                      // 開く数 k(N) = max(k0, ceil(C · N^α)) (N = root 訪問数)。被覆 (最良手が代表に残る率 20%) の改善が狙い。
+                     // depth>0 は A9 と同じ (distDelta medoid)。
+    ClusterTS        // A12: 階層ベイズ縮約 + Thompson sampling (root のみ)。
+                     // 候補価値 = クラスタ平均を事前分布とする事後平均 (縮約 = winner's curse 対策)。
+                     // 全クラスタの代表 (クラスタ内事後平均最大) を子に持ち、訪問先は
+                     // 事後分布 N(post_mean, post_var) からのサンプル最大で選ぶ (ベイズ版 progressive widening)。
                      // depth>0 は A9 と同じ (distDelta medoid)。
 };
 
@@ -77,6 +82,9 @@ struct TreeNode {
     // ClusterPW (A11): 価値順に並べた「各クラスタの最良メンバー」のキュー。先頭 pw_opened 個が medoid_indices に開かれている
     std::vector<int> pw_queue;
     int pw_opened = 0;
+    // ClusterTS (A12): 子 j の事前分布 N(ts_prior_mean[j], ts_prior_var[j]) (root のみ; medoid_indices と index 対応)
+    std::vector<double> ts_prior_mean;
+    std::vector<double> ts_prior_var;
 
     // 子ノード（lazy allocation）
     std::vector<std::unique_ptr<TreeNode>> children;

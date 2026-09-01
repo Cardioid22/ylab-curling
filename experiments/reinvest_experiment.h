@@ -64,6 +64,11 @@ struct ReinvestConfig {
     double pw_c = 1.0;
     double pw_alpha = 0.5;
     int pw_k0 = 2;
+    // ClusterTS (A12): Thompson sampling のパラメータ
+    //   ts_obs_var    : 1 プレイアウト報酬の観測分散 (固定近似; 審判 SD~1.7 → var~2.8 だが葉は R 回平均なので小さめ)
+    //   ts_prior_scale: スクリーン由来の事前分散の倍率 (スクリーン値と木の値のモデル不一致に対する保険)
+    double ts_obs_var = 2.0;
+    double ts_prior_scale = 2.0;
     // 開ループ・リサンプリング木 (--noisy-tree): 木の構造(候補/クラスタ/スクリーン)は決定的着地で
     // 作るが、価値評価は毎訪問エッジを外乱ありで再シミュレーションした実状態で行う。
     // R_pre推定も候補手を毎回打ち直す (審判の resample_first_shot と同じ規約)。
@@ -225,6 +230,15 @@ private:
 
     // ClusterPW (A11): root の訪問数に応じて pw_queue から次のクラスタ代表を子に追加する
     void widenRoot(TreeNode& node) const;
+
+    // ClusterTS (A12): 階層ベイズ縮約で全クラスタの代表と事前分布を作る (root)。選んだ candidate idx 群を返す
+    std::vector<int> selectClusterTS(
+        TreeNode& node, SimulatorWrapper& sim, ShotGenerator& gen,
+        std::mt19937& rng, dc::Team root_team);
+    // Thompson sampling による root の子選択 (事後 = 事前 ⊕ 子の訪問統計)
+    int selectThompson(const TreeNode& node, std::mt19937& rng) const;
+    // 最終着手: 事後平均が最大の子 (ClusterTS 用; 訪問 0 の子は事前のみで評価)
+    int selectBestPosterior(const TreeNode& node) const;
 
     // negamax UCB: 子の mean は root_team 視点。相手番ノード (to_play != root_team) では
     // 符号反転して「相手最良 = root視点最小」の子を選ぶ (max-max = 協力的相手モデルの修正)。

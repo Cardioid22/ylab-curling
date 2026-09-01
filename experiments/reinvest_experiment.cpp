@@ -41,6 +41,7 @@ std::string ReinvestExperiment::methodName(MctsMode m) {
         case MctsMode::ClusterValue: return "ClusterValue";
         case MctsMode::ClusterValueDeep: return "ClusterValueDeep";
         case MctsMode::ClusterPW:   return "ClusterPW";
+        case MctsMode::ClusterTS:   return "ClusterTS";
     }
     return "Proposed";
 }
@@ -48,6 +49,7 @@ std::string ReinvestExperiment::methodName(MctsMode m) {
 MctsMode parseMctsMode(const std::string& s) {
     if (s == "AllGrid" || s == "allgrid")         return MctsMode::AllGrid;
     if (s == "ClusterPW" || s == "clusterpw")     return MctsMode::ClusterPW;
+    if (s == "ClusterTS" || s == "clusterts")     return MctsMode::ClusterTS;
     if (s == "RandomK" || s == "randomk")         return MctsMode::RandomK;
     if (s == "ScoreScreen" || s == "scorescreen") return MctsMode::ScoreScreen;
     if (s == "ScoreTopK" || s == "scoretopk")     return MctsMode::ScoreTopK;
@@ -125,6 +127,9 @@ void ReinvestExperiment::expandNode(
         && node.depth == 0) {
         // root: 得点スクリーン (A7: ①R_pre推定→②ε帯→③リスク多様性 / A8 TopK: ①のみ→E[score]上位K)
         node.medoid_indices = selectScoreScreen(node, sim, gen, rng, root_team);
+    } else if (config_.mode == MctsMode::ClusterTS && node.depth == 0) {
+        // A12: 階層ベイズ縮約 + Thompson。全クラスタ代表を子に (訪問配分は selectThompson が行う)
+        node.medoid_indices = selectClusterTS(node, sim, gen, rng, root_team);
     } else if (((config_.mode == MctsMode::ClusterValue || config_.mode == MctsMode::ClusterPW) && node.depth == 0)
                || config_.mode == MctsMode::ClusterValueDeep) {
         // A9: root のみ / A10: 全深さ = distDeltaクラスタ + クラスタ平均E[score]価値付け
@@ -135,7 +140,8 @@ void ReinvestExperiment::expandNode(
                || config_.mode == MctsMode::ScoreScreen
                || config_.mode == MctsMode::ScoreTopK
                || config_.mode == MctsMode::ClusterValue
-               || config_.mode == MctsMode::ClusterPW) {
+               || config_.mode == MctsMode::ClusterPW
+               || config_.mode == MctsMode::ClusterTS) {
         // distDelta クラスタリング (Proposed 全ノード / ScoreScreen・ScoreTopK・ClusterValue の depth>0 ノード)
         auto dist_table = mcts_shared::makeDistanceTableDelta(node.state, node.result_states);
         int K = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
@@ -423,6 +429,120 @@ std::vector<int> ReinvestExperiment::selectClusterValue(
     return selected;
 }
 
+// ========== ClusterTS: 階層ベイズ縮約 + Thompson sampling (A12) ==========
+// ① R_pre で候補別 e_i, sd_i を推定 (estimateRootScores; noisy_tree なら実行ノイズ込み)
+// ② distDelta で結果盤面クラスタリング (A9 と同一)
+// ③ 縮約: 候補 i の真値 m_i に 事前 N(μ_c, τ_c²)、観測 e_i ~ N(m_i, sd_i²/R_pre) を置いた事後
+//      m̃_i = (μ_c/τ_c² + e_i/σ_i²) / (1/τ_c² + 1/σ_i²),  ṽ_i = 1/(1/τ_c² + 1/σ_i²)
+//    τ_c² = クラスタ内の e_i の分散 (singleton は全候補の分散で代用)、下限 0.04。
+//    σ_i² = max(sd_i²/R_pre, 0.04)。少標本で上振れた候補ほど μ_c へ引き戻される (winner's curse 対策)。
+// ④ 各クラスタの代表 = m̃ 最大メンバー。全クラスタを子とし (m̃ 降順)、
+//    子の事前 = N(m̃_rep, ts_prior_scale·ṽ_rep) を保存 → 訪問配分は selectThompson。
+std::vector<int> ReinvestExperiment::selectClusterTS(
+    TreeNode& node, SimulatorWrapper& sim, ShotGenerator& gen,
+    std::mt19937& rng, dc::Team root_team)
+{
+    int N = static_cast<int>(node.candidates.size());
+    std::vector<int> selected;
+    if (N == 0) return selected;
+
+    estimateRootScores(node, sim, gen, rng, root_team);
+
+    auto dist_table = mcts_shared::makeDistanceTableDelta(node.state, node.result_states);
+    int Kc = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
+    Kc = std::min(Kc, N);
+    node.clusters = mcts_shared::runClustering(dist_table, Kc);
+
+    const double R = std::max(1, config_.score_screen_r_pre - node.depth);
+    const double VAR_FLOOR = 0.04;  // (0.2 点)²
+    auto obs_var = [&](int i) { return std::max(node.sd_pre[i] * node.sd_pre[i] / R, VAR_FLOOR); };
+
+    // 全候補の e_i 分散 (singleton クラスタの τ² 代用)
+    double gsum = 0.0, gsq = 0.0;
+    for (int i = 0; i < N; i++) { gsum += node.e_pre[i]; gsq += node.e_pre[i] * node.e_pre[i]; }
+    double gmean = gsum / N;
+    double tau2_global = std::max(gsq / N - gmean * gmean, VAR_FLOOR);
+
+    int C = static_cast<int>(node.clusters.size());
+    node.cluster_value.assign(C, std::numeric_limits<double>::quiet_NaN());
+    node.cluster_sd.assign(C, std::numeric_limits<double>::quiet_NaN());
+    struct Rep { int cand; int cid; double post_mean; double post_var; };
+    std::vector<Rep> reps;
+    for (int cid = 0; cid < C; cid++) {
+        double sum = 0.0, sq = 0.0; int cnt = 0;
+        for (int m : node.clusters[cid]) {
+            if (m < 0 || m >= N) continue;
+            sum += node.e_pre[m]; sq += node.e_pre[m] * node.e_pre[m]; cnt++;
+        }
+        if (cnt == 0) continue;
+        double mu = sum / cnt;
+        double tau2 = (cnt >= 2) ? std::max(sq / cnt - mu * mu, VAR_FLOOR) : tau2_global;
+        // 診断出力用 (μ_c と プールSD; A9 と同じ意味の列に格納)
+        double pooled = 0.0;
+        for (int m : node.clusters[cid]) {
+            if (m < 0 || m >= N) continue;
+            double d = node.e_pre[m] - mu;
+            pooled += node.sd_pre[m] * node.sd_pre[m] + d * d;
+        }
+        node.cluster_value[cid] = mu;
+        node.cluster_sd[cid] = std::sqrt(std::max(0.0, pooled / cnt));
+        Rep best{-1, cid, -1e18, 0.0};
+        for (int m : node.clusters[cid]) {
+            if (m < 0 || m >= N) continue;
+            double prec = 1.0 / tau2 + 1.0 / obs_var(m);
+            double pm = (mu / tau2 + node.e_pre[m] / obs_var(m)) / prec;
+            if (pm > best.post_mean) best = Rep{m, cid, pm, 1.0 / prec};
+        }
+        if (best.cand >= 0) reps.push_back(best);
+    }
+    std::sort(reps.begin(), reps.end(), [](const Rep& a, const Rep& b) { return a.post_mean > b.post_mean; });
+
+    node.ts_prior_mean.clear();
+    node.ts_prior_var.clear();
+    for (const auto& r : reps) {
+        selected.push_back(r.cand);
+        node.ts_prior_mean.push_back(r.post_mean);
+        node.ts_prior_var.push_back(std::max(config_.ts_prior_scale * r.post_var, VAR_FLOOR));
+    }
+    return selected;
+}
+
+// Thompson: 子 j の事後 N(post_mean, post_var) からサンプルし argmax を返す。
+// 事後 = 事前 (スクリーン縮約) ⊕ 観測 (子の訪問統計; 1 プレイアウト報酬の分散 = ts_obs_var)
+int ReinvestExperiment::selectThompson(const TreeNode& node, std::mt19937& rng) const {
+    int K = static_cast<int>(node.medoid_indices.size());
+    int best = -1;
+    double best_draw = -1e18;
+    for (int j = 0; j < K; j++) {
+        double pm = node.ts_prior_mean[j], pv = node.ts_prior_var[j];
+        int n = 0; double mean = 0.0;
+        if (node.children[j]) { n = node.children[j]->visits; mean = node.children[j]->mean(); }
+        double prec = 1.0 / pv + static_cast<double>(n) / config_.ts_obs_var;
+        double post_mean = (pm / pv + n * mean / config_.ts_obs_var) / prec;
+        double post_var = 1.0 / prec;
+        std::normal_distribution<double> dist(post_mean, std::sqrt(post_var));
+        double draw = dist(rng);
+        if (draw > best_draw) { best_draw = draw; best = j; }
+    }
+    return best;
+}
+
+// 最終着手: 事後平均最大の子 (Thompson は訪問が最良手に集中しない場合があるため、訪問数でなく事後で決める)
+int ReinvestExperiment::selectBestPosterior(const TreeNode& node) const {
+    int K = static_cast<int>(node.medoid_indices.size());
+    int best = -1;
+    double best_pm = -1e18;
+    for (int j = 0; j < K; j++) {
+        double pm = node.ts_prior_mean[j], pv = node.ts_prior_var[j];
+        int n = 0; double mean = 0.0;
+        if (node.children[j]) { n = node.children[j]->visits; mean = node.children[j]->mean(); }
+        double prec = 1.0 / pv + static_cast<double>(n) / config_.ts_obs_var;
+        double post_mean = (pm / pv + n * mean / config_.ts_obs_var) / prec;
+        if (post_mean > best_pm) { best_pm = post_mean; best = j; }
+    }
+    return best;
+}
+
 // ========== ClusterPW: root の progressive widening (A11) ==========
 // 開く子数 k(N) = max(k0, ceil(C · N^α)) (N = root の訪問数)。増えた分だけ pw_queue から価値順に子を追加する。
 // 新しい子は visits=0 なので UCB の未訪問優先で直後に 1 回は必ず調べられる (標準的な PW の挙動)。
@@ -535,7 +655,9 @@ double ReinvestExperiment::runPlayout(
         return mean_reward;
     }
 
-    int idx = selectBestChildUCB(node, root_team);
+    int idx = (config_.mode == MctsMode::ClusterTS && node.depth == 0)
+                  ? selectThompson(node, rng)
+                  : selectBestChildUCB(node, root_team);
     if (idx < 0) idx = 0;
 
     if (!node.children[idx]) {
@@ -654,7 +776,8 @@ ReinvestResult ReinvestExperiment::runOneState(
     r.num_children = static_cast<int>(root.medoid_indices.size());
     r.actual_playouts = root.visits;
 
-    int best_child = selectMostVisited(root);
+    int best_child = (config_.mode == MctsMode::ClusterTS) ? selectBestPosterior(root)
+                                                           : selectMostVisited(root);
     if (best_child >= 0) {
         int cand_idx = root.medoid_indices[best_child];
         r.best_idx = cand_idx;  // generatePool 順 index = 審判 Q テーブルとの join キー
@@ -668,7 +791,8 @@ ReinvestResult ReinvestExperiment::runOneState(
     // AllGrid : 全候補が子なので分離対象外 → 空のまま (正解集合 A の供給側)。
     const bool value_mode = (config_.mode == MctsMode::ClusterValue
                              || config_.mode == MctsMode::ClusterValueDeep
-                             || config_.mode == MctsMode::ClusterPW);
+                             || config_.mode == MctsMode::ClusterPW
+                             || config_.mode == MctsMode::ClusterTS);
     if ((config_.mode == MctsMode::Proposed || value_mode) && !root.clusters.empty()) {
         // ClusterValue/Deep/PW は加えて E[score]/クラスタ価値/無外乱着地座標 (エリア逆射影用) を出力
         int team_idx = static_cast<int>(root.to_play);
@@ -859,6 +983,9 @@ void ReinvestExperiment::run() {
               << (config_.mode == MctsMode::ClusterValue || config_.mode == MctsMode::ClusterValueDeep
                   || config_.mode == MctsMode::ClusterPW
                   ? "" : "  (ClusterValue 系以外では無効)") << std::endl;
+    if (config_.mode == MctsMode::ClusterTS) {
+        std::cout << "  ts (obs_var, prior_scale) = " << config_.ts_obs_var << ", " << config_.ts_prior_scale << std::endl;
+    }
     if (config_.mode == MctsMode::ClusterPW) {
         std::cout << "  pw (C, alpha, k0)  = " << config_.pw_c << ", " << config_.pw_alpha << ", " << config_.pw_k0
                   << "  -> k(N)=max(k0, ceil(C*N^alpha)); k(" << config_.playouts << ")="
@@ -998,7 +1125,8 @@ void ReinvestExperiment::run() {
     if (config_.mode == MctsMode::Proposed || config_.mode == MctsMode::RandomK
         || config_.mode == MctsMode::ClusterValue
         || config_.mode == MctsMode::ClusterValueDeep
-        || config_.mode == MctsMode::ClusterPW) {
+        || config_.mode == MctsMode::ClusterPW
+        || config_.mode == MctsMode::ClusterTS) {
         std::string ct_path = config_.output_dir + "/cluster_table" + suffix + ".csv";
         writeClusterTableCSV(results, ct_path);
     }
