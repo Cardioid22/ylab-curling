@@ -1,0 +1,1416 @@
+Running Reinvestment arm...
+
+=== Reinvestment Arm: A12 (ClusterTS, depth 3) ===
+  method             = ClusterTS
+  depth              = 3
+  playouts (P)       = 200
+  rollouts/visit (R) = 10
+  retention_rate     = 0.2
+  ucb_c              = 1.41
+  epsilon            = 0.3
+  risk_lambda        = 0  (ClusterValue 系以外では無効)
+  ts (obs_var, prior_scale) = 2, 2
+  noisy_tree         = false
+  n_states           = 500
+  num_threads        = 24
+  seed               = 43
+  start_index        = 0
+  max_positions      = -1
+  load_positions_dir = test_positions500
+  output_dir         = reinvest_experiment/run500/A12/seed_43
+  [loader] 1 batch files in test_positions500
+  [loader] loaded 500 positions
+  Sampled 500 / 500 positions (seed=43)
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+[start 1/500] thread=4 global_idx=0 (g=7977,e=6,s=14) elapsed=1.2s
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+[start 2/500] thread=1 global_idx=1 (g=3926,e=6,s=11) elapsed=1.2s
+Finding Shot...
+Finding Shot...
+Finding Shot...
+[start 3/500] thread=23 global_idx=2 (g=3883,e=1,s=14) elapsed=1.2s
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+[start 4/500] thread=11 global_idx=3 (g=9222,e=7,s=5) elapsed=1.3s
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+[start 5/500] thread=15 global_idx=4 (g=7881,e=2,s=15) elapsed=1.4s
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+Finding Shot...
+[start 6/500] thread=2 global_idx=5 (g=6406,e=1,s=10) elapsed=1.6s
+[start 7/500] thread=6 global_idx=6 (g=8452,e=5,s=15) elapsed=1.6s
+[start 8/500] thread=8 global_idx=7 (g=1028,e=6,s=15) elapsed=1.6s
+[start 9/500] thread=17 global_idx=8 (g=2596,e=1,s=14) elapsed=1.6s
+[start 10/500] thread=18 global_idx=9 (g=4748,e=1,s=3) elapsed=1.6s
+[start 11/500] thread=3 global_idx=10 (g=9206,e=3,s=13) elapsed=1.6s
+[start 12/500] thread=9 global_idx=11 (g=5859,e=1,s=6) elapsed=1.6s
+[start 13/500] thread=7 global_idx=12 (g=6871,e=4,s=5) elapsed=1.6s
+[start 14/500] thread=12 global_idx=13 (g=7163,e=3,s=13) elapsed=1.6s
+[start 15/500] thread=0 global_idx=14 (g=5807,e=0,s=8) elapsed=1.6s
+[start 16/500] thread=13 global_idx=15 (g=5567,e=2,s=15) elapsed=1.6s
+[start 17/500] thread=22 global_idx=16 (g=2507,e=3,s=11) elapsed=1.6s
+[start 18/500] thread=20 global_idx=17 (g=7006,e=3,s=15) elapsed=1.6s
+[start 19/500] thread=14 global_idx=18 (g=1984,e=6,s=4) elapsed=1.6s
+[start 20/500] thread=16 global_idx=19 (g=1845,e=7,s=14) elapsed=1.6s
+[start 21/500] thread=21 global_idx=20 (g=5780,e=2,s=6) elapsed=1.6s
+[start 22/500] thread=19 global_idx=21 (g=8645,e=7,s=5) elapsed=1.6s
+[start 23/500] thread=5 global_idx=22 (g=6132,e=0,s=13) elapsed=1.6s
+[start 24/500] thread=10 global_idx=23 (g=3339,e=4,s=10) elapsed=1.6s
+[done 1/500] thread=15 global_idx=4 (g=7881,e=2,s=15) state_time=9.6s best_idx=84 sims=129 N=129 K=26 eta=5485.7s
+[start 25/500] thread=15 global_idx=24 (g=3566,e=6,s=14) elapsed=11.0s
+[done 2/500] thread=13 global_idx=15 (g=5567,e=2,s=15) state_time=13.8s best_idx=0 sims=129 N=129 K=26 eta=3830.6s
+[start 26/500] thread=13 global_idx=25 (g=5523,e=3,s=9) elapsed=15.4s
+[done 3/500] thread=20 global_idx=17 (g=7006,e=3,s=15) state_time=16.7s best_idx=130 sims=145 N=145 K=29 eta=3026.8s
+[start 27/500] thread=20 global_idx=26 (g=7015,e=5,s=14) elapsed=18.3s
+[done 4/500] thread=6 global_idx=6 (g=8452,e=5,s=15) state_time=16.8s best_idx=34 sims=153 N=153 K=31 eta=2283.2s
+[start 28/500] thread=6 global_idx=27 (g=743,e=7,s=3) elapsed=18.4s
+[done 5/500] thread=8 global_idx=7 (g=1028,e=6,s=15) state_time=17.0s best_idx=135 sims=151 N=151 K=31 eta=1838.4s
+[start 29/500] thread=8 global_idx=28 (g=1014,e=4,s=15) elapsed=18.6s
+[done 6/500] thread=8 global_idx=28 (g=1014,e=4,s=15) state_time=5.2s best_idx=10 sims=61 N=61 K=13 eta=1960.6s
+[start 30/500] thread=8 global_idx=29 (g=3900,e=0,s=10) elapsed=23.8s
+[done 7/500] thread=23 global_idx=2 (g=3883,e=1,s=14) state_time=79.6s best_idx=19 sims=1791 N=37 K=8 eta=5694.1s
+[start 31/500] thread=23 global_idx=30 (g=4543,e=6,s=5) elapsed=80.8s
+[done 8/500] thread=16 global_idx=19 (g=1845,e=7,s=14) state_time=126.9s best_idx=43 sims=2389 N=55 K=11 eta=7902.6s
+[start 32/500] thread=16 global_idx=31 (g=9231,e=5,s=14) elapsed=128.5s
+[done 9/500] thread=16 global_idx=31 (g=9231,e=5,s=14) state_time=267.3s best_idx=10 sims=4360 N=101 K=21 eta=21591.2s
+[start 33/500] thread=16 global_idx=32 (g=1825,e=5,s=7) elapsed=395.8s
+[done 10/500] thread=20 global_idx=26 (g=7015,e=5,s=14) state_time=432.2s best_idx=46 sims=5886 N=145 K=29 eta=22070.8s
+[start 34/500] thread=20 global_idx=33 (g=4062,e=4,s=15) elapsed=450.4s
+[done 11/500] thread=20 global_idx=33 (g=4062,e=4,s=15) state_time=11.8s best_idx=35 sims=117 N=117 K=24 eta=20547.5s
+[start 35/500] thread=20 global_idx=34 (g=9882,e=2,s=11) elapsed=462.2s
+[done 12/500] thread=17 global_idx=8 (g=2596,e=1,s=14) state_time=481.3s best_idx=86 sims=6406 N=145 K=29 eta=19639.6s
+[start 36/500] thread=17 global_idx=35 (g=2998,e=6,s=14) elapsed=482.9s
+[done 13/500] thread=4 global_idx=0 (g=7977,e=6,s=14) state_time=492.6s best_idx=46 sims=6612 N=145 K=29 eta=18498.9s
+[start 37/500] thread=4 global_idx=36 (g=1555,e=2,s=3) elapsed=493.8s
+[done 14/500] thread=15 global_idx=24 (g=3566,e=6,s=14) state_time=522.7s best_idx=102 sims=6855 N=129 K=26 eta=18525.2s
+[start 38/500] thread=15 global_idx=37 (g=4372,e=4,s=14) elapsed=533.6s
+[done 15/500] thread=15 global_idx=37 (g=4372,e=4,s=14) state_time=111.2s best_idx=19 sims=2089 N=49 K=10 eta=20851.1s
+[start 39/500] thread=15 global_idx=38 (g=3732,e=7,s=7) elapsed=644.9s
+[done 16/500] thread=3 global_idx=10 (g=9206,e=3,s=13) state_time=648.3s best_idx=38 sims=9201 N=49 K=10 eta=19660.8s
+[start 40/500] thread=3 global_idx=39 (g=3858,e=5,s=5) elapsed=649.9s
+[done 17/500] thread=17 global_idx=35 (g=2998,e=6,s=14) state_time=413.5s best_idx=59 sims=5717 N=145 K=29 eta=25469.2s
+[start 41/500] thread=17 global_idx=40 (g=1938,e=0,s=14) elapsed=896.4s
+[done 18/500] thread=12 global_idx=13 (g=7163,e=3,s=13) state_time=1122.4s best_idx=66 sims=14871 N=85 K=17 eta=30098.1s
+[start 42/500] thread=12 global_idx=41 (g=9112,e=3,s=9) elapsed=1124.0s
+[done 19/500] thread=17 global_idx=40 (g=1938,e=0,s=14) state_time=296.4s best_idx=58 sims=4327 N=93 K=19 eta=30196.4s
+[start 43/500] thread=17 global_idx=42 (g=4157,e=3,s=12) elapsed=1192.8s
+[done 20/500] thread=5 global_idx=22 (g=6132,e=0,s=13) state_time=1993.8s best_idx=12 sims=24044 N=87 K=18 eta=47891.2s
+[start 44/500] thread=5 global_idx=43 (g=7373,e=1,s=11) elapsed=1995.5s
+[done 21/500] thread=2 global_idx=5 (g=6406,e=1,s=10) state_time=3353.6s best_idx=41 sims=60736 N=59 K=12 eta=76530.2s
+[start 45/500] thread=2 global_idx=44 (g=7173,e=4,s=15) elapsed=3355.2s
+[done 22/500] thread=2 global_idx=44 (g=7173,e=4,s=15) state_time=17.7s best_idx=135 sims=151 N=151 K=31 eta=73283.3s
+[start 46/500] thread=2 global_idx=45 (g=196,e=4,s=4) elapsed=3372.9s
+[done 23/500] thread=8 global_idx=29 (g=3900,e=0,s=10) state_time=3353.9s best_idx=40 sims=61232 N=55 K=11 eta=70050.1s
+[start 47/500] thread=8 global_idx=46 (g=2630,e=2,s=14) elapsed=3377.7s
+[done 24/500] thread=8 global_idx=46 (g=2630,e=2,s=14) state_time=131.6s best_idx=6 sims=2415 N=59 K=12 eta=69600.8s
+[start 48/500] thread=8 global_idx=47 (g=5731,e=2,s=10) elapsed=3509.3s
+[done 25/500] thread=17 global_idx=42 (g=4157,e=3,s=12) state_time=2504.3s best_idx=38 sims=36721 N=107 K=22 eta=70243.8s
+[start 49/500] thread=17 global_idx=48 (g=9518,e=4,s=5) elapsed=3697.0s
+[done 26/500] thread=1 global_idx=1 (g=3926,e=6,s=11) state_time=3760.1s best_idx=64 sims=57594 N=123 K=25 eta=68572.7s
+[start 50/500] thread=1 global_idx=49 (g=8211,e=7,s=12) elapsed=3761.4s
+[done 27/500] thread=10 global_idx=23 (g=3339,e=4,s=10) state_time=3867.8s best_idx=42 sims=67191 N=71 K=15 eta=67787.4s
+[start 51/500] thread=10 global_idx=50 (g=5392,e=3,s=13) elapsed=3869.5s
+[done 28/500] thread=22 global_idx=16 (g=2507,e=3,s=11) state_time=4035.3s best_idx=39 sims=60706 N=107 K=22 eta=68051.6s
+[start 52/500] thread=22 global_idx=51 (g=4262,e=4,s=2) elapsed=4037.0s
+[done 29/500] thread=0 global_idx=14 (g=5807,e=0,s=8) state_time=4805.3s best_idx=73 sims=109380 N=81 K=17 eta=78071.1s
+[start 53/500] thread=0 global_idx=52 (g=6230,e=1,s=12) elapsed=4806.9s
+[done 30/500] thread=20 global_idx=34 (g=9882,e=2,s=11) state_time=4518.0s best_idx=34 sims=65004 N=109 K=22 eta=78022.7s
+[start 54/500] thread=20 global_idx=53 (g=3543,e=4,s=7) elapsed=4980.2s
+[done 31/500] thread=13 global_idx=25 (g=5523,e=3,s=9) state_time=5507.1s best_idx=55 sims=91098 N=103 K=21 eta=83549.9s
+[start 55/500] thread=13 global_idx=54 (g=1784,e=6,s=5) elapsed=5522.5s
+[done 32/500] thread=12 global_idx=41 (g=9112,e=3,s=9) state_time=4596.8s best_idx=39 sims=83059 N=75 K=15 eta=83666.4s
+[start 56/500] thread=12 global_idx=55 (g=4905,e=4,s=14) elapsed=5720.8s
+[done 33/500] thread=0 global_idx=52 (g=6230,e=1,s=12) state_time=1108.5s best_idx=34 sims=24799 N=49 K=10 eta=83711.9s
+[start 57/500] thread=0 global_idx=56 (g=3837,e=2,s=10) elapsed=5915.4s
+[done 34/500] thread=12 global_idx=55 (g=4905,e=4,s=14) state_time=266.0s best_idx=11 sims=4453 N=101 K=21 eta=82053.5s
+[start 58/500] thread=12 global_idx=57 (g=2854,e=0,s=15) elapsed=5986.7s
+[done 35/500] thread=12 global_idx=57 (g=2854,e=0,s=15) state_time=10.1s best_idx=57 sims=103 N=103 K=21 eta=79672.8s
+[start 59/500] thread=12 global_idx=58 (g=1221,e=1,s=10) elapsed=5996.9s
+[done 36/500] thread=1 global_idx=49 (g=8211,e=7,s=12) state_time=2250.4s best_idx=71 sims=34320 N=79 K=16 eta=77484.8s
+[start 60/500] thread=1 global_idx=59 (g=7301,e=6,s=14) elapsed=6011.8s
+[done 37/500] thread=15 global_idx=38 (g=3732,e=7,s=7) state_time=5441.7s best_idx=32 sims=107064 N=49 K=10 eta=76164.9s
+[start 61/500] thread=15 global_idx=60 (g=5248,e=0,s=3) elapsed=6086.6s
+[done 38/500] thread=10 global_idx=50 (g=5392,e=3,s=13) state_time=2307.1s best_idx=39 sims=26434 N=135 K=27 eta=75094.3s
+[start 62/500] thread=10 global_idx=61 (g=2545,e=3,s=15) elapsed=6176.6s
+[done 39/500] thread=10 global_idx=61 (g=2545,e=3,s=15) state_time=5.5s best_idx=0 sims=61 N=61 K=13 eta=73075.7s
+[start 63/500] thread=10 global_idx=62 (g=6335,e=1,s=11) elapsed=6182.1s
+[done 40/500] thread=5 global_idx=43 (g=7373,e=1,s=11) state_time=4399.8s best_idx=33 sims=63691 N=103 K=21 eta=73545.0s
+[start 64/500] thread=5 global_idx=63 (g=8275,e=4,s=5) elapsed=6395.2s
+[done 41/500] thread=8 global_idx=47 (g=5731,e=2,s=10) state_time=2948.3s best_idx=13 sims=56908 N=43 K=9 eta=72292.9s
+[start 65/500] thread=8 global_idx=64 (g=963,e=5,s=13) elapsed=6457.5s
+[done 42/500] thread=21 global_idx=20 (g=5780,e=2,s=6) state_time=6505.9s best_idx=27 sims=125106 N=49 K=10 eta=70962.7s
+[start 66/500] thread=21 global_idx=65 (g=176,e=5,s=11) elapsed=6507.5s
+[done 43/500] thread=1 global_idx=59 (g=7301,e=6,s=14) state_time=659.7s best_idx=144 sims=7827 N=145 K=29 eta=70903.3s
+[start 67/500] thread=1 global_idx=66 (g=2199,e=1,s=13) elapsed=6671.4s
+[done 44/500] thread=11 global_idx=3 (g=9222,e=7,s=5) state_time=6737.2s best_idx=15 sims=134894 N=37 K=8 eta=69834.7s
+[start 68/500] thread=11 global_idx=67 (g=8298,e=3,s=11) elapsed=6738.4s
+[done 45/500] thread=9 global_idx=11 (g=5859,e=1,s=6) state_time=7204.1s best_idx=0 sims=133096 N=65 K=13 eta=72857.9s
+[start 69/500] thread=9 global_idx=68 (g=6729,e=2,s=14) elapsed=7205.7s
+[done 46/500] thread=16 global_idx=32 (g=1825,e=5,s=7) state_time=6953.0s best_idx=0 sims=122641 N=77 K=16 eta=72529.2s
+[start 70/500] thread=16 global_idx=69 (g=8119,e=5,s=4) elapsed=7348.8s
+[done 47/500] thread=9 global_idx=68 (g=6729,e=2,s=14) state_time=408.4s best_idx=0 sims=5746 N=135 K=27 eta=73387.4s
+[start 71/500] thread=9 global_idx=70 (g=8189,e=0,s=14) elapsed=7614.1s
+[done 48/500] thread=9 global_idx=70 (g=8189,e=0,s=14) state_time=124.8s best_idx=7 sims=2318 N=55 K=11 eta=72875.4s
+[start 72/500] thread=9 global_idx=71 (g=9791,e=0,s=8) elapsed=7739.0s
+[done 49/500] thread=8 global_idx=64 (g=963,e=5,s=13) state_time=1619.3s best_idx=87 sims=20575 N=89 K=18 eta=74340.1s
+[start 73/500] thread=8 global_idx=72 (g=5487,e=5,s=5) elapsed=8076.9s
+[done 50/500] thread=19 global_idx=21 (g=8645,e=7,s=5) state_time=8461.2s best_idx=45 sims=154308 N=71 K=15 eta=76165.4s
+[start 74/500] thread=19 global_idx=73 (g=4950,e=0,s=15) elapsed=8462.8s
+[done 51/500] thread=19 global_idx=73 (g=4950,e=0,s=15) state_time=6.0s best_idx=35 sims=71 N=71 K=15 eta=74558.8s
+[start 75/500] thread=19 global_idx=74 (g=9143,e=3,s=7) elapsed=8468.8s
+[done 52/500] thread=10 global_idx=62 (g=6335,e=1,s=11) state_time=2354.9s best_idx=37 sims=43101 N=53 K=11 eta=73549.9s
+[start 76/500] thread=10 global_idx=75 (g=4517,e=4,s=13) elapsed=8537.0s
+[done 53/500] thread=7 global_idx=12 (g=6871,e=4,s=5) state_time=8546.6s best_idx=52 sims=155340 N=71 K=15 eta=72095.1s
+[start 77/500] thread=7 global_idx=76 (g=2994,e=5,s=10) elapsed=8548.2s
+[done 54/500] thread=18 global_idx=9 (g=4748,e=1,s=3) state_time=8689.5s best_idx=42 sims=173692 N=49 K=10 eta=71782.1s
+[start 78/500] thread=18 global_idx=77 (g=961,e=6,s=13) elapsed=8691.1s
+[done 55/500] thread=23 global_idx=30 (g=4543,e=6,s=5) state_time=8631.7s best_idx=34 sims=154891 N=71 K=15 eta=70492.5s
+[start 79/500] thread=23 global_idx=78 (g=1566,e=1,s=3) elapsed=8712.6s
+[done 56/500] thread=14 global_idx=18 (g=1984,e=6,s=4) state_time=8736.2s best_idx=37 sims=163517 N=59 K=12 eta=69278.3s
+[start 80/500] thread=14 global_idx=79 (g=1686,e=6,s=15) elapsed=8737.8s
+[done 57/500] thread=14 global_idx=79 (g=1686,e=6,s=15) state_time=3.9s best_idx=40 sims=49 N=49 K=10 eta=67940.1s
+[start 81/500] thread=14 global_idx=80 (g=1201,e=0,s=6) elapsed=8741.7s
+[done 58/500] thread=1 global_idx=66 (g=2199,e=1,s=13) state_time=2331.6s best_idx=78 sims=26275 N=119 K=24 eta=68609.5s
+[start 82/500] thread=1 global_idx=81 (g=5494,e=4,s=5) elapsed=9003.1s
+[done 59/500] thread=6 global_idx=27 (g=743,e=7,s=3) state_time=9133.1s best_idx=35 sims=176357 N=55 K=11 eta=68403.7s
+[start 83/500] thread=6 global_idx=82 (g=2492,e=4,s=15) elapsed=9151.5s
+[done 60/500] thread=6 global_idx=82 (g=2492,e=4,s=15) state_time=6.6s best_idx=2 sims=75 N=75 K=15 eta=67159.8s
+[start 84/500] thread=6 global_idx=83 (g=8959,e=1,s=11) elapsed=9158.2s
+[done 61/500] thread=3 global_idx=39 (g=3858,e=5,s=5) state_time=9046.1s best_idx=3 sims=158165 N=75 K=15 eta=69779.8s
+[start 85/500] thread=3 global_idx=84 (g=1671,e=0,s=15) elapsed=9696.1s
+[done 62/500] thread=3 global_idx=84 (g=1671,e=0,s=15) state_time=11.9s best_idx=76 sims=117 N=117 K=24 eta=68582.1s
+[start 86/500] thread=3 global_idx=85 (g=1385,e=7,s=11) elapsed=9708.0s
+[done 63/500] thread=4 global_idx=36 (g=1555,e=2,s=3) state_time=9242.4s best_idx=20 sims=177884 N=55 K=11 eta=67535.0s
+[start 87/500] thread=4 global_idx=86 (g=6872,e=1,s=14) elapsed=9736.2s
+[done 64/500] thread=0 global_idx=56 (g=3837,e=2,s=10) state_time=3930.1s best_idx=45 sims=67147 N=71 K=15 eta=67072.4s
+[start 88/500] thread=0 global_idx=87 (g=8785,e=1,s=4) elapsed=9845.5s
+[done 65/500] thread=4 global_idx=86 (g=6872,e=1,s=14) state_time=496.5s best_idx=85 sims=6366 N=135 K=27 eta=68480.3s
+[start 89/500] thread=4 global_idx=88 (g=1835,e=0,s=15) elapsed=10232.7s
+[done 66/500] thread=4 global_idx=88 (g=1835,e=0,s=15) state_time=6.1s best_idx=57 sims=69 N=69 K=14 eta=67327.9s
+[start 90/500] thread=4 global_idx=89 (g=6216,e=7,s=8) elapsed=10238.8s
+[done 67/500] thread=21 global_idx=65 (g=176,e=5,s=11) state_time=4158.2s best_idx=84 sims=61635 N=97 K=20 eta=68928.8s
+[start 91/500] thread=21 global_idx=90 (g=8471,e=6,s=5) elapsed=10665.7s
+[done 68/500] thread=20 global_idx=53 (g=3543,e=4,s=7) state_time=5719.0s best_idx=34 sims=110091 N=55 K=11 eta=67971.5s
+[start 92/500] thread=20 global_idx=91 (g=256,e=3,s=12) elapsed=10699.2s
+[done 69/500] thread=18 global_idx=77 (g=961,e=6,s=13) state_time=2114.4s best_idx=87 sims=31428 N=139 K=28 eta=67495.3s
+[start 93/500] thread=18 global_idx=92 (g=5778,e=2,s=9) elapsed=10805.5s
+[done 70/500] thread=12 global_idx=58 (g=1221,e=1,s=10) state_time=5137.1s best_idx=37 sims=78313 N=113 K=23 eta=68394.5s
+[start 94/500] thread=12 global_idx=93 (g=6320,e=4,s=15) elapsed=11134.0s
+[done 71/500] thread=12 global_idx=93 (g=6320,e=4,s=15) state_time=9.7s best_idx=64 sims=103 N=103 K=21 eta=67332.7s
+[start 95/500] thread=12 global_idx=94 (g=1638,e=4,s=11) elapsed=11143.6s
+[done 72/500] thread=10 global_idx=75 (g=4517,e=4,s=13) state_time=2668.0s best_idx=10 sims=29089 N=123 K=25 eta=66607.9s
+[start 96/500] thread=10 global_idx=95 (g=2310,e=6,s=15) elapsed=11205.1s
+[done 73/500] thread=10 global_idx=95 (g=2310,e=6,s=15) state_time=14.7s best_idx=55 sims=135 N=135 K=27 eta=65628.2s
+[start 97/500] thread=10 global_idx=96 (g=7921,e=5,s=4) elapsed=11219.8s
+[done 74/500] thread=11 global_idx=67 (g=8298,e=3,s=11) state_time=4676.0s best_idx=35 sims=66106 N=119 K=24 eta=65710.2s
+[start 98/500] thread=11 global_idx=97 (g=1361,e=1,s=12) elapsed=11414.5s
+[done 75/500] thread=2 global_idx=45 (g=196,e=4,s=4) state_time=8242.3s best_idx=24 sims=158646 N=49 K=10 eta=65819.1s
+[start 99/500] thread=2 global_idx=98 (g=5041,e=1,s=8) elapsed=11615.1s
+[done 76/500] thread=17 global_idx=48 (g=9518,e=4,s=5) state_time=8527.2s best_idx=47 sims=153627 N=71 K=15 eta=68198.2s
+[start 100/500] thread=17 global_idx=99 (g=5033,e=7,s=5) elapsed=12224.2s
+[done 77/500] thread=9 global_idx=71 (g=9791,e=0,s=8) state_time=5041.6s best_idx=1 sims=95967 N=55 K=11 eta=70210.2s
+[start 101/500] thread=9 global_idx=100 (g=5022,e=1,s=15) elapsed=12780.6s
+[done 78/500] thread=9 global_idx=100 (g=5022,e=1,s=15) state_time=8.5s best_idx=7 sims=89 N=89 K=18 eta=69192.0s
+[start 102/500] thread=9 global_idx=101 (g=9907,e=7,s=9) elapsed=12789.0s
+[done 79/500] thread=20 global_idx=91 (g=256,e=3,s=12) state_time=2107.6s best_idx=11 sims=32863 N=77 K=16 eta=68249.1s
+[start 103/500] thread=20 global_idx=102 (g=8627,e=2,s=12) elapsed=12806.8s
+[done 80/500] thread=6 global_idx=83 (g=8959,e=1,s=11) state_time=3768.1s best_idx=48 sims=58700 N=97 K=20 eta=67862.9s
+[start 104/500] thread=6 global_idx=103 (g=1641,e=6,s=10) elapsed=12926.3s
+[done 81/500] thread=11 global_idx=97 (g=1361,e=1,s=12) state_time=1643.2s best_idx=46 sims=28147 N=59 K=12 eta=67545.4s
+[start 105/500] thread=11 global_idx=104 (g=7249,e=2,s=15) elapsed=13057.7s
+[done 82/500] thread=11 global_idx=104 (g=7249,e=2,s=15) state_time=14.7s best_idx=125 sims=139 N=139 K=28 eta=66637.4s
+[start 106/500] thread=11 global_idx=105 (g=4837,e=7,s=2) elapsed=13072.4s
+[done 83/500] thread=3 global_idx=85 (g=1385,e=7,s=11) state_time=3990.5s best_idx=55 sims=61225 N=103 K=21 eta=68822.3s
+[start 107/500] thread=3 global_idx=106 (g=1039,e=2,s=15) elapsed=13698.4s
+[done 84/500] thread=3 global_idx=106 (g=1039,e=2,s=15) state_time=3.6s best_idx=35 sims=43 N=43 K=9 eta=67857.6s
+[start 108/500] thread=3 global_idx=107 (g=7846,e=3,s=10) elapsed=13702.0s
+[done 85/500] thread=22 global_idx=51 (g=4262,e=4,s=2) state_time=9860.9s best_idx=36 sims=188382 N=49 K=10 eta=67854.4s
+[start 109/500] thread=22 global_idx=108 (g=5246,e=2,s=5) elapsed=13897.9s
+[done 86/500] thread=13 global_idx=54 (g=1784,e=6,s=5) state_time=8658.5s best_idx=25 sims=155129 N=71 K=15 eta=68266.6s
+[start 110/500] thread=13 global_idx=109 (g=4166,e=2,s=12) elapsed=14181.0s
+[done 87/500] thread=7 global_idx=76 (g=2994,e=5,s=10) state_time=5655.5s best_idx=46 sims=84209 N=113 K=23 eta=67426.9s
+[start 111/500] thread=7 global_idx=110 (g=6533,e=4,s=6) elapsed=14203.7s
+[done 88/500] thread=5 global_idx=63 (g=8275,e=4,s=5) state_time=8523.7s best_idx=48 sims=153364 N=71 K=15 eta=69847.7s
+[start 112/500] thread=5 global_idx=111 (g=5721,e=0,s=12) elapsed=14918.9s
+[done 89/500] thread=12 global_idx=94 (g=1638,e=4,s=11) state_time=3930.8s best_idx=47 sims=60092 N=103 K=21 eta=69613.4s
+[start 113/500] thread=12 global_idx=112 (g=4463,e=7,s=9) elapsed=15074.4s
+[done 90/500] thread=18 global_idx=92 (g=5778,e=2,s=9) state_time=4322.5s best_idx=65 sims=94556 N=97 K=20 eta=68916.5s
+[start 114/500] thread=18 global_idx=113 (g=5606,e=2,s=14) elapsed=15128.0s
+[done 91/500] thread=15 global_idx=60 (g=5248,e=0,s=3) state_time=9059.2s best_idx=21 sims=174094 N=49 K=10 eta=68073.0s
+[start 115/500] thread=15 global_idx=114 (g=1123,e=4,s=3) elapsed=15145.8s
+[done 92/500] thread=14 global_idx=80 (g=1201,e=0,s=6) state_time=6564.3s best_idx=45 sims=127557 N=53 K=11 eta=67878.8s
+[start 116/500] thread=14 global_idx=115 (g=8113,e=3,s=15) elapsed=15306.0s
+[done 93/500] thread=14 global_idx=115 (g=8113,e=3,s=15) state_time=6.0s best_idx=0 sims=69 N=69 K=14 eta=67010.8s
+[start 117/500] thread=14 global_idx=116 (g=716,e=6,s=7) elapsed=15312.0s
+[done 94/500] thread=19 global_idx=74 (g=9143,e=3,s=7) state_time=6845.0s best_idx=67 sims=123490 N=81 K=17 eta=66142.8s
+[start 118/500] thread=19 global_idx=117 (g=459,e=3,s=5) elapsed=15313.9s
+[done 95/500] thread=4 global_idx=89 (g=6216,e=7,s=8) state_time=5183.0s best_idx=2 sims=96922 N=55 K=11 eta=65745.5s
+[start 119/500] thread=4 global_idx=118 (g=9287,e=7,s=12) elapsed=15421.8s
+[done 96/500] thread=18 global_idx=113 (g=5606,e=2,s=14) state_time=348.7s best_idx=77 sims=6375 N=139 K=28 eta=65131.3s
+[start 120/500] thread=18 global_idx=119 (g=5647,e=1,s=10) elapsed=15476.7s
+[done 97/500] thread=13 global_idx=109 (g=4166,e=2,s=12) state_time=2109.4s best_idx=53 sims=33336 N=75 K=15 eta=67680.8s
+[start 121/500] thread=13 global_idx=120 (g=4562,e=4,s=13) elapsed=16290.4s
+[done 98/500] thread=20 global_idx=102 (g=8627,e=2,s=12) state_time=3613.7s best_idx=54 sims=47376 N=103 K=21 eta=67357.6s
+[start 122/500] thread=20 global_idx=121 (g=6201,e=5,s=11) elapsed=16420.5s
+[done 99/500] thread=16 global_idx=69 (g=8119,e=5,s=4) state_time=9145.1s best_idx=49 sims=168375 N=65 K=13 eta=66808.6s
+[start 123/500] thread=16 global_idx=122 (g=9166,e=3,s=14) elapsed=16493.9s
+[done 100/500] thread=8 global_idx=72 (g=5487,e=5,s=5) state_time=8572.0s best_idx=11 sims=153255 N=71 K=15 eta=66595.6s
+[start 124/500] thread=8 global_idx=123 (g=8703,e=4,s=3) elapsed=16648.9s
+[done 101/500] thread=2 global_idx=98 (g=5041,e=1,s=8) state_time=5118.1s best_idx=33 sims=95075 N=55 K=11 eta=66104.4s
+[start 125/500] thread=2 global_idx=124 (g=1616,e=0,s=14) elapsed=16733.2s
+[done 102/500] thread=2 global_idx=124 (g=1616,e=0,s=14) state_time=166.0s best_idx=33 sims=2840 N=69 K=14 eta=65939.9s
+[start 126/500] thread=2 global_idx=125 (g=5809,e=3,s=9) elapsed=16899.2s
+[done 103/500] thread=16 global_idx=122 (g=9166,e=3,s=14) state_time=449.2s best_idx=54 sims=5981 N=139 K=28 eta=65305.0s
+[start 127/500] thread=16 global_idx=126 (g=4651,e=6,s=5) elapsed=16943.1s
+[done 104/500] thread=4 global_idx=118 (g=9287,e=7,s=12) state_time=1630.3s best_idx=41 sims=27947 N=65 K=13 eta=64929.2s
+[start 128/500] thread=4 global_idx=127 (g=8894,e=2,s=15) elapsed=17052.1s
+[done 105/500] thread=4 global_idx=127 (g=8894,e=2,s=15) state_time=7.3s best_idx=64 sims=79 N=79 K=16 eta=64176.0s
+[start 129/500] thread=4 global_idx=128 (g=2369,e=6,s=9) elapsed=17059.4s
+[done 106/500] thread=3 global_idx=107 (g=7846,e=3,s=10) state_time=3373.6s best_idx=45 sims=62227 N=65 K=13 eta=63469.7s
+[start 130/500] thread=3 global_idx=129 (g=1083,e=7,s=15) elapsed=17075.6s
+[done 107/500] thread=3 global_idx=129 (g=1083,e=7,s=15) state_time=9.9s best_idx=92 sims=103 N=103 K=21 eta=62753.5s
+[start 131/500] thread=3 global_idx=130 (g=366,e=3,s=11) elapsed=17085.5s
+[done 108/500] thread=9 global_idx=101 (g=9907,e=7,s=9) state_time=4546.0s best_idx=11 sims=83866 N=65 K=13 eta=62919.8s
+[start 132/500] thread=9 global_idx=131 (g=6354,e=2,s=15) elapsed=17335.1s
+[done 109/500] thread=9 global_idx=131 (g=6354,e=2,s=15) state_time=16.0s best_idx=127 sims=151 N=151 K=31 eta=62241.1s
+[start 133/500] thread=9 global_idx=132 (g=9260,e=7,s=2) elapsed=17351.1s
+[done 110/500] thread=1 global_idx=81 (g=5494,e=4,s=5) state_time=9052.5s best_idx=29 sims=158303 N=75 K=15 eta=64015.1s
+[start 134/500] thread=1 global_idx=133 (g=6267,e=4,s=12) elapsed=18055.5s
+[done 111/500] thread=0 global_idx=87 (g=8785,e=1,s=4) state_time=8321.4s best_idx=3 sims=158075 N=49 K=10 eta=63665.9s
+[start 135/500] thread=0 global_idx=134 (g=1158,e=6,s=8) elapsed=18166.9s
+[done 112/500] thread=23 global_idx=78 (g=1566,e=1,s=3) state_time=9885.1s best_idx=29 sims=180596 N=59 K=12 eta=64427.5s
+[start 136/500] thread=23 global_idx=135 (g=6520,e=1,s=5) elapsed=18597.6s
+[done 113/500] thread=6 global_idx=103 (g=1641,e=6,s=10) state_time=5957.6s best_idx=68 sims=85588 N=113 K=23 eta=64673.2s
+[start 137/500] thread=6 global_idx=136 (g=2099,e=0,s=14) elapsed=18883.9s
+[done 114/500] thread=6 global_idx=136 (g=2099,e=0,s=14) state_time=219.3s best_idx=64 sims=3784 N=91 K=19 eta=64682.6s
+[start 138/500] thread=6 global_idx=137 (g=4892,e=6,s=10) elapsed=19103.2s
+[done 115/500] thread=5 global_idx=111 (g=5721,e=0,s=12) state_time=4285.4s best_idx=34 sims=53930 N=123 K=25 eta=64292.8s
+[start 139/500] thread=5 global_idx=138 (g=7859,e=3,s=14) elapsed=19204.3s
+[done 116/500] thread=21 global_idx=90 (g=8471,e=6,s=5) state_time=8560.7s best_idx=68 sims=154752 N=75 K=15 eta=63645.7s
+[start 140/500] thread=21 global_idx=139 (g=2084,e=7,s=10) elapsed=19226.3s
+[done 117/500] thread=13 global_idx=120 (g=4562,e=4,s=13) state_time=3231.6s best_idx=88 sims=34720 N=129 K=26 eta=63905.3s
+[start 141/500] thread=13 global_idx=140 (g=5335,e=1,s=14) elapsed=19522.0s
+[done 118/500] thread=5 global_idx=138 (g=7859,e=3,s=14) state_time=342.1s best_idx=89 sims=5052 N=129 K=26 eta=63277.6s
+[start 142/500] thread=5 global_idx=141 (g=5272,e=2,s=4) elapsed=19546.5s
+[done 119/500] thread=18 global_idx=119 (g=5647,e=1,s=10) state_time=4106.6s best_idx=29 sims=75532 N=91 K=19 eta=62699.5s
+[start 143/500] thread=18 global_idx=142 (g=5472,e=3,s=13) elapsed=19583.3s
+[done 120/500] thread=1 global_idx=133 (g=6267,e=4,s=12) state_time=1543.0s best_idx=32 sims=26570 N=55 K=11 eta=62062.2s
+[start 144/500] thread=1 global_idx=143 (g=4526,e=5,s=9) elapsed=19598.6s
+[done 121/500] thread=10 global_idx=96 (g=7921,e=5,s=4) state_time=8414.7s best_idx=11 sims=158831 N=49 K=10 eta=61499.9s
+[start 145/500] thread=10 global_idx=144 (g=6392,e=2,s=5) elapsed=19634.5s
+[done 122/500] thread=13 global_idx=140 (g=5335,e=1,s=14) state_time=426.0s best_idx=87 sims=5709 N=145 K=29 eta=61805.9s
+[start 146/500] thread=13 global_idx=145 (g=1255,e=4,s=13) elapsed=19948.0s
+[done 123/500] thread=14 global_idx=116 (g=716,e=6,s=7) state_time=4912.5s best_idx=36 sims=110287 N=55 K=11 eta=61988.9s
+[start 147/500] thread=14 global_idx=146 (g=5259,e=3,s=8) elapsed=20224.5s
+[done 124/500] thread=20 global_idx=121 (g=6201,e=5,s=11) state_time=3997.5s best_idx=63 sims=58946 N=107 K=22 eta=61912.6s
+[start 148/500] thread=20 global_idx=147 (g=7905,e=3,s=15) elapsed=20418.0s
+[done 125/500] thread=20 global_idx=147 (g=7905,e=3,s=15) state_time=9.8s best_idx=56 sims=103 N=103 K=21 eta=61283.3s
+[start 149/500] thread=20 global_idx=148 (g=4159,e=5,s=11) elapsed=20427.8s
+[done 126/500] thread=18 global_idx=142 (g=5472,e=3,s=13) state_time=1046.9s best_idx=16 sims=13890 N=69 K=14 eta=61235.7s
+[start 150/500] thread=18 global_idx=149 (g=2788,e=5,s=13) elapsed=20630.2s
+[done 127/500] thread=17 global_idx=99 (g=5033,e=7,s=5) state_time=8508.3s best_idx=37 sims=154453 N=71 K=15 eta=60891.6s
+[start 151/500] thread=17 global_idx=150 (g=4360,e=7,s=4) elapsed=20732.5s
+[done 128/500] thread=2 global_idx=125 (g=5809,e=3,s=9) state_time=4098.8s best_idx=34 sims=77034 N=53 K=11 eta=61025.3s
+[start 152/500] thread=2 global_idx=151 (g=8248,e=7,s=13) elapsed=20997.9s
+[done 129/500] thread=12 global_idx=112 (g=4463,e=7,s=9) state_time=6177.1s best_idx=69 sims=99491 N=103 K=21 eta=61118.7s
+[start 153/500] thread=12 global_idx=152 (g=2081,e=5,s=9) elapsed=21251.5s
+[done 130/500] thread=13 global_idx=145 (g=1255,e=4,s=13) state_time=1837.1s best_idx=7 sims=22197 N=91 K=19 eta=62003.7s
+[start 154/500] thread=13 global_idx=153 (g=1265,e=4,s=5) elapsed=21785.1s
+[done 131/500] thread=3 global_idx=130 (g=366,e=3,s=11) state_time=4772.7s best_idx=64 sims=67408 N=119 K=24 eta=61570.1s
+[start 155/500] thread=3 global_idx=154 (g=3677,e=7,s=15) elapsed=21858.2s
+[done 132/500] thread=3 global_idx=154 (g=3677,e=7,s=15) state_time=6.7s best_idx=3 sims=75 N=75 K=15 eta=60956.7s
+[start 156/500] thread=3 global_idx=155 (g=477,e=2,s=10) elapsed=21864.9s
+[done 133/500] thread=2 global_idx=151 (g=8248,e=7,s=13) state_time=871.0s best_idx=46 sims=11806 N=59 K=12 eta=60345.1s
+[start 157/500] thread=2 global_idx=156 (g=8462,e=7,s=13) elapsed=21868.9s
+[done 134/500] thread=4 global_idx=128 (g=2369,e=6,s=9) state_time=4967.4s best_idx=47 sims=86655 N=79 K=16 eta=60163.0s
+[start 158/500] thread=4 global_idx=157 (g=3186,e=1,s=11) elapsed=22026.9s
+[done 135/500] thread=7 global_idx=110 (g=6533,e=4,s=6) state_time=8291.0s best_idx=65 sims=142367 N=81 K=17 eta=60819.1s
+[start 159/500] thread=7 global_idx=158 (g=8936,e=4,s=15) elapsed=22494.7s
+[done 136/500] thread=7 global_idx=158 (g=8936,e=4,s=15) state_time=15.9s best_idx=130 sims=145 N=145 K=29 eta=60249.0s
+[start 160/500] thread=7 global_idx=159 (g=966,e=6,s=3) elapsed=22510.6s
+[done 137/500] thread=15 global_idx=114 (g=1123,e=4,s=3) state_time=7547.0s best_idx=45 sims=177791 N=55 K=11 eta=60127.7s
+[start 161/500] thread=15 global_idx=160 (g=232,e=1,s=13) elapsed=22692.8s
+[done 138/500] thread=22 global_idx=108 (g=5246,e=2,s=5) state_time=8890.5s best_idx=33 sims=156521 N=75 K=15 eta=59778.3s
+[start 162/500] thread=22 global_idx=161 (g=3968,e=6,s=10) elapsed=22788.4s
+[done 139/500] thread=11 global_idx=105 (g=4837,e=7,s=2) state_time=10185.6s best_idx=41 sims=192167 N=49 K=10 eta=60403.9s
+[start 163/500] thread=11 global_idx=162 (g=2440,e=2,s=5) elapsed=23258.0s
+[done 140/500] thread=18 global_idx=149 (g=2788,e=5,s=13) state_time=2899.0s best_idx=11 sims=31551 N=139 K=28 eta=60503.7s
+[start 164/500] thread=18 global_idx=163 (g=1624,e=6,s=15) elapsed=23529.2s
+[done 141/500] thread=18 global_idx=163 (g=1624,e=6,s=15) state_time=8.5s best_idx=2 sims=91 N=91 K=19 eta=59929.4s
+[start 165/500] thread=18 global_idx=164 (g=9851,e=7,s=8) elapsed=23537.7s
+[done 142/500] thread=0 global_idx=134 (g=1158,e=6,s=8) state_time=5377.3s best_idx=29 sims=98706 N=65 K=13 eta=59358.0s
+[start 166/500] thread=0 global_idx=165 (g=9879,e=2,s=15) elapsed=23544.2s
+[done 143/500] thread=19 global_idx=117 (g=459,e=3,s=5) state_time=8236.4s best_idx=44 sims=153500 N=71 K=15 eta=58793.4s
+[start 167/500] thread=19 global_idx=166 (g=9832,e=1,s=9) elapsed=23550.3s
+[done 144/500] thread=0 global_idx=165 (g=9879,e=2,s=15) state_time=12.0s best_idx=105 sims=117 N=117 K=24 eta=58236.1s
+[start 168/500] thread=0 global_idx=167 (g=4221,e=2,s=14) elapsed=23556.2s
+[done 145/500] thread=15 global_idx=160 (g=232,e=1,s=13) state_time=872.7s best_idx=18 sims=12903 N=59 K=12 eta=57694.8s
+[start 169/500] thread=15 global_idx=168 (g=1999,e=2,s=5) elapsed=23565.5s
+[done 146/500] thread=6 global_idx=137 (g=4892,e=6,s=10) state_time=4882.2s best_idx=42 sims=78041 N=101 K=21 eta=58156.2s
+[start 170/500] thread=6 global_idx=169 (g=99,e=4,s=13) elapsed=23985.3s
+[done 147/500] thread=0 global_idx=167 (g=4221,e=2,s=14) state_time=508.1s best_idx=101 sims=6315 N=145 K=29 eta=57786.9s
+[start 171/500] thread=0 global_idx=170 (g=964,e=0,s=8) elapsed=24064.2s
+[done 148/500] thread=1 global_idx=143 (g=4526,e=5,s=9) state_time=4596.7s best_idx=1 sims=81862 N=65 K=13 eta=57545.5s
+[start 172/500] thread=1 global_idx=171 (g=6357,e=7,s=5) elapsed=24195.3s
+[done 149/500] thread=6 global_idx=169 (g=99,e=4,s=13) state_time=437.7s best_idx=49 sims=7046 N=57 K=12 eta=57533.4s
+[start 173/500] thread=6 global_idx=172 (g=632,e=7,s=12) elapsed=24423.0s
+[done 150/500] thread=2 global_idx=156 (g=8462,e=7,s=13) state_time=2719.0s best_idx=111 sims=30826 N=115 K=23 eta=57371.9s
+[start 174/500] thread=2 global_idx=173 (g=3130,e=2,s=11) elapsed=24588.0s
+[done 151/500] thread=20 global_idx=148 (g=4159,e=5,s=11) state_time=4587.6s best_idx=35 sims=63843 N=103 K=21 eta=57817.0s
+[start 175/500] thread=20 global_idx=174 (g=2941,e=4,s=13) elapsed=25015.4s
+[done 152/500] thread=21 global_idx=139 (g=2084,e=7,s=10) state_time=5807.9s best_idx=26 sims=83567 N=113 K=23 eta=57315.1s
+[start 176/500] thread=21 global_idx=175 (g=6374,e=0,s=11) elapsed=25034.2s
+[done 153/500] thread=12 global_idx=152 (g=2081,e=5,s=9) state_time=4061.3s best_idx=47 sims=76887 N=53 K=11 eta=57408.7s
+[start 177/500] thread=12 global_idx=176 (g=156,e=7,s=14) elapsed=25312.8s
+[done 154/500] thread=8 global_idx=123 (g=8703,e=4,s=3) state_time=8885.4s best_idx=3 sims=172733 N=49 K=10 eta=57369.4s
+[start 178/500] thread=8 global_idx=177 (g=1570,e=1,s=4) elapsed=25534.4s
+[done 155/500] thread=16 global_idx=126 (g=4651,e=6,s=5) state_time=8661.6s best_idx=51 sims=154964 N=71 K=15 eta=56991.2s
+[start 179/500] thread=16 global_idx=178 (g=7117,e=6,s=12) elapsed=25604.7s
+[done 156/500] thread=22 global_idx=161 (g=3968,e=6,s=10) state_time=3023.6s best_idx=37 sims=57243 N=49 K=10 eta=56918.9s
+[start 180/500] thread=22 global_idx=179 (g=6164,e=7,s=6) elapsed=25812.0s
+[done 157/500] thread=12 global_idx=176 (g=156,e=7,s=14) state_time=512.4s best_idx=55 sims=6664 N=145 K=29 eta=56420.7s
+[start 181/500] thread=12 global_idx=180 (g=4376,e=5,s=5) elapsed=25825.2s
+[done 158/500] thread=3 global_idx=155 (g=477,e=2,s=10) state_time=4162.0s best_idx=43 sims=69365 N=81 K=17 eta=56336.7s
+[start 182/500] thread=3 global_idx=181 (g=4444,e=0,s=12) elapsed=26026.9s
+[done 159/500] thread=4 global_idx=157 (g=3186,e=1,s=11) state_time=4250.8s best_idx=57 sims=61580 N=119 K=24 eta=56356.5s
+[start 183/500] thread=4 global_idx=182 (g=5083,e=5,s=6) elapsed=26277.6s
+[done 160/500] thread=14 global_idx=146 (g=5259,e=3,s=8) state_time=6292.3s best_idx=64 sims=116465 N=97 K=20 eta=56348.3s
+[start 184/500] thread=14 global_idx=183 (g=894,e=4,s=13) elapsed=26516.8s
+[done 161/500] thread=6 global_idx=172 (g=632,e=7,s=12) state_time=2163.7s best_idx=7 sims=33964 N=81 K=17 eta=55980.6s
+[start 185/500] thread=6 global_idx=184 (g=8445,e=1,s=11) elapsed=26586.7s
+[done 162/500] thread=16 global_idx=178 (g=7117,e=6,s=12) state_time=1368.7s best_idx=39 sims=24404 N=49 K=10 eta=56277.9s
+[start 186/500] thread=16 global_idx=185 (g=7871,e=7,s=15) elapsed=26973.4s
+[done 163/500] thread=16 global_idx=185 (g=7871,e=7,s=15) state_time=17.0s best_idx=35 sims=151 N=151 K=31 eta=55802.2s
+[start 187/500] thread=16 global_idx=186 (g=8198,e=0,s=4) elapsed=26990.4s
+[done 164/500] thread=9 global_idx=132 (g=9260,e=7,s=2) state_time=9667.3s best_idx=27 sims=189838 N=49 K=10 eta=55354.7s
+[start 188/500] thread=9 global_idx=187 (g=6829,e=6,s=13) elapsed=27018.4s
+[done 165/500] thread=23 global_idx=135 (g=6520,e=1,s=5) state_time=8976.6s best_idx=52 sims=156664 N=75 K=15 eta=55984.1s
+[start 189/500] thread=23 global_idx=188 (g=4702,e=2,s=8) elapsed=27574.3s
+[done 166/500] thread=20 global_idx=174 (g=2941,e=4,s=13) state_time=2633.3s best_idx=46 sims=30174 N=125 K=25 eta=55630.5s
+[start 190/500] thread=20 global_idx=189 (g=4058,e=3,s=5) elapsed=27648.7s
+[done 167/500] thread=9 global_idx=187 (g=6829,e=6,s=13) state_time=698.9s best_idx=35 sims=9967 N=53 K=11 eta=55268.5s
+[start 191/500] thread=9 global_idx=190 (g=7591,e=4,s=13) elapsed=27717.2s
+[done 168/500] thread=3 global_idx=181 (g=4444,e=0,s=12) state_time=1977.9s best_idx=54 sims=31790 N=75 K=15 eta=55342.9s
+[start 192/500] thread=3 global_idx=191 (g=1445,e=7,s=8) elapsed=28004.8s
+[done 169/500] thread=5 global_idx=141 (g=5272,e=2,s=4) state_time=8501.3s best_idx=25 sims=159453 N=53 K=11 eta=54933.9s
+[start 193/500] thread=5 global_idx=192 (g=5373,e=5,s=13) elapsed=28047.8s
+[done 170/500] thread=2 global_idx=173 (g=3130,e=2,s=11) state_time=3695.0s best_idx=0 sims=56368 N=91 K=19 eta=54902.3s
+[start 194/500] thread=2 global_idx=193 (g=5423,e=3,s=9) elapsed=28283.0s
+[done 171/500] thread=10 global_idx=144 (g=6392,e=2,s=5) state_time=8710.5s best_idx=45 sims=155568 N=75 K=15 eta=54535.1s
+[start 195/500] thread=10 global_idx=194 (g=1644,e=5,s=15) elapsed=28345.0s
+[done 172/500] thread=10 global_idx=194 (g=1644,e=5,s=15) state_time=15.9s best_idx=121 sims=135 N=135 K=27 eta=54083.6s
+[start 196/500] thread=10 global_idx=195 (g=6839,e=5,s=3) elapsed=28360.9s
+[done 173/500] thread=14 global_idx=183 (g=894,e=4,s=13) state_time=2087.4s best_idx=58 sims=26195 N=105 K=21 eta=54066.9s
+[start 197/500] thread=14 global_idx=196 (g=1063,e=2,s=15) elapsed=28604.2s
+[done 174/500] thread=14 global_idx=196 (g=1063,e=2,s=15) state_time=4.4s best_idx=34 sims=55 N=55 K=11 eta=53600.0s
+[start 198/500] thread=14 global_idx=197 (g=3774,e=5,s=6) elapsed=28608.6s
+[done 175/500] thread=21 global_idx=175 (g=6374,e=0,s=11) state_time=3753.0s best_idx=54 sims=58137 N=113 K=23 eta=53461.9s
+[start 199/500] thread=21 global_idx=198 (g=7844,e=2,s=5) elapsed=28787.2s
+[done 176/500] thread=0 global_idx=170 (g=964,e=0,s=8) state_time=5140.7s best_idx=45 sims=96185 N=63 K=13 eta=53763.5s
+[start 200/500] thread=0 global_idx=199 (g=5770,e=5,s=13) elapsed=29204.9s
+[done 177/500] thread=19 global_idx=166 (g=9832,e=1,s=9) state_time=5793.0s best_idx=56 sims=95504 N=103 K=21 eta=53547.3s
+[start 201/500] thread=19 global_idx=200 (g=2435,e=0,s=1) elapsed=29343.3s
+[done 178/500] thread=17 global_idx=150 (g=4360,e=7,s=4) state_time=8725.6s best_idx=34 sims=163027 N=59 K=12 eta=53289.5s
+[start 202/500] thread=17 global_idx=201 (g=5303,e=2,s=0) elapsed=29458.2s
+[done 179/500] thread=9 global_idx=190 (g=7591,e=4,s=13) state_time=1972.3s best_idx=95 sims=24474 N=97 K=20 eta=53242.1s
+[start 203/500] thread=9 global_idx=202 (g=284,e=7,s=1) elapsed=29689.5s
+[done 180/500] thread=18 global_idx=164 (g=9851,e=7,s=8) state_time=6480.6s best_idx=77 sims=109144 N=81 K=17 eta=53366.0s
+[start 204/500] thread=18 global_idx=203 (g=9065,e=4,s=0) elapsed=30018.4s
+[done 181/500] thread=5 global_idx=192 (g=5373,e=5,s=13) state_time=2133.5s best_idx=1 sims=25513 N=107 K=22 eta=53192.5s
+[start 205/500] thread=5 global_idx=204 (g=7579,e=0,s=1) elapsed=30181.3s
+[done 182/500] thread=13 global_idx=153 (g=1265,e=4,s=5) state_time=8426.3s best_idx=46 sims=153740 N=71 K=15 eta=52787.0s
+[start 206/500] thread=13 global_idx=205 (g=5445,e=5,s=1) elapsed=30211.4s
+[done 183/500] thread=0 global_idx=199 (g=5770,e=5,s=13) state_time=1367.0s best_idx=38 sims=17301 N=91 K=19 eta=52957.9s
+[start 207/500] thread=0 global_idx=206 (g=9428,e=3,s=0) elapsed=30571.9s
+[done 184/500] thread=6 global_idx=184 (g=8445,e=1,s=11) state_time=4065.5s best_idx=85 sims=61893 N=103 K=21 eta=52641.8s
+[start 208/500] thread=6 global_idx=207 (g=7300,e=3,s=0) elapsed=30652.2s
+[done 185/500] thread=15 global_idx=168 (g=1999,e=2,s=5) state_time=7173.3s best_idx=36 sims=142992 N=53 K=11 eta=52339.0s
+[start 209/500] thread=15 global_idx=208 (g=8156,e=1,s=1) elapsed=30738.8s
+[done 186/500] thread=7 global_idx=159 (g=966,e=6,s=3) state_time=9225.6s best_idx=5 sims=177269 N=55 K=11 eta=53576.2s
+[start 210/500] thread=7 global_idx=209 (g=8701,e=2,s=0) elapsed=31736.2s
+[done 187/500] thread=11 global_idx=162 (g=2440,e=2,s=5) state_time=8620.5s best_idx=37 sims=155004 N=71 K=15 eta=53358.1s
+[start 211/500] thread=11 global_idx=210 (g=1998,e=7,s=0) elapsed=31878.5s
+[done 188/500] thread=22 global_idx=179 (g=6164,e=7,s=6) state_time=6451.8s best_idx=37 sims=123979 N=49 K=10 eta=53544.3s
+[start 212/500] thread=22 global_idx=211 (g=2643,e=7,s=1) elapsed=32263.9s
+[done 189/500] thread=23 global_idx=188 (g=4702,e=2,s=8) state_time=4845.1s best_idx=3 sims=91493 N=49 K=10 eta=53346.1s
+[start 213/500] thread=23 global_idx=212 (g=4833,e=5,s=0) elapsed=32419.4s
+[done 190/500] thread=1 global_idx=171 (g=6357,e=7,s=5) state_time=8516.2s best_idx=46 sims=155576 N=75 K=15 eta=53371.4s
+[start 214/500] thread=1 global_idx=213 (g=6085,e=3,s=0) elapsed=32711.5s
+[done 191/500] thread=3 global_idx=191 (g=1445,e=7,s=8) state_time=5510.6s best_idx=45 sims=99360 N=65 K=13 eta=54221.4s
+[start 215/500] thread=3 global_idx=214 (g=3377,e=1,s=1) elapsed=33515.5s
+[done 192/500] thread=8 global_idx=177 (g=1570,e=1,s=4) state_time=8346.4s best_idx=17 sims=158495 N=49 K=10 eta=54350.3s
+[start 216/500] thread=8 global_idx=215 (g=3950,e=3,s=1) elapsed=33880.7s
+[done 193/500] thread=12 global_idx=180 (g=4376,e=5,s=5) state_time=8394.8s best_idx=58 sims=153736 N=75 K=15 eta=54432.8s
+[start 217/500] thread=12 global_idx=216 (g=5322,e=5,s=0) elapsed=34220.0s
+[done 194/500] thread=2 global_idx=193 (g=5423,e=3,s=9) state_time=6313.9s best_idx=11 sims=99484 N=103 K=21 eta=54570.4s
+[start 218/500] thread=2 global_idx=217 (g=6603,e=4,s=0) elapsed=34596.9s
+[done 195/500] thread=4 global_idx=182 (g=5083,e=5,s=6) state_time=8391.6s best_idx=67 sims=142841 N=81 K=17 eta=54226.3s
+[start 219/500] thread=4 global_idx=218 (g=6821,e=4,s=0) elapsed=34669.3s
+[done 196/500] thread=16 global_idx=186 (g=8198,e=0,s=4) state_time=8637.7s best_idx=40 sims=162331 N=59 K=12 eta=55259.9s
+[start 220/500] thread=16 global_idx=219 (g=4552,e=4,s=0) elapsed=35628.1s
+[done 197/500] thread=14 global_idx=197 (g=3774,e=5,s=6) state_time=7133.8s best_idx=48 sims=134053 N=65 K=13 eta=54974.4s
+[start 221/500] thread=14 global_idx=220 (g=1532,e=3,s=1) elapsed=35742.4s
+[done 198/500] thread=20 global_idx=189 (g=4058,e=3,s=5) state_time=8362.0s best_idx=49 sims=153598 N=71 K=15 eta=54925.5s
+[start 222/500] thread=20 global_idx=221 (g=5154,e=6,s=1) elapsed=36010.7s
+[done 199/500] thread=21 global_idx=198 (g=7844,e=2,s=5) state_time=8498.3s best_idx=47 sims=153960 N=71 K=15 eta=56396.6s
+[start 223/500] thread=21 global_idx=222 (g=3082,e=0,s=2) elapsed=37285.5s
+[done 200/500] thread=10 global_idx=195 (g=6839,e=5,s=3) state_time=9322.7s best_idx=24 sims=176676 N=55 K=11 eta=56525.4s
+[start 224/500] thread=10 global_idx=223 (g=4716,e=7,s=3) elapsed=37683.6s
+[done 201/500] thread=18 global_idx=203 (g=9065,e=4,s=0) state_time=9191.7s best_idx=19 sims=210448 N=33 K=7 eta=58327.4s
+[start 225/500] thread=18 global_idx=224 (g=2732,e=2,s=0) elapsed=39210.1s
+[done 202/500] thread=9 global_idx=202 (g=284,e=7,s=1) state_time=9805.9s best_idx=12 sims=199221 N=39 K=8 eta=58265.5s
+[start 226/500] thread=9 global_idx=225 (g=7051,e=7,s=1) elapsed=39495.4s
+[done 203/500] thread=19 global_idx=200 (g=2435,e=0,s=1) state_time=10193.9s best_idx=40 sims=202789 N=43 K=9 eta=57845.0s
+[start 227/500] thread=19 global_idx=226 (g=5470,e=0,s=1) elapsed=39537.2s
+[done 204/500] thread=17 global_idx=201 (g=5303,e=2,s=0) state_time=10608.0s best_idx=25 sims=210604 N=33 K=7 eta=58135.2s
+[start 228/500] thread=17 global_idx=227 (g=7590,e=3,s=1) elapsed=40066.2s
+[done 205/500] thread=13 global_idx=205 (g=5445,e=5,s=1) state_time=10002.6s best_idx=24 sims=199258 N=39 K=8 eta=57869.0s
+[start 229/500] thread=13 global_idx=228 (g=3383,e=6,s=0) elapsed=40214.1s
+[done 206/500] thread=15 global_idx=208 (g=8156,e=1,s=1) state_time=9837.2s best_idx=21 sims=201092 N=39 K=8 eta=57909.4s
+[start 230/500] thread=15 global_idx=229 (g=1327,e=5,s=1) elapsed=40576.0s
+[done 207/500] thread=5 global_idx=204 (g=7579,e=0,s=1) state_time=10505.4s best_idx=7 sims=202852 N=43 K=9 eta=57590.4s
+[start 231/500] thread=5 global_idx=230 (g=2213,e=0,s=1) elapsed=40686.7s
+[done 208/500] thread=6 global_idx=207 (g=7300,e=3,s=0) state_time=10428.3s best_idx=4 sims=212243 N=33 K=7 eta=57670.7s
+[start 232/500] thread=6 global_idx=231 (g=9526,e=7,s=1) elapsed=41080.5s
+[done 209/500] thread=0 global_idx=206 (g=9428,e=3,s=0) state_time=10653.3s best_idx=19 sims=210306 N=33 K=7 eta=57399.7s
+[start 233/500] thread=0 global_idx=232 (g=9585,e=2,s=0) elapsed=41225.2s
+[done 210/500] thread=1 global_idx=213 (g=6085,e=3,s=0) state_time=8977.8s best_idx=18 sims=211427 N=33 K=7 eta=57570.9s
+[start 234/500] thread=1 global_idx=233 (g=2126,e=6,s=1) elapsed=41689.3s
+[done 211/500] thread=22 global_idx=211 (g=2643,e=7,s=1) state_time=9522.7s best_idx=25 sims=202078 N=43 K=9 eta=57233.7s
+[start 235/500] thread=22 global_idx=234 (g=5349,e=1,s=1) elapsed=41786.5s
+[done 212/500] thread=7 global_idx=209 (g=8701,e=2,s=0) state_time=10651.8s best_idx=30 sims=211302 N=33 K=7 eta=57583.7s
+[start 236/500] thread=7 global_idx=235 (g=7511,e=4,s=0) elapsed=42388.0s
+[done 213/500] thread=11 global_idx=210 (g=1998,e=7,s=0) state_time=10674.8s best_idx=26 sims=211113 N=33 K=7 eta=57337.1s
+[start 237/500] thread=11 global_idx=236 (g=6560,e=1,s=0) elapsed=42553.3s
+[done 214/500] thread=23 global_idx=212 (g=4833,e=5,s=0) state_time=10837.6s best_idx=18 sims=211634 N=33 K=7 eta=57810.7s
+[start 238/500] thread=23 global_idx=237 (g=2296,e=1,s=3) elapsed=43256.9s
+[done 215/500] thread=3 global_idx=214 (g=3377,e=1,s=1) state_time=10027.0s best_idx=38 sims=198734 N=39 K=8 eta=57719.1s
+[start 239/500] thread=3 global_idx=238 (g=2227,e=1,s=0) elapsed=43542.4s
+[done 216/500] thread=8 global_idx=215 (g=3950,e=3,s=1) state_time=10400.4s best_idx=20 sims=201798 N=43 K=9 eta=58221.4s
+[start 240/500] thread=8 global_idx=239 (g=1846,e=0,s=0) elapsed=44281.1s
+[done 217/500] thread=12 global_idx=216 (g=5322,e=5,s=0) state_time=10613.0s best_idx=8 sims=209823 N=33 K=7 eta=58468.9s
+[start 241/500] thread=12 global_idx=240 (g=7360,e=0,s=2) elapsed=44833.0s
+[done 218/500] thread=2 global_idx=217 (g=6603,e=4,s=0) state_time=10683.4s best_idx=17 sims=211563 N=33 K=7 eta=58573.6s
+[start 242/500] thread=2 global_idx=241 (g=2359,e=1,s=2) elapsed=45280.3s
+[done 219/500] thread=4 global_idx=218 (g=6821,e=4,s=0) state_time=10694.2s best_idx=8 sims=211783 N=33 K=7 eta=58206.1s
+[start 243/500] thread=4 global_idx=242 (g=9378,e=6,s=5) elapsed=45363.5s
+[done 220/500] thread=10 global_idx=223 (g=4716,e=7,s=3) state_time=8246.9s best_idx=24 sims=164627 N=33 K=7 eta=58457.0s
+[start 244/500] thread=10 global_idx=243 (g=1936,e=0,s=4) elapsed=45930.5s
+[done 221/500] thread=14 global_idx=220 (g=1532,e=3,s=1) state_time=10211.8s best_idx=11 sims=203009 N=43 K=9 eta=58014.6s
+[start 245/500] thread=14 global_idx=244 (g=2919,e=3,s=5) elapsed=45954.2s
+[done 222/500] thread=16 global_idx=219 (g=4552,e=4,s=0) state_time=10578.2s best_idx=16 sims=210353 N=33 K=7 eta=57862.0s
+[start 246/500] thread=16 global_idx=245 (g=8484,e=6,s=2) elapsed=46206.3s
+[done 223/500] thread=21 global_idx=222 (g=3082,e=0,s=2) state_time=9002.4s best_idx=18 sims=180007 N=33 K=7 eta=57496.6s
+[start 247/500] thread=21 global_idx=246 (g=8492,e=3,s=3) elapsed=46287.9s
+[done 224/500] thread=20 global_idx=221 (g=5154,e=6,s=1) state_time=10282.5s best_idx=12 sims=201173 N=43 K=9 eta=57039.8s
+[start 248/500] thread=20 global_idx=247 (g=8250,e=2,s=4) elapsed=46293.2s
+[done 225/500] thread=19 global_idx=226 (g=5470,e=0,s=1) state_time=9971.1s best_idx=38 sims=202609 N=43 K=9 eta=60510.1s
+[start 249/500] thread=19 global_idx=248 (g=69,e=5,s=5) elapsed=49508.3s
+[done 226/500] thread=15 global_idx=229 (g=1327,e=5,s=1) state_time=9262.6s best_idx=36 sims=202402 N=43 K=9 eta=60423.7s
+[start 250/500] thread=15 global_idx=249 (g=8029,e=7,s=5) elapsed=49838.5s
+[done 227/500] thread=9 global_idx=225 (g=7051,e=7,s=1) state_time=10363.8s best_idx=16 sims=202854 N=43 K=9 eta=59962.7s
+[start 251/500] thread=9 global_idx=250 (g=3941,e=1,s=3) elapsed=49859.1s
+[done 228/500] thread=18 global_idx=224 (g=2732,e=2,s=0) state_time=10759.4s best_idx=28 sims=212509 N=33 K=7 eta=59612.7s
+[start 252/500] thread=18 global_idx=251 (g=9258,e=3,s=4) elapsed=49969.5s
+[done 229/500] thread=1 global_idx=233 (g=2126,e=6,s=1) state_time=8417.0s best_idx=41 sims=202680 N=43 K=9 eta=59296.1s
+[start 253/500] thread=1 global_idx=252 (g=3481,e=1,s=2) elapsed=50106.3s
+[done 230/500] thread=6 global_idx=231 (g=9526,e=7,s=1) state_time=9239.4s best_idx=34 sims=204569 N=43 K=9 eta=59071.2s
+[start 254/500] thread=6 global_idx=253 (g=8790,e=2,s=5) elapsed=50319.9s
+[done 231/500] thread=17 global_idx=227 (g=7590,e=3,s=1) state_time=10450.2s best_idx=5 sims=202690 N=43 K=9 eta=58826.4s
+[start 255/500] thread=17 global_idx=254 (g=8205,e=1,s=3) elapsed=50516.4s
+[done 232/500] thread=13 global_idx=228 (g=3383,e=6,s=0) state_time=10662.2s best_idx=18 sims=211433 N=33 K=7 eta=58770.8s
+[start 256/500] thread=13 global_idx=255 (g=2133,e=7,s=4) elapsed=50876.2s
+[done 233/500] thread=4 global_idx=242 (g=9378,e=6,s=5) state_time=5607.7s best_idx=48 sims=143932 N=53 K=11 eta=58409.1s
+[start 257/500] thread=4 global_idx=256 (g=9945,e=2,s=3) elapsed=50971.2s
+[done 234/500] thread=5 global_idx=230 (g=2213,e=0,s=1) state_time=10572.9s best_idx=41 sims=203299 N=43 K=9 eta=58269.5s
+[start 258/500] thread=5 global_idx=257 (g=7226,e=1,s=5) elapsed=51259.6s
+[done 235/500] thread=22 global_idx=234 (g=5349,e=1,s=1) state_time=9638.8s best_idx=15 sims=200239 N=39 K=8 eta=57990.3s
+[start 259/500] thread=22 global_idx=258 (g=368,e=6,s=2) elapsed=51425.3s
+[done 236/500] thread=0 global_idx=232 (g=9585,e=2,s=0) state_time=10698.2s best_idx=16 sims=212109 N=33 K=7 eta=58083.8s
+[start 260/500] thread=0 global_idx=259 (g=2628,e=1,s=5) elapsed=51923.4s
+[done 237/500] thread=23 global_idx=237 (g=2296,e=1,s=3) state_time=8701.2s best_idx=20 sims=169883 N=43 K=9 eta=57658.2s
+[start 261/500] thread=23 global_idx=260 (g=8575,e=6,s=3) elapsed=51958.2s
+[done 238/500] thread=7 global_idx=235 (g=7511,e=4,s=0) state_time=10661.0s best_idx=30 sims=211173 N=33 K=7 eta=58398.5s
+[start 262/500] thread=7 global_idx=261 (g=9731,e=3,s=5) elapsed=53049.0s
+[done 239/500] thread=11 global_idx=236 (g=6560,e=1,s=0) state_time=10740.5s best_idx=25 sims=212021 N=33 K=7 eta=58199.5s
+[start 263/500] thread=11 global_idx=262 (g=2742,e=6,s=2) elapsed=53293.8s
+[done 240/500] thread=14 global_idx=244 (g=2919,e=3,s=5) state_time=8022.5s best_idx=37 sims=147902 N=59 K=12 eta=58474.7s
+[start 264/500] thread=14 global_idx=263 (g=4917,e=5,s=4) elapsed=53976.7s
+[done 241/500] thread=3 global_idx=238 (g=2227,e=1,s=0) state_time=10722.6s best_idx=29 sims=211360 N=33 K=7 eta=58318.0s
+[start 265/500] thread=3 global_idx=264 (g=9700,e=3,s=3) elapsed=54265.0s
+[done 242/500] thread=10 global_idx=243 (g=1936,e=0,s=4) state_time=8346.3s best_idx=35 sims=158631 N=49 K=10 eta=57865.4s
+[start 266/500] thread=10 global_idx=265 (g=3228,e=6,s=2) elapsed=54276.8s
+[done 243/500] thread=12 global_idx=240 (g=7360,e=0,s=2) state_time=10004.7s best_idx=47 sims=191376 N=49 K=10 eta=57997.1s
+[start 267/500] thread=12 global_idx=266 (g=6781,e=0,s=5) elapsed=54837.8s
+[done 244/500] thread=8 global_idx=239 (g=1846,e=0,s=0) state_time=10732.5s best_idx=30 sims=212190 N=33 K=7 eta=57719.1s
+[start 268/500] thread=8 global_idx=267 (g=7332,e=3,s=3) elapsed=55013.5s
+[done 245/500] thread=20 global_idx=247 (g=8250,e=2,s=4) state_time=8853.7s best_idx=45 sims=165095 N=59 K=12 eta=57397.8s
+[start 269/500] thread=20 global_idx=268 (g=244,e=4,s=4) elapsed=55146.9s
+[done 246/500] thread=19 global_idx=248 (g=69,e=5,s=5) state_time=5749.3s best_idx=21 sims=144330 N=55 K=11 eta=57054.6s
+[start 270/500] thread=19 global_idx=269 (g=8134,e=3,s=2) elapsed=55257.6s
+[done 247/500] thread=2 global_idx=241 (g=2359,e=1,s=2) state_time=10083.9s best_idx=6 sims=191479 N=49 K=10 eta=56709.1s
+[start 271/500] thread=2 global_idx=270 (g=95,e=3,s=6) elapsed=55364.2s
+[done 248/500] thread=21 global_idx=246 (g=8492,e=3,s=3) state_time=9371.5s best_idx=9 sims=178472 N=55 K=11 eta=56557.1s
+[start 272/500] thread=21 global_idx=271 (g=5208,e=6,s=9) elapsed=55659.4s
+[done 249/500] thread=16 global_idx=245 (g=8484,e=6,s=2) state_time=9956.2s best_idx=0 sims=190689 N=49 K=10 eta=56613.7s
+[start 273/500] thread=16 global_idx=272 (g=9141,e=4,s=8) elapsed=56162.6s
+[done 250/500] thread=6 global_idx=253 (g=8790,e=2,s=5) state_time=6769.5s best_idx=38 sims=140771 N=49 K=10 eta=57089.4s
+[start 274/500] thread=6 global_idx=273 (g=4339,e=6,s=6) elapsed=57089.4s
+[done 251/500] thread=15 global_idx=249 (g=8029,e=7,s=5) state_time=7307.6s best_idx=25 sims=141464 N=49 K=10 eta=56690.8s
+[start 275/500] thread=15 global_idx=274 (g=2703,e=4,s=8) elapsed=57146.2s
+[done 252/500] thread=18 global_idx=251 (g=9258,e=3,s=4) state_time=8222.6s best_idx=1 sims=157243 N=49 K=10 eta=57268.5s
+[start 276/500] thread=18 global_idx=275 (g=2049,e=6,s=9) elapsed=58192.1s
+[done 253/500] thread=13 global_idx=255 (g=2133,e=7,s=4) state_time=7435.6s best_idx=9 sims=159238 N=53 K=11 eta=56929.0s
+[start 277/500] thread=13 global_idx=276 (g=464,e=2,s=8) elapsed=58311.9s
+[done 254/500] thread=4 global_idx=256 (g=9945,e=2,s=3) state_time=7472.4s best_idx=20 sims=178378 N=55 K=11 eta=56602.9s
+[start 278/500] thread=4 global_idx=277 (g=5456,e=7,s=9) elapsed=58443.7s
+[done 255/500] thread=9 global_idx=250 (g=3941,e=1,s=3) state_time=8627.0s best_idx=1 sims=175857 N=55 K=11 eta=56192.5s
+[start 279/500] thread=9 global_idx=278 (g=2594,e=0,s=8) elapsed=58486.1s
+[done 256/500] thread=0 global_idx=259 (g=2628,e=1,s=5) state_time=7252.3s best_idx=38 sims=140961 N=49 K=10 eta=56401.8s
+[start 280/500] thread=0 global_idx=279 (g=4434,e=2,s=7) elapsed=59175.7s
+[done 257/500] thread=5 global_idx=257 (g=7226,e=1,s=5) state_time=8066.0s best_idx=7 sims=147556 N=59 K=12 eta=56093.9s
+[start 281/500] thread=5 global_idx=280 (g=7280,e=3,s=8) elapsed=59325.6s
+[done 258/500] thread=21 global_idx=271 (g=5208,e=6,s=9) state_time=3793.3s best_idx=12 sims=74571 N=49 K=10 eta=55765.7s
+[start 282/500] thread=21 global_idx=281 (g=4139,e=3,s=11) elapsed=59452.7s
+[done 259/500] thread=17 global_idx=254 (g=8205,e=1,s=3) state_time=9400.8s best_idx=24 sims=177830 N=55 K=11 eta=55753.1s
+[start 283/500] thread=17 global_idx=282 (g=3380,e=3,s=9) elapsed=59917.2s
+[done 260/500] thread=1 global_idx=252 (g=3481,e=1,s=2) state_time=9864.8s best_idx=24 sims=190650 N=49 K=10 eta=55357.9s
+[start 284/500] thread=1 global_idx=283 (g=4680,e=5,s=8) elapsed=59971.0s
+[done 261/500] thread=7 global_idx=261 (g=9731,e=3,s=5) state_time=7879.1s best_idx=4 sims=147920 N=61 K=13 eta=55792.4s
+[start 285/500] thread=7 global_idx=284 (g=3218,e=7,s=8) elapsed=60928.1s
+[done 262/500] thread=23 global_idx=260 (g=8575,e=6,s=3) state_time=9464.4s best_idx=2 sims=177931 N=55 K=11 eta=55796.0s
+[start 286/500] thread=23 global_idx=285 (g=8311,e=1,s=9) elapsed=61422.5s
+[done 263/500] thread=22 global_idx=258 (g=368,e=6,s=2) state_time=10007.3s best_idx=2 sims=189645 N=49 K=10 eta=55359.5s
+[start 287/500] thread=22 global_idx=286 (g=4268,e=6,s=10) elapsed=61432.7s
+[done 264/500] thread=21 global_idx=281 (g=4139,e=3,s=11) state_time=2099.4s best_idx=37 sims=39881 N=43 K=9 eta=55023.8s
+[start 288/500] thread=21 global_idx=287 (g=4506,e=4,s=6) elapsed=61552.0s
+[done 265/500] thread=4 global_idx=277 (g=5456,e=7,s=9) state_time=3266.5s best_idx=39 sims=74040 N=43 K=9 eta=54724.1s
+[start 289/500] thread=4 global_idx=288 (g=722,e=3,s=9) elapsed=61710.2s
+[done 266/500] thread=16 global_idx=272 (g=9141,e=4,s=8) state_time=5607.0s best_idx=27 sims=100181 N=65 K=13 eta=54338.6s
+[start 290/500] thread=16 global_idx=289 (g=8636,e=4,s=7) elapsed=61769.5s
+[done 267/500] thread=2 global_idx=270 (g=95,e=3,s=6) state_time=6635.9s best_idx=8 sims=127036 N=53 K=11 eta=54105.0s
+[start 291/500] thread=2 global_idx=290 (g=5832,e=6,s=7) elapsed=62000.1s
+[done 268/500] thread=14 global_idx=263 (g=4917,e=5,s=4) state_time=8033.6s best_idx=38 sims=155866 N=45 K=9 eta=53680.5s
+[start 292/500] thread=14 global_idx=291 (g=7901,e=3,s=6) elapsed=62010.3s
+[done 269/500] thread=18 global_idx=275 (g=2049,e=6,s=9) state_time=3981.0s best_idx=36 sims=75951 N=49 K=10 eta=53390.3s
+[start 293/500] thread=18 global_idx=292 (g=6255,e=6,s=6) elapsed=62173.1s
+[done 270/500] thread=9 global_idx=278 (g=2594,e=0,s=8) state_time=4379.3s best_idx=47 sims=93141 N=53 K=11 eta=53552.0s
+[start 294/500] thread=9 global_idx=293 (g=6016,e=1,s=9) elapsed=62865.4s
+[done 271/500] thread=13 global_idx=276 (g=464,e=2,s=8) state_time=4581.3s best_idx=1 sims=100761 N=65 K=13 eta=53145.9s
+[start 295/500] thread=13 global_idx=294 (g=9499,e=6,s=8) elapsed=62893.2s
+[done 272/500] thread=12 global_idx=266 (g=6781,e=0,s=5) state_time=8150.4s best_idx=36 sims=150264 N=65 K=13 eta=52798.9s
+[start 296/500] thread=12 global_idx=295 (g=7303,e=5,s=7) elapsed=62988.2s
+[done 273/500] thread=19 global_idx=269 (g=8134,e=3,s=2) state_time=7856.3s best_idx=6 sims=190216 N=49 K=10 eta=52479.3s
+[start 297/500] thread=19 global_idx=296 (g=5203,e=3,s=7) elapsed=63113.9s
+[done 274/500] thread=11 global_idx=262 (g=2742,e=6,s=2) state_time=9965.6s best_idx=12 sims=191448 N=49 K=10 eta=52177.5s
+[start 298/500] thread=11 global_idx=297 (g=8478,e=6,s=6) elapsed=63259.4s
+[done 275/500] thread=6 global_idx=273 (g=4339,e=6,s=6) state_time=6258.6s best_idx=1 sims=121873 N=43 K=9 eta=51830.2s
+[start 299/500] thread=6 global_idx=298 (g=9796,e=3,s=6) elapsed=63348.1s
+[done 276/500] thread=15 global_idx=274 (g=2703,e=4,s=8) state_time=6605.8s best_idx=40 sims=109726 N=81 K=17 eta=51740.8s
+[start 300/500] thread=15 global_idx=299 (g=683,e=3,s=7) elapsed=63752.0s
+[done 277/500] thread=3 global_idx=264 (g=9700,e=3,s=3) state_time=9660.5s best_idx=39 sims=181407 N=59 K=12 eta=51463.5s
+[start 301/500] thread=3 global_idx=300 (g=2726,e=2,s=8) elapsed=63925.5s
+[done 278/500] thread=8 global_idx=267 (g=7332,e=3,s=3) state_time=9126.5s best_idx=38 sims=174619 N=49 K=10 eta=51219.7s
+[start 302/500] thread=8 global_idx=301 (g=6629,e=5,s=9) elapsed=64140.0s
+[done 279/500] thread=10 global_idx=265 (g=3228,e=6,s=2) state_time=9950.2s best_idx=34 sims=191034 N=49 K=10 eta=50875.1s
+[start 303/500] thread=10 global_idx=302 (g=4696,e=5,s=11) elapsed=64227.0s
+[done 280/500] thread=20 global_idx=268 (g=244,e=4,s=4) state_time=9099.0s best_idx=49 sims=168074 N=65 K=13 eta=50478.9s
+[start 304/500] thread=20 global_idx=303 (g=2277,e=1,s=8) elapsed=64245.9s
+[done 281/500] thread=22 global_idx=286 (g=4268,e=6,s=10) state_time=2940.5s best_idx=42 sims=62110 N=57 K=12 eta=50169.8s
+[start 305/500] thread=22 global_idx=304 (g=1865,e=3,s=7) elapsed=64373.1s
+[done 282/500] thread=17 global_idx=282 (g=3380,e=3,s=9) state_time=4487.5s best_idx=38 sims=80691 N=63 K=13 eta=49788.0s
+[start 306/500] thread=17 global_idx=305 (g=5332,e=3,s=10) elapsed=64404.7s
+[done 283/500] thread=4 global_idx=288 (g=722,e=3,s=9) state_time=2912.2s best_idx=37 sims=74803 N=49 K=10 eta=49551.5s
+[start 307/500] thread=4 global_idx=306 (g=6945,e=4,s=7) elapsed=64622.4s
+[done 284/500] thread=0 global_idx=279 (g=4434,e=2,s=7) state_time=5819.2s best_idx=38 sims=111753 N=57 K=12 eta=49432.7s
+[start 308/500] thread=0 global_idx=307 (g=9501,e=0,s=11) elapsed=64994.9s
+[done 285/500] thread=1 global_idx=283 (g=4680,e=5,s=8) state_time=5094.7s best_idx=0 sims=94552 N=55 K=11 eta=49084.7s
+[start 309/500] thread=1 global_idx=308 (g=977,e=6,s=10) elapsed=65065.8s
+[done 286/500] thread=5 global_idx=280 (g=7280,e=3,s=8) state_time=5884.0s best_idx=3 sims=102431 N=71 K=15 eta=48793.2s
+[start 310/500] thread=5 global_idx=309 (g=1228,e=0,s=11) elapsed=65209.6s
+[done 287/500] thread=23 global_idx=285 (g=8311,e=1,s=9) state_time=4312.9s best_idx=46 sims=78837 N=59 K=12 eta=48786.2s
+[start 311/500] thread=23 global_idx=310 (g=8219,e=0,s=14) elapsed=65735.4s
+[done 288/500] thread=7 global_idx=284 (g=3218,e=7,s=8) state_time=4905.9s best_idx=40 sims=92598 N=55 K=11 eta=48461.1s
+[start 312/500] thread=7 global_idx=311 (g=4456,e=4,s=12) elapsed=65833.9s
+[done 289/500] thread=23 global_idx=310 (g=8219,e=0,s=14) state_time=160.1s best_idx=34 sims=2674 N=55 K=11 eta=48110.5s
+[start 313/500] thread=23 global_idx=312 (g=4153,e=2,s=14) elapsed=65895.5s
+[done 290/500] thread=23 global_idx=312 (g=4153,e=2,s=14) state_time=153.9s best_idx=35 sims=2716 N=61 K=13 eta=47828.9s
+[start 314/500] thread=23 global_idx=313 (g=1759,e=1,s=14) elapsed=66049.4s
+[done 291/500] thread=23 global_idx=313 (g=1759,e=1,s=14) state_time=101.8s best_idx=34 sims=1929 N=49 K=10 eta=47510.7s
+[start 315/500] thread=23 global_idx=314 (g=9824,e=0,s=13) elapsed=66151.2s
+[done 292/500] thread=10 global_idx=302 (g=4696,e=5,s=11) state_time=2301.5s best_idx=36 sims=42725 N=53 K=11 eta=47390.1s
+[start 316/500] thread=10 global_idx=315 (g=713,e=2,s=12) elapsed=66528.5s
+[done 293/500] thread=23 global_idx=314 (g=9824,e=0,s=13) state_time=671.8s best_idx=65 sims=10081 N=79 K=16 eta=47209.4s
+[start 317/500] thread=23 global_idx=316 (g=6477,e=0,s=14) elapsed=66823.0s
+[done 294/500] thread=9 global_idx=293 (g=6016,e=1,s=9) state_time=4065.3s best_idx=39 sims=84538 N=85 K=17 eta=46897.0s
+[start 318/500] thread=9 global_idx=317 (g=3395,e=3,s=14) elapsed=66930.7s
+[done 295/500] thread=23 global_idx=316 (g=6477,e=0,s=14) state_time=136.1s best_idx=7 sims=2511 N=63 K=13 eta=46530.9s
+[start 319/500] thread=23 global_idx=318 (g=6777,e=6,s=13) elapsed=66959.1s
+[done 296/500] thread=9 global_idx=317 (g=3395,e=3,s=14) state_time=84.1s best_idx=6 sims=1994 N=43 K=9 eta=46185.8s
+[start 320/500] thread=9 global_idx=319 (g=3213,e=1,s=13) elapsed=67014.8s
+[done 297/500] thread=17 global_idx=305 (g=5332,e=3,s=10) state_time=2970.9s best_idx=35 sims=57049 N=43 K=9 eta=46051.3s
+[start 321/500] thread=17 global_idx=320 (g=996,e=0,s=13) elapsed=67375.6s
+[done 298/500] thread=16 global_idx=289 (g=8636,e=4,s=7) state_time=5717.5s best_idx=25 sims=109800 N=53 K=11 eta=45746.3s
+[start 322/500] thread=16 global_idx=321 (g=9056,e=0,s=12) elapsed=67487.1s
+[done 299/500] thread=9 global_idx=319 (g=3213,e=1,s=13) state_time=581.0s best_idx=44 sims=10744 N=59 K=12 eta=45440.6s
+[start 323/500] thread=9 global_idx=322 (g=5757,e=6,s=13) elapsed=67595.7s
+[done 300/500] thread=13 global_idx=294 (g=9499,e=6,s=8) state_time=4743.9s best_idx=19 sims=91411 N=49 K=10 eta=45091.4s
+[start 324/500] thread=13 global_idx=323 (g=4462,e=2,s=13) elapsed=67637.1s
+[done 301/500] thread=8 global_idx=301 (g=6629,e=5,s=9) state_time=3712.1s best_idx=36 sims=72766 N=43 K=9 eta=44859.1s
+[start 325/500] thread=8 global_idx=324 (g=7071,e=0,s=14) elapsed=67852.1s
+[done 302/500] thread=17 global_idx=320 (g=996,e=0,s=13) state_time=508.6s best_idx=45 sims=7613 N=53 K=11 eta=44506.9s
+[start 326/500] thread=17 global_idx=325 (g=6191,e=5,s=14) elapsed=67884.2s
+[done 303/500] thread=23 global_idx=318 (g=6777,e=6,s=13) state_time=926.0s best_idx=7 sims=12682 N=69 K=14 eta=44136.5s
+[start 327/500] thread=23 global_idx=326 (g=8075,e=7,s=14) elapsed=67885.1s
+[done 304/500] thread=8 global_idx=324 (g=7071,e=0,s=14) state_time=122.4s best_idx=33 sims=2366 N=59 K=12 eta=43825.7s
+[start 328/500] thread=8 global_idx=327 (g=1243,e=4,s=12) elapsed=67974.5s
+[done 305/500] thread=17 global_idx=325 (g=6191,e=5,s=14) state_time=101.2s best_idx=41 sims=1883 N=43 K=9 eta=43466.1s
+[start 329/500] thread=17 global_idx=328 (g=6930,e=3,s=12) elapsed=67985.4s
+[done 306/500] thread=9 global_idx=322 (g=5757,e=6,s=13) state_time=408.7s best_idx=37 sims=7997 N=53 K=11 eta=43113.9s
+[start 330/500] thread=9 global_idx=329 (g=8964,e=0,s=13) elapsed=68004.4s
+[done 307/500] thread=21 global_idx=287 (g=4506,e=4,s=6) state_time=6452.6s best_idx=34 sims=125448 N=49 K=10 eta=42752.1s
+[start 331/500] thread=21 global_idx=330 (g=9257,e=2,s=12) elapsed=68004.7s
+[done 308/500] thread=23 global_idx=326 (g=8075,e=7,s=14) state_time=126.7s best_idx=34 sims=2337 N=55 K=11 eta=42397.0s
+[start 332/500] thread=23 global_idx=331 (g=2334,e=0,s=13) elapsed=68011.8s
+[done 309/500] thread=10 global_idx=315 (g=713,e=2,s=12) state_time=1542.8s best_idx=37 sims=26731 N=55 K=11 eta=42076.4s
+[start 333/500] thread=10 global_idx=332 (g=1006,e=4,s=12) elapsed=68071.2s
+[done 310/500] thread=5 global_idx=309 (g=1228,e=0,s=11) state_time=2974.1s best_idx=40 sims=49641 N=71 K=15 eta=41790.0s
+[start 334/500] thread=5 global_idx=333 (g=1836,e=0,s=12) elapsed=68183.7s
+[done 311/500] thread=7 global_idx=311 (g=4456,e=4,s=12) state_time=2621.1s best_idx=0 sims=37812 N=97 K=20 eta=41601.3s
+[start 335/500] thread=7 global_idx=334 (g=7475,e=0,s=12) elapsed=68455.1s
+[done 312/500] thread=19 global_idx=296 (g=5203,e=3,s=7) state_time=5408.0s best_idx=37 sims=106902 N=47 K=10 eta=41288.8s
+[start 336/500] thread=19 global_idx=335 (g=4540,e=5,s=12) elapsed=68521.9s
+[done 313/500] thread=0 global_idx=307 (g=9501,e=0,s=11) state_time=3548.3s best_idx=47 sims=55936 N=81 K=17 eta=40950.7s
+[start 337/500] thread=0 global_idx=336 (g=7569,e=0,s=14) elapsed=68543.2s
+[done 314/500] thread=23 global_idx=331 (g=2334,e=0,s=13) state_time=562.9s best_idx=9 sims=7946 N=43 K=9 eta=40620.7s
+[start 338/500] thread=23 global_idx=337 (g=3856,e=1,s=13) elapsed=68574.8s
+[done 315/500] thread=12 global_idx=295 (g=7303,e=5,s=7) state_time=5601.4s best_idx=42 sims=109022 N=53 K=11 eta=40282.7s
+[start 339/500] thread=12 global_idx=338 (g=660,e=4,s=14) elapsed=68589.5s
+[done 316/500] thread=2 global_idx=290 (g=5832,e=6,s=7) state_time=6614.2s best_idx=56 sims=118309 N=69 K=14 eta=39952.6s
+[start 340/500] thread=2 global_idx=339 (g=6160,e=6,s=14) elapsed=68614.3s
+[done 317/500] thread=0 global_idx=336 (g=7569,e=0,s=14) state_time=94.4s best_idx=1 sims=1770 N=43 K=9 eta=39623.6s
+[start 341/500] thread=0 global_idx=340 (g=177,e=0,s=12) elapsed=68637.6s
+[done 318/500] thread=1 global_idx=308 (g=977,e=6,s=10) state_time=3621.0s best_idx=38 sims=63944 N=61 K=13 eta=39311.3s
+[start 342/500] thread=1 global_idx=341 (g=418,e=1,s=14) elapsed=68686.8s
+[done 319/500] thread=2 global_idx=339 (g=6160,e=6,s=14) state_time=118.7s best_idx=35 sims=2282 N=55 K=11 eta=38999.0s
+[start 343/500] thread=2 global_idx=342 (g=7767,e=2,s=14) elapsed=68733.0s
+[done 320/500] thread=12 global_idx=338 (g=660,e=4,s=14) state_time=153.6s best_idx=3 sims=2778 N=65 K=13 eta=38668.0s
+[start 344/500] thread=12 global_idx=343 (g=3374,e=0,s=14) elapsed=68743.1s
+[done 321/500] thread=1 global_idx=341 (g=418,e=1,s=14) state_time=102.0s best_idx=0 sims=1881 N=43 K=9 eta=38358.9s
+[start 345/500] thread=1 global_idx=344 (g=4344,e=5,s=12) elapsed=68788.8s
+[done 322/500] thread=12 global_idx=343 (g=3374,e=0,s=14) state_time=102.7s best_idx=40 sims=1933 N=43 K=9 eta=38057.6s
+[start 346/500] thread=12 global_idx=345 (g=4069,e=5,s=14) elapsed=68845.8s
+[done 323/500] thread=18 global_idx=292 (g=6255,e=6,s=6) state_time=6702.5s best_idx=0 sims=126879 N=53 K=11 eta=37743.0s
+[start 347/500] thread=18 global_idx=346 (g=6316,e=1,s=14) elapsed=68875.6s
+[done 324/500] thread=2 global_idx=342 (g=7767,e=2,s=14) state_time=173.4s best_idx=64 sims=3207 N=79 K=16 eta=37430.7s
+[start 348/500] thread=2 global_idx=347 (g=6184,e=2,s=12) elapsed=68906.5s
+[done 325/500] thread=3 global_idx=300 (g=2726,e=2,s=8) state_time=5017.3s best_idx=10 sims=93916 N=55 K=11 eta=37123.1s
+[start 349/500] thread=3 global_idx=348 (g=6345,e=0,s=14) elapsed=68942.9s
+[done 326/500] thread=12 global_idx=345 (g=4069,e=5,s=14) state_time=118.9s best_idx=7 sims=2203 N=49 K=10 eta=36809.4s
+[start 350/500] thread=12 global_idx=349 (g=9117,e=2,s=13) elapsed=68964.7s
+[done 327/500] thread=16 global_idx=321 (g=9056,e=0,s=12) state_time=1489.8s best_idx=37 sims=26142 N=55 K=11 eta=36492.3s
+[start 351/500] thread=16 global_idx=350 (g=2226,e=1,s=6) elapsed=68976.8s
+[done 328/500] thread=3 global_idx=348 (g=6345,e=0,s=14) state_time=130.0s best_idx=4 sims=2370 N=55 K=11 eta=36221.1s
+[start 352/500] thread=3 global_idx=351 (g=645,e=7,s=7) elapsed=69072.9s
+[done 329/500] thread=18 global_idx=346 (g=6316,e=1,s=14) state_time=233.8s best_idx=46 sims=3690 N=71 K=15 eta=35920.1s
+[start 353/500] thread=18 global_idx=352 (g=8983,e=2,s=8) elapsed=69109.4s
+[done 330/500] thread=22 global_idx=304 (g=1865,e=3,s=7) state_time=4790.3s best_idx=37 sims=110553 N=55 K=11 eta=35629.6s
+[start 354/500] thread=22 global_idx=353 (g=1331,e=4,s=6) elapsed=69163.4s
+[done 331/500] thread=21 global_idx=330 (g=9257,e=2,s=12) state_time=1265.6s best_idx=34 sims=23283 N=43 K=9 eta=35367.6s
+[start 355/500] thread=21 global_idx=354 (g=7750,e=7,s=10) elapsed=69270.3s
+[done 332/500] thread=13 global_idx=323 (g=4462,e=2,s=13) state_time=1648.4s best_idx=45 sims=20454 N=81 K=17 eta=35060.2s
+[start 356/500] thread=13 global_idx=355 (g=2543,e=0,s=9) elapsed=69285.5s
+[done 333/500] thread=20 global_idx=303 (g=2277,e=1,s=8) state_time=5089.0s best_idx=39 sims=94533 N=55 K=11 eta=34771.6s
+[start 357/500] thread=20 global_idx=356 (g=8679,e=7,s=9) elapsed=69334.9s
+[done 334/500] thread=23 global_idx=337 (g=3856,e=1,s=13) state_time=800.3s best_idx=46 sims=10996 N=53 K=11 eta=34479.8s
+[start 358/500] thread=23 global_idx=357 (g=5602,e=5,s=8) elapsed=69375.1s
+[done 335/500] thread=9 global_idx=329 (g=8964,e=0,s=13) state_time=1382.4s best_idx=60 sims=22371 N=107 K=22 eta=34175.6s
+[start 359/500] thread=9 global_idx=358 (g=3063,e=4,s=6) elapsed=69386.8s
+[done 336/500] thread=14 global_idx=291 (g=7901,e=3,s=6) state_time=7397.2s best_idx=2 sims=135472 N=65 K=13 eta=33877.5s
+[start 360/500] thread=14 global_idx=359 (g=440,e=4,s=6) elapsed=69407.5s
+[done 337/500] thread=8 global_idx=327 (g=1243,e=4,s=12) state_time=1456.8s best_idx=39 sims=26079 N=55 K=11 eta=33582.5s
+[start 361/500] thread=8 global_idx=360 (g=1032,e=5,s=6) elapsed=69431.3s
+[done 338/500] thread=10 global_idx=332 (g=1006,e=4,s=12) state_time=1418.8s best_idx=7 sims=25251 N=53 K=11 eta=33305.9s
+[start 362/500] thread=10 global_idx=361 (g=938,e=6,s=6) elapsed=69490.0s
+[done 339/500] thread=4 global_idx=306 (g=6945,e=4,s=7) state_time=5105.8s best_idx=46 sims=121790 N=75 K=15 eta=33115.8s
+[start 363/500] thread=4 global_idx=362 (g=4912,e=2,s=10) elapsed=69728.2s
+[done 340/500] thread=5 global_idx=333 (g=1836,e=0,s=12) state_time=1643.5s best_idx=37 sims=27685 N=55 K=11 eta=32859.8s
+[start 364/500] thread=5 global_idx=363 (g=6473,e=3,s=10) elapsed=69827.2s
+[done 341/500] thread=11 global_idx=297 (g=8478,e=6,s=6) state_time=6674.0s best_idx=50 sims=126553 N=53 K=11 eta=32608.2s
+[start 365/500] thread=11 global_idx=364 (g=8184,e=6,s=9) elapsed=69933.4s
+[done 342/500] thread=7 global_idx=334 (g=7475,e=0,s=12) state_time=1488.1s best_idx=38 sims=26223 N=55 K=11 eta=32312.9s
+[start 366/500] thread=7 global_idx=365 (g=4767,e=1,s=6) elapsed=69943.2s
+[done 343/500] thread=19 global_idx=335 (g=4540,e=5,s=12) state_time=1439.2s best_idx=38 sims=25657 N=59 K=12 eta=32023.0s
+[start 367/500] thread=19 global_idx=366 (g=7967,e=4,s=6) elapsed=69961.1s
+[done 344/500] thread=17 global_idx=328 (g=6930,e=3,s=12) state_time=1977.9s best_idx=49 sims=31934 N=65 K=13 eta=31727.6s
+[start 368/500] thread=17 global_idx=367 (g=2140,e=6,s=6) elapsed=69963.3s
+[done 345/500] thread=12 global_idx=349 (g=9117,e=2,s=13) state_time=1184.3s best_idx=57 sims=15489 N=69 K=14 eta=31516.2s
+[start 369/500] thread=12 global_idx=368 (g=6866,e=6,s=10) elapsed=70149.0s
+[done 346/500] thread=6 global_idx=298 (g=9796,e=3,s=6) state_time=6872.8s best_idx=9 sims=128124 N=55 K=11 eta=31254.4s
+[start 370/500] thread=6 global_idx=369 (g=33,e=6,s=6) elapsed=70220.9s
+[done 347/500] thread=0 global_idx=340 (g=177,e=0,s=12) state_time=1644.5s best_idx=41 sims=27820 N=55 K=11 eta=30988.9s
+[start 371/500] thread=0 global_idx=370 (g=965,e=5,s=6) elapsed=70282.0s
+[done 348/500] thread=15 global_idx=299 (g=683,e=3,s=7) state_time=6593.7s best_idx=13 sims=120192 N=71 K=15 eta=30725.7s
+[start 372/500] thread=15 global_idx=371 (g=679,e=6,s=11) elapsed=70345.7s
+[done 349/500] thread=2 global_idx=347 (g=6184,e=2,s=12) state_time=1815.9s best_idx=39 sims=29185 N=65 K=13 eta=30599.1s
+[start 373/500] thread=2 global_idx=372 (g=8496,e=6,s=8) elapsed=70722.3s
+[done 350/500] thread=1 global_idx=344 (g=4344,e=5,s=12) state_time=2240.0s best_idx=36 sims=34167 N=69 K=14 eta=30440.9s
+[start 374/500] thread=1 global_idx=373 (g=5943,e=4,s=8) elapsed=71028.8s
+[done 351/500] thread=21 global_idx=354 (g=7750,e=7,s=10) state_time=3088.6s best_idx=37 sims=58073 N=49 K=10 eta=30716.4s
+[start 375/500] thread=21 global_idx=374 (g=5903,e=2,s=8) elapsed=72358.9s
+[done 352/500] thread=5 global_idx=363 (g=6473,e=3,s=10) state_time=3112.7s best_idx=1 sims=58806 N=49 K=10 eta=30667.9s
+[start 376/500] thread=5 global_idx=375 (g=6148,e=6,s=6) elapsed=72939.9s
+[done 353/500] thread=4 global_idx=362 (g=4912,e=2,s=10) state_time=3663.3s best_idx=6 sims=65392 N=61 K=13 eta=30562.5s
+[start 377/500] thread=4 global_idx=376 (g=67,e=4,s=10) elapsed=73391.6s
+[done 354/500] thread=13 global_idx=355 (g=2543,e=0,s=9) state_time=4127.5s best_idx=39 sims=78202 N=55 K=11 eta=30277.7s
+[start 378/500] thread=13 global_idx=377 (g=2672,e=0,s=11) elapsed=73413.0s
+[done 355/500] thread=15 global_idx=371 (g=679,e=6,s=11) state_time=3116.5s best_idx=47 sims=52030 N=75 K=15 eta=30005.7s
+[start 379/500] thread=15 global_idx=378 (g=4467,e=0,s=8) elapsed=73462.2s
+[done 356/500] thread=20 global_idx=356 (g=8679,e=7,s=9) state_time=4255.1s best_idx=51 sims=77891 N=59 K=12 eta=29766.8s
+[start 380/500] thread=20 global_idx=379 (g=2516,e=5,s=8) elapsed=73590.0s
+[done 357/500] thread=18 global_idx=352 (g=8983,e=2,s=8) state_time=4809.3s best_idx=7 sims=106231 N=71 K=15 eta=29608.9s
+[start 381/500] thread=18 global_idx=380 (g=7892,e=3,s=13) elapsed=73918.6s
+[done 358/500] thread=23 global_idx=357 (g=5602,e=5,s=8) state_time=4760.8s best_idx=37 sims=90921 N=49 K=10 eta=29405.9s
+[start 382/500] thread=23 global_idx=381 (g=1789,e=6,s=12) elapsed=74135.9s
+[done 359/500] thread=12 global_idx=368 (g=6866,e=6,s=10) state_time=4117.8s best_idx=11 sims=69449 N=71 K=15 eta=29168.9s
+[start 383/500] thread=12 global_idx=382 (g=2748,e=6,s=14) elapsed=74266.8s
+[done 360/500] thread=12 global_idx=382 (g=2748,e=6,s=14) state_time=173.2s best_idx=9 sims=2999 N=65 K=13 eta=28948.9s
+[start 384/500] thread=12 global_idx=383 (g=5555,e=0,s=12) elapsed=74440.0s
+[done 361/500] thread=3 global_idx=351 (g=645,e=7,s=7) state_time=5619.6s best_idx=39 sims=108445 N=49 K=10 eta=28759.7s
+[start 385/500] thread=3 global_idx=384 (g=5662,e=6,s=14) elapsed=74692.5s
+[done 362/500] thread=3 global_idx=384 (g=5662,e=6,s=14) state_time=125.4s best_idx=45 sims=2283 N=49 K=10 eta=28521.7s
+[start 386/500] thread=3 global_idx=385 (g=5064,e=7,s=14) elapsed=74817.8s
+[done 363/500] thread=18 global_idx=380 (g=7892,e=3,s=13) state_time=1053.5s best_idx=13 sims=17880 N=75 K=15 eta=28295.3s
+[start 387/500] thread=18 global_idx=386 (g=3882,e=7,s=13) elapsed=74972.1s
+[done 364/500] thread=3 global_idx=385 (g=5064,e=7,s=14) state_time=193.5s best_idx=53 sims=3332 N=65 K=13 eta=28026.2s
+[start 388/500] thread=3 global_idx=387 (g=7024,e=4,s=13) elapsed=75011.3s
+[done 365/500] thread=11 global_idx=364 (g=8184,e=6,s=9) state_time=5197.3s best_idx=64 sims=89675 N=75 K=15 eta=27788.1s
+[start 389/500] thread=11 global_idx=388 (g=1439,e=6,s=14) elapsed=75130.7s
+[done 366/500] thread=11 global_idx=388 (g=1439,e=6,s=14) state_time=170.6s best_idx=41 sims=2986 N=65 K=13 eta=27569.3s
+[start 390/500] thread=11 global_idx=389 (g=5803,e=1,s=12) elapsed=75301.3s
+[done 367/500] thread=22 global_idx=353 (g=1331,e=4,s=6) state_time=6380.8s best_idx=35 sims=125291 N=49 K=10 eta=27377.1s
+[start 391/500] thread=22 global_idx=390 (g=3151,e=1,s=13) elapsed=75544.3s
+[done 368/500] thread=23 global_idx=381 (g=1789,e=6,s=12) state_time=1515.6s best_idx=33 sims=26023 N=49 K=10 eta=27135.9s
+[start 392/500] thread=23 global_idx=391 (g=7510,e=6,s=12) elapsed=75651.5s
+[done 369/500] thread=2 global_idx=372 (g=8496,e=6,s=8) state_time=5069.7s best_idx=0 sims=94353 N=55 K=11 eta=26907.2s
+[start 393/500] thread=2 global_idx=392 (g=2961,e=4,s=12) elapsed=75792.0s
+[done 370/500] thread=8 global_idx=360 (g=1032,e=5,s=6) state_time=6405.5s best_idx=30 sims=123255 N=49 K=10 eta=26645.4s
+[start 394/500] thread=8 global_idx=393 (g=7703,e=0,s=12) elapsed=75836.8s
+[done 371/500] thread=13 global_idx=377 (g=2672,e=0,s=11) state_time=2506.6s best_idx=35 sims=45529 N=59 K=12 eta=26397.9s
+[start 395/500] thread=13 global_idx=394 (g=254,e=6,s=14) elapsed=75919.6s
+[done 372/500] thread=16 global_idx=350 (g=2226,e=1,s=6) state_time=7067.2s best_idx=52 sims=133778 N=65 K=13 eta=26165.7s
+[start 396/500] thread=16 global_idx=395 (g=5034,e=2,s=14) elapsed=76044.0s
+[done 373/500] thread=18 global_idx=386 (g=3882,e=7,s=13) state_time=1079.9s best_idx=73 sims=17923 N=79 K=16 eta=25894.4s
+[start 397/500] thread=18 global_idx=396 (g=9062,e=0,s=13) elapsed=76052.1s
+[done 374/500] thread=13 global_idx=394 (g=254,e=6,s=14) state_time=136.9s best_idx=39 sims=2469 N=55 K=11 eta=25623.3s
+[start 398/500] thread=13 global_idx=397 (g=3846,e=3,s=14) elapsed=76056.5s
+[done 375/500] thread=14 global_idx=359 (g=440,e=4,s=6) state_time=6674.4s best_idx=56 sims=128759 N=59 K=12 eta=25360.6s
+[start 399/500] thread=14 global_idx=398 (g=4217,e=3,s=14) elapsed=76081.9s
+[done 376/500] thread=14 global_idx=398 (g=4217,e=3,s=14) state_time=124.8s best_idx=0 sims=2300 N=55 K=11 eta=25132.0s
+[start 400/500] thread=14 global_idx=399 (g=2421,e=6,s=14) elapsed=76206.7s
+[done 377/500] thread=13 global_idx=397 (g=3846,e=3,s=14) state_time=168.3s best_idx=34 sims=2861 N=61 K=13 eta=24869.1s
+[start 401/500] thread=13 global_idx=400 (g=4734,e=4,s=14) elapsed=76224.9s
+[done 378/500] thread=16 global_idx=395 (g=5034,e=2,s=14) state_time=184.7s best_idx=50 sims=3197 N=61 K=13 eta=24602.9s
+[start 402/500] thread=16 global_idx=401 (g=3881,e=4,s=14) elapsed=76228.7s
+[done 379/500] thread=3 global_idx=387 (g=7024,e=4,s=13) state_time=1234.1s best_idx=55 sims=16051 N=65 K=13 eta=24342.2s
+[start 403/500] thread=3 global_idx=402 (g=4125,e=2,s=12) elapsed=76245.4s
+[done 380/500] thread=12 global_idx=383 (g=5555,e=0,s=12) state_time=1885.5s best_idx=35 sims=30537 N=65 K=13 eta=24102.8s
+[start 404/500] thread=12 global_idx=403 (g=7391,e=1,s=14) elapsed=76325.6s
+[done 381/500] thread=13 global_idx=400 (g=4734,e=4,s=14) state_time=126.0s best_idx=42 sims=2360 N=49 K=10 eta=23847.1s
+[start 405/500] thread=13 global_idx=404 (g=9591,e=2,s=12) elapsed=76350.9s
+[done 382/500] thread=22 global_idx=390 (g=3151,e=1,s=13) state_time=807.6s best_idx=54 sims=11507 N=55 K=11 eta=23585.1s
+[start 406/500] thread=22 global_idx=405 (g=8696,e=2,s=13) elapsed=76351.8s
+[done 383/500] thread=16 global_idx=401 (g=3881,e=4,s=14) state_time=127.3s best_idx=10 sims=2285 N=49 K=10 eta=23325.5s
+[start 407/500] thread=16 global_idx=406 (g=5837,e=5,s=13) elapsed=76356.0s
+[done 384/500] thread=14 global_idx=399 (g=2421,e=6,s=14) state_time=167.2s best_idx=60 sims=2946 N=67 K=14 eta=23071.3s
+[start 408/500] thread=14 global_idx=407 (g=9771,e=3,s=12) elapsed=76374.0s
+[done 385/500] thread=12 global_idx=403 (g=7391,e=1,s=14) state_time=150.5s best_idx=41 sims=2721 N=59 K=12 eta=22843.5s
+[start 409/500] thread=12 global_idx=408 (g=8752,e=6,s=14) elapsed=76476.1s
+[done 386/500] thread=19 global_idx=366 (g=7967,e=4,s=6) state_time=6549.0s best_idx=34 sims=124821 N=49 K=10 eta=22596.2s
+[start 410/500] thread=19 global_idx=409 (g=4267,e=0,s=14) elapsed=76510.1s
+[done 387/500] thread=7 global_idx=365 (g=4767,e=1,s=6) state_time=6586.9s best_idx=37 sims=125238 N=49 K=10 eta=22346.0s
+[start 411/500] thread=7 global_idx=410 (g=3709,e=0,s=7) elapsed=76530.1s
+[done 388/500] thread=4 global_idx=376 (g=67,e=4,s=10) state_time=3167.6s best_idx=0 sims=59476 N=49 K=10 eta=22099.6s
+[start 412/500] thread=4 global_idx=411 (g=3843,e=6,s=11) elapsed=76559.2s
+[done 389/500] thread=1 global_idx=373 (g=5943,e=4,s=8) state_time=5584.7s best_idx=7 sims=100219 N=61 K=13 eta=21861.4s
+[start 413/500] thread=1 global_idx=412 (g=4701,e=5,s=7) elapsed=76613.5s
+[done 390/500] thread=12 global_idx=408 (g=8752,e=6,s=14) state_time=147.1s best_idx=18 sims=2729 N=61 K=13 eta=21611.7s
+[start 414/500] thread=12 global_idx=413 (g=21,e=2,s=8) elapsed=76623.1s
+[done 391/500] thread=9 global_idx=358 (g=3063,e=4,s=6) state_time=7240.9s best_idx=44 sims=134532 N=69 K=14 eta=21361.7s
+[start 415/500] thread=9 global_idx=414 (g=5183,e=3,s=7) elapsed=76627.8s
+[done 392/500] thread=19 global_idx=409 (g=4267,e=0,s=14) state_time=143.8s best_idx=7 sims=2555 N=55 K=11 eta=21118.9s
+[start 416/500] thread=19 global_idx=415 (g=9433,e=4,s=7) elapsed=76653.9s
+[done 393/500] thread=0 global_idx=370 (g=965,e=5,s=6) state_time=6491.7s best_idx=38 sims=123925 N=49 K=10 eta=20902.8s
+[start 417/500] thread=0 global_idx=416 (g=9564,e=1,s=7) elapsed=76773.8s
+[done 394/500] thread=17 global_idx=367 (g=2140,e=6,s=6) state_time=6820.9s best_idx=29 sims=128371 N=55 K=11 eta=20657.7s
+[start 418/500] thread=17 global_idx=417 (g=7115,e=2,s=8) elapsed=76784.2s
+[done 395/500] thread=6 global_idx=369 (g=33,e=6,s=6) state_time=6615.0s best_idx=33 sims=125499 N=49 K=10 eta=20424.7s
+[start 419/500] thread=6 global_idx=418 (g=4322,e=6,s=10) elapsed=76835.9s
+[done 396/500] thread=10 global_idx=361 (g=938,e=6,s=6) state_time=7420.8s best_idx=7 sims=134711 N=69 K=14 eta=20198.8s
+[start 420/500] thread=10 global_idx=419 (g=4491,e=1,s=9) elapsed=76910.8s
+[done 397/500] thread=11 global_idx=389 (g=5803,e=1,s=12) state_time=1779.1s best_idx=10 sims=29204 N=61 K=13 eta=19998.2s
+[start 421/500] thread=11 global_idx=420 (g=819,e=3,s=9) elapsed=77080.4s
+[done 398/500] thread=21 global_idx=374 (g=5903,e=2,s=8) state_time=4786.7s best_idx=17 sims=91806 N=49 K=10 eta=19771.0s
+[start 422/500] thread=21 global_idx=421 (g=9201,e=0,s=11) elapsed=77145.6s
+[done 399/500] thread=18 global_idx=396 (g=9062,e=0,s=13) state_time=1129.4s best_idx=75 sims=18958 N=79 K=16 eta=19537.2s
+[start 423/500] thread=18 global_idx=422 (g=6067,e=1,s=11) elapsed=77181.4s
+[done 400/500] thread=22 global_idx=405 (g=8696,e=2,s=13) state_time=943.3s best_idx=34 sims=13039 N=61 K=13 eta=19323.8s
+[start 424/500] thread=22 global_idx=423 (g=1620,e=4,s=6) elapsed=77295.1s
+[done 401/500] thread=8 global_idx=393 (g=7703,e=0,s=12) state_time=1481.2s best_idx=39 sims=25886 N=49 K=10 eta=19088.5s
+[start 425/500] thread=8 global_idx=424 (g=8361,e=7,s=7) elapsed=77318.0s
+[done 402/500] thread=16 global_idx=406 (g=5837,e=5,s=13) state_time=1082.5s best_idx=41 sims=14685 N=75 K=15 eta=18878.0s
+[start 426/500] thread=16 global_idx=425 (g=6403,e=1,s=8) elapsed=77438.5s
+[done 403/500] thread=23 global_idx=391 (g=7510,e=6,s=12) state_time=1966.8s best_idx=0 sims=31638 N=61 K=13 eta=18682.3s
+[start 427/500] thread=23 global_idx=426 (g=5988,e=5,s=11) elapsed=77618.3s
+[done 404/500] thread=2 global_idx=392 (g=2961,e=4,s=12) state_time=1949.3s best_idx=32 sims=31599 N=61 K=13 eta=18473.2s
+[start 428/500] thread=2 global_idx=427 (g=5193,e=6,s=6) elapsed=77741.3s
+[done 405/500] thread=3 global_idx=402 (g=4125,e=2,s=12) state_time=1629.5s best_idx=35 sims=27741 N=55 K=11 eta=18267.0s
+[start 429/500] thread=3 global_idx=428 (g=3024,e=4,s=9) elapsed=77874.9s
+[done 406/500] thread=14 global_idx=407 (g=9771,e=3,s=12) state_time=1691.1s best_idx=53 sims=28638 N=55 K=11 eta=18074.2s
+[start 430/500] thread=14 global_idx=429 (g=2361,e=3,s=11) elapsed=78065.0s
+[done 407/500] thread=13 global_idx=404 (g=9591,e=2,s=12) state_time=1772.5s best_idx=0 sims=29438 N=61 K=13 eta=17851.3s
+[start 431/500] thread=13 global_idx=430 (g=9865,e=5,s=13) elapsed=78123.4s
+[done 408/500] thread=15 global_idx=378 (g=4467,e=0,s=8) state_time=5265.5s best_idx=33 sims=97440 N=59 K=12 eta=17752.3s
+[start 432/500] thread=15 global_idx=431 (g=8317,e=2,s=12) elapsed=78727.7s
+[done 409/500] thread=18 global_idx=422 (g=6067,e=1,s=11) state_time=1583.7s best_idx=24 sims=40332 N=43 K=9 eta=17524.8s
+[start 433/500] thread=18 global_idx=432 (g=6537,e=2,s=14) elapsed=78765.1s
+[done 410/500] thread=4 global_idx=411 (g=3843,e=6,s=11) state_time=2216.2s best_idx=36 sims=41904 N=49 K=10 eta=17292.1s
+[start 434/500] thread=4 global_idx=433 (g=3642,e=3,s=13) elapsed=78775.3s
+[done 411/500] thread=13 global_idx=430 (g=9865,e=5,s=13) state_time=666.9s best_idx=15 sims=9370 N=53 K=11 eta=17061.6s
+[start 435/500] thread=13 global_idx=434 (g=3098,e=1,s=14) elapsed=78790.3s
+[done 412/500] thread=18 global_idx=432 (g=6537,e=2,s=14) state_time=83.2s best_idx=19 sims=1914 N=39 K=8 eta=16841.4s
+[start 436/500] thread=18 global_idx=435 (g=2170,e=0,s=14) elapsed=78848.3s
+[done 413/500] thread=20 global_idx=379 (g=2516,e=5,s=8) state_time=5276.3s best_idx=12 sims=96981 N=55 K=11 eta=16613.5s
+[start 437/500] thread=20 global_idx=436 (g=5040,e=1,s=13) elapsed=78866.3s
+[done 414/500] thread=13 global_idx=434 (g=3098,e=1,s=14) state_time=104.2s best_idx=32 sims=1785 N=39 K=8 eta=16388.7s
+[start 438/500] thread=13 global_idx=437 (g=1376,e=2,s=13) elapsed=78894.5s
+[done 415/500] thread=18 global_idx=435 (g=2170,e=0,s=14) state_time=75.4s best_idx=19 sims=1773 N=37 K=8 eta=16165.1s
+[start 439/500] thread=18 global_idx=438 (g=1277,e=5,s=14) elapsed=78923.7s
+[done 416/500] thread=18 global_idx=438 (g=1277,e=5,s=14) state_time=133.0s best_idx=12 sims=2990 N=71 K=15 eta=15963.4s
+[start 440/500] thread=18 global_idx=439 (g=3397,e=5,s=12) elapsed=79056.7s
+[done 417/500] thread=21 global_idx=421 (g=9201,e=0,s=11) state_time=1946.4s best_idx=26 sims=38295 N=37 K=8 eta=15742.5s
+[start 441/500] thread=21 global_idx=440 (g=2571,e=6,s=12) elapsed=79091.9s
+[done 418/500] thread=13 global_idx=437 (g=1376,e=2,s=13) state_time=355.1s best_idx=17 sims=5449 N=37 K=8 eta=15546.6s
+[start 442/500] thread=13 global_idx=441 (g=6257,e=4,s=13) elapsed=79249.6s
+[done 419/500] thread=4 global_idx=433 (g=3642,e=3,s=13) state_time=593.0s best_idx=4 sims=8316 N=43 K=9 eta=15343.3s
+[start 443/500] thread=4 global_idx=442 (g=7400,e=3,s=13) elapsed=79368.3s
+[done 420/500] thread=5 global_idx=375 (g=6148,e=6,s=6) state_time=6449.4s best_idx=36 sims=124662 N=49 K=10 eta=15121.8s
+[start 444/500] thread=5 global_idx=443 (g=7403,e=0,s=12) elapsed=79389.3s
+[done 421/500] thread=20 global_idx=436 (g=5040,e=1,s=13) state_time=614.0s best_idx=48 sims=8736 N=49 K=10 eta=14914.4s
+[start 445/500] thread=20 global_idx=444 (g=4811,e=5,s=13) elapsed=79480.3s
+[done 422/500] thread=4 global_idx=442 (g=7400,e=3,s=13) state_time=511.3s best_idx=8 sims=7702 N=45 K=9 eta=14764.5s
+[start 446/500] thread=4 global_idx=445 (g=5202,e=4,s=13) elapsed=79879.6s
+[done 423/500] thread=23 global_idx=426 (g=5988,e=5,s=11) state_time=2321.1s best_idx=22 sims=42666 N=49 K=10 eta=14551.6s
+[start 447/500] thread=23 global_idx=446 (g=4076,e=2,s=14) elapsed=79939.4s
+[done 424/500] thread=14 global_idx=429 (g=2361,e=3,s=11) state_time=1885.1s best_idx=5 sims=37192 N=37 K=8 eta=14330.7s
+[start 448/500] thread=14 global_idx=447 (g=1989,e=4,s=14) elapsed=79950.2s
+[done 425/500] thread=20 global_idx=444 (g=4811,e=5,s=13) state_time=560.5s best_idx=17 sims=8237 N=45 K=9 eta=14124.9s
+[start 449/500] thread=20 global_idx=448 (g=5846,e=4,s=14) elapsed=80040.8s
+[done 426/500] thread=13 global_idx=441 (g=6257,e=4,s=13) state_time=792.8s best_idx=42 sims=11416 N=51 K=11 eta=13904.1s
+[start 450/500] thread=13 global_idx=449 (g=8608,e=3,s=12) elapsed=80042.4s
+[done 427/500] thread=14 global_idx=447 (g=1989,e=4,s=14) state_time=104.4s best_idx=11 sims=1939 N=43 K=9 eta=13686.1s
+[start 451/500] thread=14 global_idx=450 (g=3045,e=2,s=9) elapsed=80054.6s
+[done 428/500] thread=23 global_idx=446 (g=4076,e=2,s=14) state_time=116.0s best_idx=12 sims=2093 N=43 K=9 eta=13467.3s
+[start 452/500] thread=23 global_idx=451 (g=5235,e=3,s=8) elapsed=80055.4s
+[done 429/500] thread=20 global_idx=448 (g=5846,e=4,s=14) state_time=101.3s best_idx=1 sims=1958 N=45 K=9 eta=13263.6s
+[start 453/500] thread=20 global_idx=452 (g=6131,e=1,s=7) elapsed=80142.2s
+[done 430/500] thread=21 global_idx=440 (g=2571,e=6,s=12) state_time=1180.2s best_idx=35 sims=22617 N=43 K=9 eta=13067.6s
+[start 454/500] thread=21 global_idx=453 (g=4532,e=1,s=7) elapsed=80272.1s
+[done 431/500] thread=18 global_idx=439 (g=3397,e=5,s=12) state_time=1230.9s best_idx=2 sims=24098 N=39 K=8 eta=12853.5s
+[start 455/500] thread=18 global_idx=454 (g=3292,e=1,s=9) elapsed=80287.6s
+[done 432/500] thread=4 global_idx=445 (g=5202,e=4,s=13) state_time=552.5s best_idx=31 sims=8076 N=39 K=8 eta=12660.6s
+[start 456/500] thread=4 global_idx=455 (g=9633,e=1,s=10) elapsed=80432.2s
+[done 433/500] thread=10 global_idx=419 (g=4491,e=1,s=9) state_time=3560.2s best_idx=23 sims=71056 N=39 K=8 eta=12451.6s
+[start 457/500] thread=10 global_idx=456 (g=5313,e=3,s=6) elapsed=80471.0s
+[done 434/500] thread=15 global_idx=431 (g=8317,e=2,s=12) state_time=1795.5s best_idx=28 sims=30334 N=61 K=13 eta=12245.5s
+[start 458/500] thread=15 global_idx=457 (g=2130,e=6,s=7) elapsed=80523.2s
+[done 435/500] thread=11 global_idx=420 (g=819,e=3,s=9) state_time=3558.1s best_idx=14 sims=71116 N=43 K=9 eta=12049.4s
+[start 459/500] thread=11 global_idx=458 (g=9218,e=5,s=10) elapsed=80638.5s
+[done 436/500] thread=5 global_idx=443 (g=7403,e=0,s=12) state_time=1352.9s best_idx=33 sims=24361 N=43 K=9 eta=11852.1s
+[start 460/500] thread=5 global_idx=459 (g=8265,e=7,s=10) elapsed=80742.2s
+[done 437/500] thread=12 global_idx=413 (g=21,e=2,s=8) state_time=4306.1s best_idx=30 sims=87229 N=39 K=8 eta=11667.1s
+[start 461/500] thread=12 global_idx=460 (g=7644,e=2,s=9) elapsed=80929.3s
+[done 438/500] thread=6 global_idx=418 (g=4322,e=6,s=10) state_time=4096.5s best_idx=68 sims=70468 N=75 K=15 eta=11456.2s
+[start 462/500] thread=6 global_idx=461 (g=157,e=5,s=8) elapsed=80932.3s
+[done 439/500] thread=17 global_idx=417 (g=7115,e=2,s=8) state_time=4458.6s best_idx=29 sims=88711 N=43 K=9 eta=11288.9s
+[start 463/500] thread=17 global_idx=462 (g=5808,e=2,s=8) elapsed=81242.8s
+[done 440/500] thread=13 global_idx=449 (g=8608,e=3,s=12) state_time=1456.5s best_idx=41 sims=25718 N=45 K=9 eta=11113.5s
+[start 464/500] thread=13 global_idx=463 (g=8545,e=3,s=11) elapsed=81498.9s
+[done 441/500] thread=3 global_idx=428 (g=3024,e=4,s=9) state_time=3837.1s best_idx=0 sims=74703 N=51 K=11 eta=10932.0s
+[start 465/500] thread=3 global_idx=464 (g=8266,e=2,s=8) elapsed=81712.0s
+[done 442/500] thread=16 global_idx=425 (g=6403,e=1,s=8) state_time=4304.5s best_idx=37 sims=87373 N=39 K=8 eta=10726.5s
+[start 466/500] thread=16 global_idx=465 (g=6112,e=0,s=9) elapsed=81743.0s
+[done 443/500] thread=19 global_idx=415 (g=9433,e=4,s=7) state_time=5151.7s best_idx=4 sims=103698 N=39 K=8 eta=10525.8s
+[start 467/500] thread=19 global_idx=466 (g=9280,e=6,s=11) elapsed=81805.6s
+[done 444/500] thread=7 global_idx=410 (g=3709,e=0,s=7) state_time=5278.8s best_idx=32 sims=104920 N=43 K=9 eta=10318.2s
+[start 468/500] thread=7 global_idx=467 (g=6350,e=2,s=6) elapsed=81808.9s
+[done 445/500] thread=1 global_idx=412 (g=4701,e=5,s=7) state_time=5202.6s best_idx=32 sims=103669 N=39 K=8 eta=10112.1s
+[start 469/500] thread=1 global_idx=468 (g=6128,e=3,s=9) elapsed=81816.1s
+[done 446/500] thread=9 global_idx=414 (g=5183,e=3,s=7) state_time=5447.0s best_idx=21 sims=107765 N=49 K=10 eta=9937.3s
+[start 470/500] thread=9 global_idx=469 (g=1966,e=3,s=10) elapsed=82074.7s
+[done 447/500] thread=0 global_idx=416 (g=9564,e=1,s=7) state_time=5361.7s best_idx=38 sims=106363 N=47 K=10 eta=9738.7s
+[start 471/500] thread=0 global_idx=470 (g=4424,e=7,s=11) elapsed=82135.4s
+[done 448/500] thread=8 global_idx=424 (g=8361,e=7,s=7) state_time=5104.7s best_idx=16 sims=102669 N=39 K=8 eta=9566.9s
+[start 472/500] thread=8 global_idx=471 (g=8076,e=2,s=10) elapsed=82422.7s
+[done 449/500] thread=22 global_idx=423 (g=1620,e=4,s=6) state_time=6295.8s best_idx=28 sims=124297 N=49 K=10 eta=9494.7s
+[start 473/500] thread=22 global_idx=472 (g=3453,e=4,s=8) elapsed=83590.9s
+[done 450/500] thread=2 global_idx=427 (g=5193,e=6,s=6) state_time=6320.4s best_idx=43 sims=123514 N=45 K=9 eta=9340.2s
+[start 474/500] thread=2 global_idx=473 (g=803,e=0,s=9) elapsed=84061.7s
+[done 451/500] thread=4 global_idx=455 (g=9633,e=1,s=10) state_time=4152.3s best_idx=44 sims=69555 N=87 K=18 eta=9189.9s
+[start 475/500] thread=4 global_idx=474 (g=2184,e=0,s=11) elapsed=84584.5s
+[done 452/500] thread=14 global_idx=450 (g=3045,e=2,s=9) state_time=4827.6s best_idx=38 sims=85490 N=71 K=15 eta=9014.0s
+[start 476/500] thread=14 global_idx=475 (g=6874,e=3,s=13) elapsed=84882.2s
+[done 453/500] thread=13 global_idx=463 (g=8545,e=3,s=11) state_time=3826.2s best_idx=37 sims=57728 N=103 K=21 eta=8852.7s
+[start 477/500] thread=13 global_idx=476 (g=4963,e=7,s=12) elapsed=85325.2s
+[done 454/500] thread=18 global_idx=454 (g=3292,e=1,s=9) state_time=5070.1s best_idx=10 sims=88539 N=75 K=15 eta=8648.6s
+[start 478/500] thread=18 global_idx=477 (g=153,e=3,s=14) elapsed=85357.7s
+[done 455/500] thread=19 global_idx=466 (g=9280,e=6,s=11) state_time=3814.3s best_idx=10 sims=57541 N=95 K=19 eta=8467.9s
+[start 479/500] thread=19 global_idx=478 (g=4218,e=1,s=14) elapsed=85619.8s
+[done 456/500] thread=18 global_idx=477 (g=153,e=3,s=14) state_time=387.8s best_idx=76 sims=5621 N=123 K=25 eta=8273.7s
+[start 480/500] thread=18 global_idx=479 (g=7559,e=5,s=13) elapsed=85745.5s
+[done 457/500] thread=12 global_idx=460 (g=7644,e=2,s=9) state_time=4907.9s best_idx=36 sims=88827 N=83 K=17 eta=8076.6s
+[start 481/500] thread=12 global_idx=480 (g=1556,e=4,s=14) elapsed=85837.2s
+[done 458/500] thread=19 global_idx=478 (g=4218,e=1,s=14) state_time=328.7s best_idx=65 sims=4734 N=97 K=20 eta=7881.7s
+[start 482/500] thread=19 global_idx=481 (g=3490,e=3,s=13) elapsed=85948.5s
+[done 459/500] thread=12 global_idx=480 (g=1556,e=4,s=14) state_time=282.6s best_idx=55 sims=4330 N=87 K=18 eta=7692.6s
+[start 483/500] thread=12 global_idx=482 (g=6731,e=2,s=14) elapsed=86119.8s
+[done 460/500] thread=11 global_idx=458 (g=9218,e=5,s=10) state_time=5585.6s best_idx=3 sims=82406 N=107 K=22 eta=7497.7s
+[start 484/500] thread=11 global_idx=483 (g=4185,e=2,s=14) elapsed=86224.1s
+[done 461/500] thread=11 global_idx=483 (g=4185,e=2,s=14) state_time=225.9s best_idx=43 sims=3651 N=87 K=18 eta=7313.6s
+[start 485/500] thread=11 global_idx=484 (g=7344,e=3,s=13) elapsed=86450.0s
+[done 462/500] thread=0 global_idx=470 (g=4424,e=7,s=11) state_time=4340.0s best_idx=116 sims=67613 N=119 K=24 eta=7112.7s
+[start 486/500] thread=0 global_idx=485 (g=3529,e=5,s=12) elapsed=86475.4s
+[done 463/500] thread=5 global_idx=459 (g=8265,e=7,s=10) state_time=5773.6s best_idx=0 sims=82316 N=97 K=20 eta=6913.8s
+[start 487/500] thread=5 global_idx=486 (g=7293,e=1,s=13) elapsed=86515.9s
+[done 464/500] thread=12 global_idx=482 (g=6731,e=2,s=14) state_time=413.0s best_idx=10 sims=5977 N=129 K=26 eta=6713.8s
+[start 488/500] thread=12 global_idx=487 (g=3407,e=2,s=12) elapsed=86532.8s
+[done 465/500] thread=8 global_idx=471 (g=8076,e=2,s=10) state_time=4204.0s best_idx=56 sims=71275 N=91 K=19 eta=6520.3s
+[start 489/500] thread=8 global_idx=488 (g=8160,e=6,s=13) elapsed=86626.7s
+[done 466/500] thread=14 global_idx=475 (g=6874,e=3,s=13) state_time=1971.3s best_idx=75 sims=23410 N=101 K=21 eta=6337.0s
+[start 490/500] thread=14 global_idx=489 (g=8793,e=3,s=13) elapsed=86853.5s
+[done 467/500] thread=23 global_idx=451 (g=5235,e=3,s=8) state_time=6852.5s best_idx=3 sims=109148 N=87 K=18 eta=6141.2s
+[start 491/500] thread=23 global_idx=490 (g=2330,e=3,s=14) elapsed=86907.9s
+[done 468/500] thread=6 global_idx=461 (g=157,e=5,s=8) state_time=6350.3s best_idx=59 sims=107487 N=81 K=17 eta=5968.0s
+[start 492/500] thread=6 global_idx=491 (g=4096,e=6,s=12) elapsed=87282.6s
+[done 469/500] thread=9 global_idx=469 (g=1966,e=3,s=10) state_time=5223.1s best_idx=79 sims=79800 N=113 K=23 eta=5770.2s
+[start 493/500] thread=9 global_idx=492 (g=858,e=1,s=13) elapsed=87297.8s
+[done 470/500] thread=23 global_idx=490 (g=2330,e=3,s=14) state_time=471.0s best_idx=94 sims=6228 N=145 K=29 eta=5577.4s
+[start 494/500] thread=23 global_idx=493 (g=7433,e=0,s=13) elapsed=87378.9s
+[done 471/500] thread=13 global_idx=476 (g=4963,e=7,s=12) state_time=2146.8s best_idx=53 sims=34024 N=71 K=15 eta=5385.7s
+[start 495/500] thread=13 global_idx=494 (g=5784,e=1,s=12) elapsed=87471.9s
+[done 472/500] thread=1 global_idx=468 (g=6128,e=3,s=9) state_time=5680.3s best_idx=52 sims=91737 N=83 K=17 eta=5190.5s
+[start 496/500] thread=1 global_idx=495 (g=7848,e=5,s=13) elapsed=87496.4s
+[done 473/500] thread=11 global_idx=484 (g=7344,e=3,s=13) state_time=1228.5s best_idx=59 sims=16081 N=91 K=19 eta=5004.9s
+[start 497/500] thread=11 global_idx=496 (g=4599,e=4,s=13) elapsed=87678.5s
+[done 474/500] thread=15 global_idx=457 (g=2130,e=6,s=7) state_time=7171.0s best_idx=59 sims=127034 N=87 K=18 eta=4810.2s
+[start 498/500] thread=15 global_idx=497 (g=3073,e=7,s=14) elapsed=87694.2s
+[done 475/500] thread=16 global_idx=465 (g=6112,e=0,s=9) state_time=5960.2s best_idx=38 sims=97954 N=97 K=20 eta=4616.0s
+[start 499/500] thread=16 global_idx=498 (g=8359,e=0,s=13) elapsed=87703.2s
+[done 476/500] thread=20 global_idx=452 (g=6131,e=1,s=7) state_time=7586.2s best_idx=36 sims=128531 N=91 K=19 eta=4423.3s
+[start 500/500] thread=20 global_idx=499 (g=1464,e=1,s=14) elapsed=87728.4s
+[done 477/500] thread=19 global_idx=481 (g=3490,e=3,s=13) state_time=1806.1s best_idx=78 sims=24176 N=107 K=22 eta=4231.4s
+[done 478/500] thread=21 global_idx=453 (g=4532,e=1,s=7) state_time=7662.9s best_idx=36 sims=130542 N=91 K=19 eta=4047.2s
+[done 479/500] thread=20 global_idx=499 (g=1464,e=1,s=14) state_time=386.6s best_idx=34 sims=5384 N=133 K=27 eta=3863.1s
+[done 480/500] thread=18 global_idx=479 (g=7559,e=5,s=13) state_time=2496.9s best_idx=64 sims=28329 N=117 K=24 eta=3676.8s
+[done 481/500] thread=15 global_idx=497 (g=3073,e=7,s=14) state_time=563.3s best_idx=84 sims=7300 N=129 K=26 eta=3486.3s
+[done 482/500] thread=5 global_idx=486 (g=7293,e=1,s=13) state_time=1813.0s best_idx=6 sims=22353 N=103 K=21 eta=3298.6s
+[done 483/500] thread=3 global_idx=464 (g=8266,e=2,s=8) state_time=6819.0s best_idx=65 sims=114239 N=97 K=20 eta=3116.0s
+[done 484/500] thread=17 global_idx=462 (g=5808,e=2,s=8) state_time=7325.0s best_idx=29 sims=114411 N=91 K=19 eta=2927.9s
+[done 485/500] thread=1 global_idx=495 (g=7848,e=5,s=13) state_time=1157.6s best_idx=32 sims=16461 N=103 K=21 eta=2741.9s
+[done 486/500] thread=12 global_idx=487 (g=3407,e=2,s=12) state_time=2196.9s best_idx=53 sims=37535 N=97 K=20 eta=2556.0s
+[done 487/500] thread=4 global_idx=474 (g=2184,e=0,s=11) state_time=4276.8s best_idx=78 sims=63686 N=107 K=22 eta=2372.1s
+[done 488/500] thread=10 global_idx=456 (g=5313,e=3,s=6) state_time=8396.7s best_idx=59 sims=143630 N=81 K=17 eta=2185.3s
+[done 489/500] thread=14 global_idx=489 (g=8793,e=3,s=13) state_time=2068.2s best_idx=89 sims=27274 N=107 K=22 eta=2000.3s
+[done 490/500] thread=11 global_idx=496 (g=4599,e=4,s=13) state_time=1272.6s best_idx=6 sims=18994 N=99 K=20 eta=1815.3s
+[done 491/500] thread=16 global_idx=498 (g=8359,e=0,s=13) state_time=1304.4s best_idx=68 sims=19923 N=111 K=23 eta=1631.5s
+[done 492/500] thread=2 global_idx=473 (g=803,e=0,s=9) state_time=4955.6s best_idx=76 sims=93301 N=95 K=19 eta=1447.4s
+[done 493/500] thread=9 global_idx=492 (g=858,e=1,s=13) state_time=1748.4s best_idx=54 sims=25116 N=119 K=24 eta=1264.3s
+[done 494/500] thread=8 global_idx=488 (g=8160,e=6,s=13) state_time=2523.6s best_idx=5 sims=31754 N=125 K=25 eta=1082.8s
+[done 495/500] thread=0 global_idx=485 (g=3529,e=5,s=12) state_time=2755.0s best_idx=85 sims=42056 N=87 K=18 eta=901.3s
+[done 496/500] thread=22 global_idx=472 (g=3453,e=4,s=8) state_time=5963.3s best_idx=35 sims=111790 N=87 K=18 eta=722.2s
+[done 497/500] thread=6 global_idx=491 (g=4096,e=6,s=12) state_time=2302.7s best_idx=18 sims=42318 N=97 K=20 eta=540.8s
+[done 498/500] thread=7 global_idx=467 (g=6350,e=2,s=6) state_time=7778.2s best_idx=57 sims=142902 N=81 K=17 eta=359.8s
+[done 499/500] thread=13 global_idx=494 (g=5784,e=1,s=12) state_time=2245.0s best_idx=61 sims=39195 N=93 K=19 eta=179.8s
+[done 500/500] thread=23 global_idx=493 (g=7433,e=0,s=13) state_time=2373.9s best_idx=39 sims=32136 N=129 K=26 eta=0.0s
+
+=== Arm done: 500 states in 89752.8s ===
+  [csv] wrote 500 records to reinvest_experiment/run500/A12/seed_43/reinvest_results.csv
+  [csv] wrote 35280 cluster-assign rows to reinvest_experiment/run500/A12/seed_43/cluster_table.csv
+
+=== Summary (A12) ===
+  valid cases        = 500 / 500
+  avg actual_sims    = 78953  (min=43, max=212509)
+  avg time           = 4264.65s
