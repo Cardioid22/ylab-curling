@@ -21,7 +21,7 @@
 #   ./scripts/run_reinvest.sh --arms "A3"          [OPTIONS]   # bear (深さ5担当)
 #
 # Options:
-#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN, A1N, A2N, A12, A12N) [必須]
+#   --arms LIST              実行するアーム (カンマ区切り; A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN, A1N, A2N, A12, A12N, A8N, A5N, A5N4) [必須]
 #                            A7=ScoreScreen (得点スクリーン型 Proposed; root で E[score] ε帯+リスク多様性選別)
 #   --base-seed S            先頭 seed; S..S+K-1 を使う (default: 42)
 #   --num-seeds K            seed 数 (default: 5)
@@ -80,6 +80,18 @@ arm_spec() {
         A11b)   echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 2 --pw-alpha 0.3 --pw-k0 2" ;;  # PW 保守: k(200)=10
         A11c)   echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 1 --pw-alpha 0.3 --pw-k0 2" ;;  # PW 最小: k(200)=5
         A11aN)  echo "ClusterPW 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --pw-c 1 --pw-alpha 0.5 --pw-k0 2 --noisy-tree" ;;  # PW + 実現性込み
+        # ---- run500 第4弾 (査読対応アブレーション, 全て --noisy-tree, P=200): A9P5N の利得の分解 ----
+        # 因子 = 子数 K (4 vs ⌈0.2N⌉≈18 vs 全部) × 選択規則 (価値/medoid/ランダム) × クラスタ構造 (あり/なし)
+        #   A1N   (済)  : 全候補                         = 基準
+        #   A9P5N (済)  : クラスタ価値上位4 (価値+クラスタ, K=4)
+        #   A8N         : 価値上位4 (クラスタ無し, K=4)   → A9P5N との差 = クラスタ構造の寄与 (本命ペア)
+        #   A5N4        : ランダム4 (K=4)                → A8N との差 = 価値スクリーンの寄与 (K=4 で単離)
+        #   A2N         : 全クラスタ medoid (K≈18)       → 既存手法+noisy (査読の「既存手法との比較」)
+        #   A5N         : ランダム K≈18                  → A2N との差 = クラスタ構造の寄与 (価値なし側)
+        # 注意: A2N/A5N は K≈18 なので A9P5N との直接比較には子数の交絡がある (解釈は A8N 経由で行う)
+        A8N)   echo "ScoreTopK 3 $P_BASE $R_BASE $RETENTION --r-pre 5 --noisy-tree" ;;
+        A5N)   echo "RandomK  3 $P_BASE $R_BASE $RETENTION --noisy-tree" ;;
+        A5N4)  echo "RandomK  3 $P_BASE $R_BASE $RETENTION --noisy-tree --k-abs 4" ;;
         # ---- run500 第3弾: 階層ベイズ縮約 + Thompson sampling (A12) ----
         # 縮約 = クラスタ平均を事前分布に候補価値を事後化 (winner's curse 対策)、全クラスタを子に持ち
         # Thompson で訪問配分 (ベイズ版 PW)。最終着手は事後平均最大。既定 obs_var=2.0, prior_scale=2.0。
@@ -183,7 +195,7 @@ mkdir -p "$PARENT_DIR"
 IFS=',' read -ra ARM_LIST <<< "$ARMS"
 for ARM in "${ARM_LIST[@]}"; do
     if ! arm_spec "$ARM" >/dev/null 2>&1; then
-        echo "Error: unknown arm '$ARM' (valid: A1..A9, A9P5, A9P5N, A9R025/05/10, A11a/b/c, A11aN, A1N, A2N, A12, A12N)" >&2
+        echo "Error: unknown arm '$ARM' (valid: 上記ヘルプ参照; A8N/A5N/A5N4 は査読対応アブレーション)" >&2
         exit 1
     fi
 done

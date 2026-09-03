@@ -145,6 +145,7 @@ void ReinvestExperiment::expandNode(
         // distDelta クラスタリング (Proposed 全ノード / ScoreScreen・ScoreTopK・ClusterValue の depth>0 ノード)
         auto dist_table = mcts_shared::makeDistanceTableDelta(node.state, node.result_states);
         int K = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
+        if (config_.k_abs > 0 && node.depth == 0) K = config_.k_abs;  // 子数の絶対指定 (root のみ)
         K = std::min(K, N);
         node.clusters = mcts_shared::runClustering(dist_table, K);
         node.medoid_indices = mcts_shared::calculateMedoids(dist_table, node.clusters);
@@ -157,6 +158,7 @@ void ReinvestExperiment::expandNode(
         // クラスタリングと同じ削減率だが賢さ無し → A5 でクラスタリングの寄与を単離。
         // シードは (state_seed, 盤面ハッシュ) 由来でノード単位に決定的 (playout 順序非依存・再現可能)。
         int K = std::max(1, static_cast<int>(std::ceil(N * config_.retention_rate)));
+        if (config_.k_abs > 0 && node.depth == 0) K = config_.k_abs;  // 子数の絶対指定 (root のみ)
         K = std::min(K, N);
         std::vector<int> idx(N);
         std::iota(idx.begin(), idx.end(), 0);
@@ -985,6 +987,9 @@ void ReinvestExperiment::run() {
                   ? "" : "  (ClusterValue 系以外では無効)") << std::endl;
     if (config_.mode == MctsMode::ClusterTS) {
         std::cout << "  ts (obs_var, prior_scale) = " << config_.ts_obs_var << ", " << config_.ts_prior_scale << std::endl;
+    }
+    if (config_.k_abs > 0) {
+        std::cout << "  k_abs              = " << config_.k_abs << "  (root の子数を絶対指定; Proposed/RandomK のみ)" << std::endl;
     }
     if (config_.mode == MctsMode::ClusterPW) {
         std::cout << "  pw (C, alpha, k0)  = " << config_.pw_c << ", " << config_.pw_alpha << ", " << config_.pw_k0

@@ -69,6 +69,9 @@ struct ReinvestConfig {
     //   ts_prior_scale: スクリーン由来の事前分散の倍率 (スクリーン値と木の値のモデル不一致に対する保険)
     double ts_obs_var = 2.0;
     double ts_prior_scale = 2.0;
+    // 子数の絶対指定 (--k-abs; 0=無効)。Proposed/RandomK の K = ceil(N·retention) を上書きする。
+    // アブレーション用: RandomK --k-abs 4 で「ランダム4子」= 価値スクリーンの寄与を K=4 で単離する対照。
+    int k_abs = 0;
     // 開ループ・リサンプリング木 (--noisy-tree): 木の構造(候補/クラスタ/スクリーン)は決定的着地で
     // 作るが、価値評価は毎訪問エッジを外乱ありで再シミュレーションした実状態で行う。
     // R_pre推定も候補手を毎回打ち直す (審判の resample_first_shot と同じ規約)。

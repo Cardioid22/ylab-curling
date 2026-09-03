@@ -842,6 +842,7 @@ int main(int argc, char const* argv[])
         int score_screen_v_target_arg = 50;             // ScoreScreen: K_cap = playouts / v_target
         int cv_k_opp_arg = 8;                           // ClusterValueDeep (A10): 相手番ノードの子数
         double risk_lambda_arg = 0.0;                   // ClusterValue: クラスタ価値 = μ − λσ の λ (--risk-lambda)
+        int k_abs_arg = 0;                              // 子数の絶対指定 (--k-abs; Proposed/RandomK の root)
         double ts_obs_var_arg = 2.0;                    // ClusterTS (A12): プレイアウト報酬の観測分散
         double ts_prior_scale_arg = 2.0;                // ClusterTS (A12): 事前分散の倍率
         double pw_c_arg = 1.0;                          // ClusterPW (A11): k(N)=max(k0, ceil(C·N^α))
@@ -1003,6 +1004,11 @@ int main(int argc, char const* argv[])
             }
             if (std::string(argv[i]) == "--risk-lambda" && i + 1 < argc) {
                 risk_lambda_arg = std::atof(argv[i + 1]);
+                i++;
+            }
+            if (std::string(argv[i]) == "--k-abs" && i + 1 < argc) {
+                k_abs_arg = std::atoi(argv[i + 1]);
+                if (k_abs_arg < 0) k_abs_arg = 0;
                 i++;
             }
             if (std::string(argv[i]) == "--ts-obs-var" && i + 1 < argc) {
@@ -1834,6 +1840,7 @@ int main(int argc, char const* argv[])
             cfg.risk_lambda = risk_lambda_arg;           // ClusterValue リスク統合 (μ − λσ)
             cfg.pw_c = pw_c_arg; cfg.pw_alpha = pw_alpha_arg; cfg.pw_k0 = pw_k0_arg;  // ClusterPW (A11)
             cfg.ts_obs_var = ts_obs_var_arg; cfg.ts_prior_scale = ts_prior_scale_arg;  // ClusterTS (A12)
+            cfg.k_abs = k_abs_arg;
             cfg.noisy_tree = noisy_tree_arg;             // 開ループ・リサンプリング木
             cfg.n_states = depth3_n_states_arg;          // --states を共用
             cfg.num_threads = depth3_threads_arg;        // --threads を共用
@@ -1879,6 +1886,7 @@ int main(int argc, char const* argv[])
                 c.risk_lambda = risk_lambda_arg;
                 c.pw_c = pw_c_arg; c.pw_alpha = pw_alpha_arg; c.pw_k0 = pw_k0_arg;
                 c.ts_obs_var = ts_obs_var_arg; c.ts_prior_scale = ts_prior_scale_arg;
+                c.k_abs = k_abs_arg;
                 c.noisy_tree = noisy_tree_arg;
                 c.num_threads = 1;   // 並列はゲーム単位
                 c.seed = depth3_seed_arg;
