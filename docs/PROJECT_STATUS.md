@@ -361,6 +361,10 @@ python scripts/regret_stats.py --joined <OUT>/reinvest_joined.csv --out <OUT>
   C++/PyTorch の出力一致を `--check-model` / `python/check_model.py` で確認済み (小数4桁一致)。
 - **結果 (2026-09-04)**: ローカル (8 論理コア, Jiritsukun と CPU 競合) で **5-14 敗**。プロトコル・時間管理は問題なし (時間は余らせ気味 → hard_max_sims=256 で修正)。
   敗因は評価の粗さ + 大差時の価値飽和 (E9 で全手 v=-1.000 → margin 項で修正)。
+- **ローカル A/B (2026-09-04, 20局×2エンド, 0.5 s/投)**: 残差モデル v2 (53局で学習, logits=log p_hand + NN) が手作りに **15-5**。
+  非残差 v1 は 6-14、手作りの較正 (--fit-eval, CE 2.61→1.80) 単体は 8-12、較正版への残差 v3 は 12-8 / 較正版と 10-10 → **現最良 = v2**。
+  局所リファインは 7-13 で OFF。Linux 初期化 300 s 超の原因は速度逆算の log(r-29.9) NaN → 修正済 (79ef105)、lion のバイナリは要再ビルド。
+- **サーバー使用はユーザー許可制** (2 日後くらいまで満載)。それまでローカル (8 論理コア, 30 局/40 分) でデータ蓄積と世代交代を回す。
 - **次**: 研究室サーバー (現在 4 台とも run500 系ジョブで満載) が空き次第 `bash gpw_agent/scripts/gen_selfplay.sh data/gen1 16 40 6 0.6 0.15`
   で世代 0 データ (~640 局) → 学習 → model vs 手作りを 100 局で比較 → expert iteration。Linux ビルドは lion docker で確認済み (`gpw_agent/build/gpw_agent`)。
 - パス: `gpw_agent/README.md` (使い方), `gpw_agent/scripts/match_local_jiritsu.sh` (ローカル対戦), `gpw_agent/data/` (ローカル生成データ)

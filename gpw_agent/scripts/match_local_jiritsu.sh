@@ -15,7 +15,7 @@ sleep 2
 cd "$JIR" && python play_local.py --sim-port 7000 --server-port 10001 > "$LOG/jiritsu.log" 2>&1 &
 JP=$!
 sleep 2
-cd "$ROOT/gpw_agent" && ./build/Release/gpw_agent.exe localhost 10000 --threads "$THREADS" --name gpw_agent --log "$LOG/gpw_shots.log" > "$LOG/gpw.log" 2>&1
+cd "$ROOT/gpw_agent" && ${GPW_BIN:-./build/Release/gpw_agent.exe} localhost 10000 --threads "$THREADS" --name gpw_agent --log "$LOG/gpw_shots.log" ${GPW_EXTRA:-} > "$LOG/gpw.log" 2>&1
 echo "gpw_agent exited: $?"
 sleep 5
 kill $JP $JS $SRV 2>/dev/null
