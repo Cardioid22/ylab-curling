@@ -25,6 +25,7 @@ struct CandidateConfig {
     int max_hit_targets = 3;    // opponent stones that get the full hit menu
     int max_freeze_targets = 2;
     int max_comearound_guards = 3;
+    int max_own_guards = 2;     // no new guard candidates once this many own stones sit in the FGZ
 };
 
 class CandidateGenerator {

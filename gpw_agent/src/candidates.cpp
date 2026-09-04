@@ -89,15 +89,22 @@ std::vector<Candidate> CandidateGenerator::Generate(const dc::GameState& s, dc::
     }
 
     // ---- guards -------------------------------------------------------------
+    // Stacking a third guard while the opponent fills the open side of the house
+    // lost big ends against Jiritsukun-Jr: cap the number of own guards.
+    int my_guards = 0;
+    for (const auto& st : stones) if (st.team == my && st.in_fgz) ++my_guards;
     const dc::Vector2 guard_targets[] = {
         {0.f, kTeeY - 2.7f}, {0.f, kTeeY - 3.8f},
         {-1.1f, kTeeY - 3.0f}, {1.1f, kTeeY - 3.0f},
     };
-    for (const auto& t : guard_targets) {
-        AddDraw(out, t, InwardRot(t.x), Kind::Guard, "guard" + XY(t));
+    if (my_guards < cfg_.max_own_guards) {
+        for (const auto& t : guard_targets) {
+            AddDraw(out, t, InwardRot(t.x), Kind::Guard, "guard" + XY(t));
+        }
     }
     // Guard my best house stone.
     for (const auto& st : stones) {
+        if (my_guards >= cfg_.max_own_guards) break;
         if (st.team == my && st.in_house) {
             dc::Vector2 t(st.p.x * 0.75f, kTeeY - 2.9f);
             AddDraw(out, t, InwardRot(t.x), Kind::Guard, "cover" + XY(t));
