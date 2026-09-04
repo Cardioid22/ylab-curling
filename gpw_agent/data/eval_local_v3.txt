@@ -1,0 +1,13 @@
+# gpw_agent evaluation parameters
+end_dist 0.00374532 0.0131086 0.0318352 0.11985 0.0505618 0.391386 0.209738 0.11985 0.0599251
+hammer_base 1.2375
+count_kappa 0.775
+quality_w 0.25
+cover_bonus 0.00625
+exposed_penalty 0.646875
+covered_penalty 0.15
+sigma0 1.34781
+sigma_r 0.01875
+guard_value 0.001875
+margin_w 0.02
+model data/model_local_v3.txt

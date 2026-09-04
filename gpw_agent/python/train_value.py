@@ -3,6 +3,8 @@
 
 Records come from `gpw_agent --selfplay --out FILE` (pre-shot states). The target is the
 hammer team's result of the end the record belongs to (k = -4..4, 9 classes).
+The network is a residual on the hand-crafted distribution p_hand stored in each record:
+logits = log(p_hand + 1e-4) + net(x). Old records can be annotated with `gpw_agent --annotate in out`.
 
 Feature layout (FEATURE_VERSION 1) must match src/nn.cpp::EncodeFeatures:
   per stone (6): x, y - TEE_Y, +1 hammer / -1 non-hammer, in_house, dist_tee, in_fgz
@@ -25,7 +27,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-FEATURE_VERSION = 1
+FEATURE_VERSION = 2
+LOG_EPS = 1e-4
 TEE_Y = 38.405
 HOUSE_R = 1.829
 STONE_R = 0.145
@@ -90,9 +93,11 @@ class DeepSetsNet(nn.Module):
         self.head1 = nn.Linear(2 * h2 + NG, hh1)
         self.head2 = nn.Linear(hh1, hh2)
         self.out = nn.Linear(hh2, K)
+        nn.init.zeros_(self.out.weight)   # start exactly at the hand-crafted distribution
+        nn.init.zeros_(self.out.bias)
 
-    def forward(self, stones, mask, g):
-        # stones: B x 16 x NS, mask: B x 16 (1 = present), g: B x NG
+    def forward(self, stones, mask, g, log_hand):
+        # stones: B x 16 x NS, mask: B x 16 (1 = present), g: B x NG, log_hand: B x K
         h = F.relu(self.phi1(stones))
         h = F.relu(self.phi2(h))
         m = mask.unsqueeze(-1)
@@ -102,12 +107,12 @@ class DeepSetsNet(nn.Module):
         x = torch.cat([s, mx, g], dim=1)
         x = F.relu(self.head1(x))
         x = F.relu(self.head2(x))
-        return self.out(x)
+        return self.out(x) + log_hand
 
 
 def export(model, path):
     with open(path, "w") as f:
-        f.write("gpw_value_v1\n")
+        f.write("gpw_value_v2\n")
         f.write(f"F {NS} G {NG} K {K}\n")
         for name in ["phi1", "phi2", "head1", "head2", "out"]:
             lin = getattr(model, name)
@@ -119,7 +124,7 @@ def export(model, path):
 
 
 def load_records(paths, max_end, min_shot=0):
-    X, M, G, Y, GID = [], [], [], [], []
+    X, M, G, Y, GID, LH = [], [], [], [], [], []
     hist = np.zeros(K, dtype=np.int64)
     n_files = 0
     for p in paths:
@@ -132,14 +137,17 @@ def load_records(paths, max_end, min_shot=0):
                     continue
                 if rec["shot"] < min_shot:
                     continue
+                if "p_hand" not in rec:
+                    raise SystemExit(f"{p}: record without p_hand; run `gpw_agent --annotate in out` first")
                 k = max(-4, min(4, int(rec.get("end_result_hammer", 0))))
                 feats, n, g = encode(rec, max_end)
                 mask = np.zeros(16, dtype=np.float32)
                 mask[:n] = 1.0
                 X.append(feats); M.append(mask); G.append(g); Y.append(k + 4)
+                LH.append(np.log(np.array(rec["p_hand"], dtype=np.float64) + LOG_EPS).astype(np.float32))
                 GID.append(hash((p, rec["game"])) & 0xFFFFFFFF)
                 hist[k + 4] += 1
-    return (np.stack(X), np.stack(M), np.stack(G), np.array(Y, dtype=np.int64), np.array(GID)), hist, n_files
+    return (np.stack(X), np.stack(M), np.stack(G), np.array(Y, dtype=np.int64), np.array(GID), np.stack(LH)), hist, n_files
 
 
 def main():
@@ -169,7 +177,7 @@ def main():
     np.random.seed(args.seed)
 
     t0 = time.time()
-    (X, M, G, Y, GID), hist, n_files = load_records(paths, args.max_end)
+    (X, M, G, Y, GID, LH), hist, n_files = load_records(paths, args.max_end)
     print(f"loaded {len(Y)} records from {n_files} files in {time.time() - t0:.1f}s")
     dist = hist / max(1, hist.sum())
     print("hammer end-result distribution k=-4..4:", " ".join(f"{v:.3f}" for v in dist))
@@ -187,8 +195,10 @@ def main():
     def to_t(a):
         return torch.from_numpy(a)
 
-    Xtr, Mtr, Gtr, Ytr = to_t(X[tr]), to_t(M[tr]), to_t(G[tr]), to_t(Y[tr])
-    Xva, Mva, Gva, Yva = to_t(X[is_val]), to_t(M[is_val]), to_t(G[is_val]), to_t(Y[is_val])
+    Xtr, Mtr, Gtr, Ytr, Ltr = to_t(X[tr]), to_t(M[tr]), to_t(G[tr]), to_t(Y[tr]), to_t(LH[tr])
+    Xva, Mva, Gva, Yva, Lva = to_t(X[is_val]), to_t(M[is_val]), to_t(G[is_val]), to_t(Y[is_val]), to_t(LH[is_val])
+    hand_ce = F.cross_entropy(Lva, Yva).item()
+    print(f"hand-crafted val_ce={hand_ce:.4f} (the model must beat this)")
 
     model = DeepSetsNet()
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
@@ -201,11 +211,11 @@ def main():
         tot, cnt = 0.0, 0
         for i in range(0, n, args.batch):
             idx = perm[i:i + args.batch]
-            xs, ms, gs, ys = Xtr[idx].clone(), Mtr[idx], Gtr[idx], Ytr[idx]
+            xs, ms, gs, ys, ls = Xtr[idx].clone(), Mtr[idx], Gtr[idx], Ytr[idx], Ltr[idx]
             # mirror augmentation: flip x for a random half of the batch
             flip = (torch.rand(len(idx)) < 0.5).float().unsqueeze(-1)
             xs[:, :, 0] = xs[:, :, 0] * (1.0 - 2.0 * flip)
-            logits = model(xs, ms, gs)
+            logits = model(xs, ms, gs, ls)
             loss = F.cross_entropy(logits, ys)
             opt.zero_grad()
             loss.backward()
@@ -215,11 +225,12 @@ def main():
         sched.step()
         model.eval()
         with torch.no_grad():
-            vl = F.cross_entropy(model(Xva, Mva, Gva), Yva).item()
-            acc = (model(Xva, Mva, Gva).argmax(1) == Yva).float().mean().item()
+            vlog = model(Xva, Mva, Gva, Lva)
+            vl = F.cross_entropy(vlog, Yva).item()
+            acc = (vlog.argmax(1) == Yva).float().mean().item()
             # baseline: predict the marginal distribution
             base = -np.sum(dist * np.log(np.maximum(dist, 1e-9)))
-        print(f"epoch {ep + 1}/{args.epochs} train_ce={tot / cnt:.4f} val_ce={vl:.4f} val_acc={acc:.3f} (marginal ce={base:.4f})")
+        print(f"epoch {ep + 1}/{args.epochs} train_ce={tot / cnt:.4f} val_ce={vl:.4f} val_acc={acc:.3f} (hand ce={hand_ce:.4f}, marginal ce={base:.4f})")
         if vl < best_val:
             best_val = vl
             export(model, args.out)

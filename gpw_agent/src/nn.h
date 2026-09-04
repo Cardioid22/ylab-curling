@@ -35,7 +35,9 @@ public:
     bool Load(const std::string& path);
     bool loaded() const { return loaded_; }
     // Returns p(k) for k = -4..4 (index k + 4), hammer perspective.
-    std::array<double, kNnClasses> EndDist(const NnFeatures& f) const;
+    // `hand` is the hand-crafted distribution; the network predicts a residual
+    // on its log-probabilities (logits = log(hand) + net(x)).
+    std::array<double, kNnClasses> EndDist(const NnFeatures& f, const std::array<double, kNnClasses>& hand) const;
     const std::string& info() const { return info_; }
 
 private:

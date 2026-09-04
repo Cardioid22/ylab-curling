@@ -31,6 +31,7 @@ struct EvalParams {
     std::string model_path;       // learned end-result model (empty = hand-crafted evaluation)
 
     bool LoadFromFile(const std::string& path);
+    bool SaveToFile(const std::string& path) const;
     std::string Describe() const;
 };
 
@@ -71,6 +72,8 @@ public:
 
     // End-result distribution (hammer perspective) used by Value().
     std::array<double, 9> EndDistribution(const dc::GameState& s) const;
+    // Hand-crafted distribution only (the base the learned model corrects).
+    std::array<double, 9> HandDistribution(const dc::GameState& s) const;
 
 private:
     EvalParams p_;

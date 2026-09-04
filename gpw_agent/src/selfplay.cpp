@@ -2,6 +2,7 @@
 
 #include "sim.h"
 
+#include <array>
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -22,6 +23,7 @@ struct Record {
     double budget, used;
     int end_index;
     int end_result_hammer = 0;  // filled when the end finishes
+    std::array<double, 9> p_hand{};  // hand-crafted end-result distribution of the pre-shot state
 };
 
 void WriteRecords(std::ofstream& out, int game, int max_end, const std::vector<Record>& recs, dc::Team winner) {
@@ -47,7 +49,9 @@ void WriteRecords(std::ofstream& out, int game, int max_end, const std::vector<R
         out << "],\"shot_v\":[" << r.shot.vx << "," << r.shot.vy << "]," << "\"cw\":" << (r.shot.cw ? 1 : 0)
             << ",\"label\":\"" << r.label << "\",\"value\":" << r.value << ",\"det\":" << r.det
             << ",\"sims\":" << r.sims << ",\"budget\":" << r.budget << ",\"used\":" << r.used
-            << ",\"end_result_hammer\":" << r.end_result_hammer << ",\"result\":" << win << "}\n";
+            << ",\"end_result_hammer\":" << r.end_result_hammer << ",\"result\":" << win << ",\"p_hand\":[";
+        for (int k = 0; k < 9; ++k) out << r.p_hand[k] << (k < 8 ? "," : "");
+        out << "]}\n";
     }
 }
 
@@ -65,8 +69,11 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
     dc::simulators::SimulatorFCV1Factory simf;
     dc::players::PlayerNormalDistFactory pf;  // tournament defaults
 
-    auto make = [&](const std::string& eval_file, const std::string& model, double budget, const std::string& name) {
+    auto make = [&](const std::string& eval_file, const std::string& model, double budget, const std::string& name,
+                    bool refine, int reply_shots) {
         AgentOptions o;
+        o.search_cfg.refine = refine;
+        o.search_cfg.reply_last_shots = reply_shots;
         o.threads = cfg.threads;
         o.verbose = cfg.verbose;
         o.fixed_budget = budget;
@@ -81,8 +88,8 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
         a->Init(setting, simf, pf);
         return a;
     };
-    auto A = make(cfg.eval_a, cfg.model_a, cfg.budget_a, "A");
-    auto B = make(cfg.eval_b, cfg.model_b, cfg.budget_b, "B");
+    auto A = make(cfg.eval_a, cfg.model_a, cfg.budget_a, "A", cfg.refine_a, cfg.reply_shots_a);
+    auto B = make(cfg.eval_b, cfg.model_b, cfg.budget_b, "B", cfg.refine_b, cfg.reply_shots_b);
     Sim referee(setting, simf, pf);
 
     std::ofstream out;
@@ -115,6 +122,7 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
                 rec.who = who; rec.team = next; rec.state = before; rec.shot = shot; rec.label = r.label;
                 rec.value = r.value; rec.det = r.det_value; rec.sims = r.sims; rec.budget = ag->last_budget();
                 rec.used = r.elapsed; rec.end_index = before.end;
+                rec.p_hand = ag->searcher().evaluator().HandDistribution(before);
                 recs.push_back(std::move(rec));
             }
             state = referee.Apply(before, shot, true);

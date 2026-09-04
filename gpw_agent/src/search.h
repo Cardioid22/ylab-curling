@@ -24,7 +24,7 @@ struct SearchConfig {
     int reply_keep = 8;          // candidates kept for the noisy rounds when the reply look-ahead is on
     int reply_min_sims = 2;      // first-round samples per candidate in reply mode
     double sim_cost_init = 0.03; // seconds per physics call (updated online)
-    bool refine = true;          // local speed/angle refinement of the chosen shot
+    bool refine = false;         // local speed/angle refinement of the chosen shot (A/B 7-13, off)
     bool verbose = false;
 };
 

@@ -26,9 +26,26 @@ bool EvalParams::LoadFromFile(const std::string& path) {
         else if (key == "sigma0") in >> sigma0;
         else if (key == "sigma_r") in >> sigma_r;
         else if (key == "guard_value") in >> guard_value;
+        else if (key == "margin_w") in >> margin_w;
         else if (key == "model") in >> model_path;
         else { std::string rest; std::getline(in, rest); }
     }
+    return true;
+}
+
+bool EvalParams::SaveToFile(const std::string& path) const {
+    std::ofstream out(path);
+    if (!out) return false;
+    out << "# gpw_agent evaluation parameters\n";
+    out << "end_dist";
+    for (double v : end_dist) out << " " << v;
+    out << "\n";
+    out << "hammer_base " << hammer_base << "\n" << "count_kappa " << count_kappa << "\n"
+        << "quality_w " << quality_w << "\n" << "cover_bonus " << cover_bonus << "\n"
+        << "exposed_penalty " << exposed_penalty << "\n" << "covered_penalty " << covered_penalty << "\n"
+        << "sigma0 " << sigma0 << "\n" << "sigma_r " << sigma_r << "\n" << "guard_value " << guard_value << "\n"
+        << "margin_w " << margin_w << "\n";
+    if (!model_path.empty()) out << "model " << model_path << "\n";
     return true;
 }
 
@@ -119,10 +136,13 @@ Evaluator::Evaluator(const EvalParams& params, const dc::GameSetting& setting)
 }
 
 std::array<double, 9> Evaluator::EndDistribution(const dc::GameState& s) const {
+    std::array<double, 9> hand = HandDistribution(s);
+    if (has_model()) return net_->EndDist(EncodeFeatures(s, setting_.max_end), hand);
+    return hand;
+}
+
+std::array<double, 9> Evaluator::HandDistribution(const dc::GameState& s) const {
     std::array<double, 9> p{};
-    if (has_model()) {
-        return net_->EndDist(EncodeFeatures(s, setting_.max_end));
-    }
     EndEstimate est = EstimateEnd(s);
     double cdf_prev = 0;
     for (int k = -4; k <= 4; ++k) {

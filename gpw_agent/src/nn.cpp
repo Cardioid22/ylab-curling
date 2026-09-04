@@ -73,7 +73,7 @@ bool ValueNet::Load(const std::string& path) {
     if (!in) return false;
     std::string magic;
     in >> magic;
-    if (magic != "gpw_value_v1") return false;
+    if (magic != "gpw_value_v2") return false;
     int F, G, K;
     std::string tag;
     in >> tag >> F >> tag >> G >> tag >> K;
@@ -91,7 +91,7 @@ bool ValueNet::Load(const std::string& path) {
     return true;
 }
 
-std::array<double, kNnClasses> ValueNet::EndDist(const NnFeatures& f) const {
+std::array<double, kNnClasses> ValueNet::EndDist(const NnFeatures& f, const std::array<double, kNnClasses>& hand) const {
     const int H = phi2_.out;
     std::vector<float> h1(phi1_.out), h2(H), sum(H, 0.f), mx(H, -1e30f);
     for (int i = 0; i < f.n_stones; ++i) {
@@ -111,6 +111,7 @@ std::array<double, kNnClasses> ValueNet::EndDist(const NnFeatures& f) const {
     head2_.Apply(a.data(), b.data());
     Relu(b.data(), head2_.out);
     out_.Apply(b.data(), z.data());
+    for (int k = 0; k < kNnClasses; ++k) z[k] += static_cast<float>(std::log(hand[k] + 1e-4));
     float m = *std::max_element(z.begin(), z.end());
     double tot = 0;
     std::array<double, kNnClasses> p{};

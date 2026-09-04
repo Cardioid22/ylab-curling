@@ -10,13 +10,13 @@ import json
 import numpy as np
 import torch
 
-from train_value import DeepSetsNet, encode, K
+from train_value import DeepSetsNet, encode, K, LOG_EPS
 
 
 def load_model(path):
     with open(path) as f:
         tokens = f.read().split()
-    assert tokens[0] == "gpw_value_v1"
+    assert tokens[0] == "gpw_value_v2"
     pos = 1
     assert tokens[pos] == "F"; F_ = int(tokens[pos + 1]); assert tokens[pos + 2] == "G"; G_ = int(tokens[pos + 3])
     assert tokens[pos + 4] == "K"; K_ = int(tokens[pos + 5]); pos += 6
@@ -52,8 +52,9 @@ def main():
             rec = json.loads(line)
             feats, n, g = encode(rec, rec.get("max_end", args.max_end))
             mask = np.zeros(16, dtype=np.float32); mask[:n] = 1.0
+            lh = np.log(np.array(rec["p_hand"], dtype=np.float64) + LOG_EPS).astype(np.float32)
             with torch.no_grad():
-                logits = model(torch.from_numpy(feats)[None], torch.from_numpy(mask)[None], torch.from_numpy(g)[None])
+                logits = model(torch.from_numpy(feats)[None], torch.from_numpy(mask)[None], torch.from_numpy(g)[None], torch.from_numpy(lh)[None])
                 p = torch.softmax(logits, dim=1)[0].numpy()
             print(f"rec {i} end={rec['end']} shot={rec['shot']} target={rec.get('end_result_hammer')}: "
                   + " ".join(f"{v:.4f}" for v in p))
