@@ -70,6 +70,16 @@ bool ParseArgs(int argc, char** argv, Args& a) {
         else if (s == "--no-refine-b") a.sp.refine_b = false;
         else if (s == "--reply-shots-a") a.sp.reply_shots_a = std::atoi(need(i));
         else if (s == "--reply-shots-b") a.sp.reply_shots_b = std::atoi(need(i));
+        else if (s == "--keep-a") a.sp.search_a.prescreen_keep = std::atoi(need(i));
+        else if (s == "--keep-b") a.sp.search_b.prescreen_keep = std::atoi(need(i));
+        else if (s == "--min-sims-a") a.sp.search_a.min_sims = std::atoi(need(i));
+        else if (s == "--min-sims-b") a.sp.search_b.min_sims = std::atoi(need(i));
+        else if (s == "--max-sims-a") a.sp.search_a.max_sims = std::atoi(need(i));
+        else if (s == "--max-sims-b") a.sp.search_b.max_sims = std::atoi(need(i));
+        else if (s == "--reply-keep-a") a.sp.search_a.reply_keep = std::atoi(need(i));
+        else if (s == "--reply-keep-b") a.sp.search_b.reply_keep = std::atoi(need(i));
+        else if (s == "--hard-max-sims-a") a.sp.search_a.hard_max_sims = std::atoi(need(i));
+        else if (s == "--hard-max-sims-b") a.sp.search_b.hard_max_sims = std::atoi(need(i));
         else if (s == "--games") a.sp.games = std::atoi(need(i));
         else if (s == "--ends") a.sp.ends = std::atoi(need(i));
         else if (s == "--budget-a") a.sp.budget_a = std::atof(need(i));

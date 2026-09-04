@@ -70,8 +70,9 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
     dc::players::PlayerNormalDistFactory pf;  // tournament defaults
 
     auto make = [&](const std::string& eval_file, const std::string& model, double budget, const std::string& name,
-                    bool refine, int reply_shots) {
+                    bool refine, int reply_shots, const SearchConfig& sc) {
         AgentOptions o;
+        o.search_cfg = sc;
         o.search_cfg.refine = refine;
         o.search_cfg.reply_last_shots = reply_shots;
         o.threads = cfg.threads;
@@ -88,8 +89,8 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
         a->Init(setting, simf, pf);
         return a;
     };
-    auto A = make(cfg.eval_a, cfg.model_a, cfg.budget_a, "A", cfg.refine_a, cfg.reply_shots_a);
-    auto B = make(cfg.eval_b, cfg.model_b, cfg.budget_b, "B", cfg.refine_b, cfg.reply_shots_b);
+    auto A = make(cfg.eval_a, cfg.model_a, cfg.budget_a, "A", cfg.refine_a, cfg.reply_shots_a, cfg.search_a);
+    auto B = make(cfg.eval_b, cfg.model_b, cfg.budget_b, "B", cfg.refine_b, cfg.reply_shots_b, cfg.search_b);
     Sim referee(setting, simf, pf);
 
     std::ofstream out;
