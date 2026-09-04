@@ -162,6 +162,10 @@ def main():
     ap.add_argument("--val-frac", type=float, default=0.1)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--threads", type=int, default=0)
+    ap.add_argument("--h1", type=int, default=64)
+    ap.add_argument("--h2", type=int, default=64)
+    ap.add_argument("--hh1", type=int, default=128)
+    ap.add_argument("--hh2", type=int, default=64)
     args = ap.parse_args()
 
     paths = []
@@ -200,7 +204,8 @@ def main():
     hand_ce = F.cross_entropy(Lva, Yva).item()
     print(f"hand-crafted val_ce={hand_ce:.4f} (the model must beat this)")
 
-    model = DeepSetsNet()
+    model = DeepSetsNet(h1=args.h1, h2=args.h2, hh1=args.hh1, hh2=args.hh2)
+    print(f"model sizes phi {args.h1}/{args.h2} head {args.hh1}/{args.hh2}, params {sum(p.numel() for p in model.parameters())}")
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
     n = len(Ytr)
