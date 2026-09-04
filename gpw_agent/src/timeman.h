@@ -8,7 +8,7 @@
 namespace gpw {
 
 struct TimeConfig {
-    double safety = 0.90;        // fraction of the remaining clock we allow ourselves to plan with
+    double safety = 0.85;        // fraction of the remaining clock we allow ourselves to plan with (0.90 left 14 s of 219 s)
     double fixed_overhead = 0.06;  // seconds reserved per shot for I/O, JSON, thread wake-ups
     double max_fraction = 0.35;  // never spend more than this fraction of the remaining clock on one shot
     double max_seconds = 20.0;   // absolute cap per shot
