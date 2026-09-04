@@ -13,6 +13,7 @@ struct TimeConfig {
     double max_fraction = 0.35;  // never spend more than this fraction of the remaining clock on one shot
     double max_seconds = 20.0;   // absolute cap per shot
     double min_seconds = 0.03;
+    double reserve_seconds = 8.0;  // never planned with: guards against network/JSON jitter over 80 shots
 };
 
 // Importance weights by my shot index within the end (0 = my first stone,
@@ -30,6 +31,7 @@ inline double ShotWeight(int my_shot_idx) {
 inline double ShotBudgetSeconds(const dc::GameState& s, dc::Team me,
                                 const dc::GameSetting& setting, const TimeConfig& cfg) {
     double remaining = s.thinking_time_remaining[TeamIdx(me)].count() / 1000.0;
+    remaining = std::max(0.0, remaining - cfg.reserve_seconds);
     int left_this_end = MyShotsLeftInEnd(s, me);
     if (left_this_end < 1) left_this_end = 1;
     int ends_after = 0;
