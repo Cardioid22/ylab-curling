@@ -27,3 +27,6 @@ experiments/**/*.pyc
 # Parallel agreement experiment results
 experiments/parallel_agreement_results/
 data/policy_param.dat
+
+# gpw_agent build directory
+/gpw_agent/build/
