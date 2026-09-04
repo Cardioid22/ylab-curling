@@ -37,7 +37,7 @@ void Searcher::Prewarm() {
     struct Job { dc::Vector2 target; float speed; bool cw; };
     std::vector<Job> jobs;
     for (float sp : speeds) {
-        for (float r = 29.f; r <= 42.5f; r += 0.1f) {
+        for (float r = 30.5f; r <= 42.5f; r += 0.1f) {
             jobs.push_back({dc::Vector2(0.f, r), sp, false});
             jobs.push_back({dc::Vector2(0.f, r), sp, true});
         }
@@ -133,13 +133,19 @@ SearchResult Searcher::Search(const dc::GameState& s, dc::Team me, double budget
         double cost_per_task = sim_cost_ * reply_factor;
         double est = tasks.size() * cost_per_task / pool_.Size();
         if (est > remaining) {
+            // Not enough time for everyone: shrink the alive set (it is ordered
+            // best-first) so that each survivor still gets n_target samples.
             int allowed = static_cast<int>(remaining * pool_.Size() / cost_per_task);
-            int per = allowed / std::max<int>(1, static_cast<int>(alive.size()));
-            if (per < 1) break;
+            int per_needed = std::max(2, n_target);
+            int k = allowed / per_needed;
+            if (k < 2) break;
+            if (k < static_cast<int>(alive.size())) alive.resize(k);
             tasks.clear();
             for (int i : alive) {
-                for (int k = 0; k < per; ++k) tasks.push_back({i});
+                int need = n_target - stats[i].n;
+                for (int q = 0; q < need; ++q) tasks.push_back({i});
             }
+            if (tasks.empty()) break;
         }
 
         std::vector<double> results(tasks.size(), 0.0);
@@ -195,6 +201,63 @@ SearchResult Searcher::Search(const dc::GameState& s, dc::Team me, double budget
         best = 0;  // deterministic best
         res.fallback = true;
     }
+
+    // ---- local refinement of the leader ----------------------------------------
+    // Small speed / angle perturbations of the chosen shot, evaluated with the
+    // same noisy procedure. Replaces the leader only on a clear improvement.
+    if (cfg_.refine && !res.fallback && !stop.load()) {
+        double elapsed = Seconds(t0, Clock::now());
+        double remaining = budget_sec - elapsed;
+        int n_ref = use_reply ? 8 : 16;
+        const double dv[] = {-0.02, 0.02, 0.0, 0.0, -0.015, 0.015, -0.015, 0.015};
+        const double da[] = {0.0, 0.0, -0.003, 0.003, -0.003, -0.003, 0.003, 0.003};
+        int n_var = use_reply ? 4 : 8;
+        double cost = static_cast<double>(n_var) * n_ref * sim_cost_ * reply_factor / pool_.Size();
+        if (remaining > cost * 1.2) {
+            const Shot base = stats[best].cand.shot;
+            double speed = std::sqrt(base.vx * base.vx + base.vy * base.vy);
+            double ang = std::atan2(base.vy, base.vx);
+            std::vector<CandStat> vars(n_var);
+            for (int v = 0; v < n_var; ++v) {
+                double sp = std::min(static_cast<double>(kMaxSpeed), std::max(0.5, speed + dv[v]));
+                double a = ang + da[v];
+                vars[v].cand.shot.vx = static_cast<float>(sp * std::cos(a));
+                vars[v].cand.shot.vy = static_cast<float>(sp * std::sin(a));
+                vars[v].cand.shot.cw = base.cw;
+                vars[v].cand.kind = stats[best].cand.kind;
+                vars[v].cand.label = stats[best].cand.label + " ~(" + Fmt(static_cast<float>(dv[v]), 3) + "," + Fmt(static_cast<float>(da[v]), 3) + ")";
+                vars[v].det_value = stats[best].det_value;
+            }
+            std::vector<double> rres(static_cast<size_t>(n_var) * n_ref, 0.0);
+            std::vector<char> rdone(rres.size(), 0);
+            pool_.ParallelFor(static_cast<int>(rres.size()), [&](int t, int w) {
+                if (stop.load(std::memory_order_relaxed)) return;
+                if (Clock::now() > deadline) { stop.store(true); return; }
+                const Candidate& c = vars[t / n_ref].cand;
+                dc::GameState after = sims_[w]->Apply(s, c.shot, true);
+                rres[t] = LeafValue(w, after, me, use_reply);
+                rdone[t] = 1;
+            });
+            for (size_t t = 0; t < rres.size(); ++t) {
+                if (!rdone[t]) continue;
+                vars[t / n_ref].sum += rres[t];
+                vars[t / n_ref].n += 1;
+                total_sims += reply_factor;
+            }
+            int bv = -1;
+            for (int v = 0; v < n_var; ++v) {
+                if (vars[v].n < n_ref / 2) continue;
+                if (bv < 0 || vars[v].Mean() > vars[bv].Mean()) bv = v;
+            }
+            // Require a margin over the incumbent (which has n samples already).
+            if (bv >= 0 && vars[bv].Mean() > stats[best].Mean() + 0.01) {
+                stats.push_back(vars[bv]);
+                best = static_cast<int>(stats.size()) - 1;
+                res.refined = true;
+            }
+        }
+    }
+
     res.shot = stats[best].cand.shot;
     res.label = stats[best].cand.label;
     res.value = stats[best].Mean();

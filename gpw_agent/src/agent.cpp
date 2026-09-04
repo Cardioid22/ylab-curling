@@ -1,5 +1,6 @@
 #include "agent.h"
 
+#include <algorithm>
 #include <chrono>
 #include <random>
 #include <iostream>
@@ -69,17 +70,26 @@ dc::Move Agent::Think(const dc::GameState& s) {
         if (opt_.explore_eps > 0.0) {
             static thread_local std::mt19937 rng(opt_.explore_seed + static_cast<unsigned>(TeamIdx(me_)));
             std::uniform_real_distribution<double> u(0.0, 1.0);
-            if (u(rng) < opt_.explore_eps) {
-                int k = 0;
-                for (const auto& st : last_.stats) { if (st.n > 0) ++k; }
-                k = std::min(k, opt_.explore_topk);
-                if (k > 1) {
-                    std::uniform_int_distribution<int> pick(0, k - 1);
-                    const auto& st = last_.stats[pick(rng)];
-                    last_.shot = st.cand.shot;
-                    last_.label = st.cand.label + " [explore]";
-                    last_.value = st.Mean();
+            if (u(rng) < opt_.explore_eps && !last_.stats.empty()) {
+                // Diversity-first exploration: pick a random shot kind, then a
+                // random candidate of that kind (so guards / freezes / raises get
+                // played even when the current evaluation never prefers them).
+                std::vector<int> kinds;
+                for (const auto& st : last_.stats) {
+                    int k = static_cast<int>(st.cand.kind);
+                    if (std::find(kinds.begin(), kinds.end(), k) == kinds.end()) kinds.push_back(k);
                 }
+                std::uniform_int_distribution<int> pk(0, static_cast<int>(kinds.size()) - 1);
+                int kind = kinds[pk(rng)];
+                std::vector<int> idx;
+                for (int i = 0; i < static_cast<int>(last_.stats.size()); ++i) {
+                    if (static_cast<int>(last_.stats[i].cand.kind) == kind) idx.push_back(i);
+                }
+                std::uniform_int_distribution<int> pi(0, static_cast<int>(idx.size()) - 1);
+                const auto& st = last_.stats[idx[pi(rng)]];
+                last_.shot = st.cand.shot;
+                last_.label = st.cand.label + " [explore]";
+                last_.value = st.Mean();
             }
         }
     } catch (const std::exception& e) {
@@ -107,7 +117,7 @@ void Agent::Log(const dc::GameState& s, const SearchResult& r, double budget, co
       << " budget=" << Fmt(static_cast<float>(budget), 2) << " used=" << Fmt(static_cast<float>(r.elapsed), 2)
       << " sims=" << r.sims << " cands=" << r.n_candidates << (r.used_reply ? " reply" : "")
       << " | " << r.label << " v=" << Fmt(static_cast<float>(r.value), 3)
-      << " det=" << Fmt(static_cast<float>(r.det_value), 3) << (r.fallback ? " FALLBACK" : "") << " " << note;
+      << " det=" << Fmt(static_cast<float>(r.det_value), 3) << (r.fallback ? " FALLBACK" : "") << (r.refined ? " refined" : "") << " " << note;
     if (opt_.verbose) {
         o << "\n";
         int k = 0;

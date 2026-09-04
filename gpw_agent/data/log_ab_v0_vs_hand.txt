@@ -1,0 +1,22 @@
+game 0: A(team0) 3 - 1 B  winner=A  [14.3s, 32 shots]  running A-B: 1-0-0
+game 1: A(team1) 3 - 10 B  winner=B  [21.9s, 48 shots]  running A-B: 1-1-0
+game 2: A(team0) 5 - 1 B  winner=A  [14.5s, 32 shots]  running A-B: 2-1-0
+game 3: A(team1) 2 - 1 B  winner=A  [14.2s, 32 shots]  running A-B: 3-1-0
+game 4: A(team0) 2 - 3 B  winner=B  [21.7s, 48 shots]  running A-B: 3-2-0
+game 5: A(team1) 0 - 3 B  winner=B  [14.9s, 32 shots]  running A-B: 3-3-0
+game 6: A(team0) 0 - 1 B  winner=B  [16.2s, 32 shots]  running A-B: 3-4-0
+game 7: A(team1) 2 - 3 B  winner=B  [13.4s, 32 shots]  running A-B: 3-5-0
+game 8: A(team0) 0 - 8 B  winner=B  [13.7s, 32 shots]  running A-B: 3-6-0
+game 9: A(team1) 2 - 1 B  winner=A  [22.8s, 48 shots]  running A-B: 4-6-0
+game 10: A(team0) 0 - 3 B  winner=B  [13.9s, 32 shots]  running A-B: 4-7-0
+game 11: A(team1) 1 - 5 B  winner=B  [21.7s, 48 shots]  running A-B: 4-8-0
+game 12: A(team0) 2 - 3 B  winner=B  [21.1s, 48 shots]  running A-B: 4-9-0
+game 13: A(team1) 4 - 1 B  winner=A  [14.1s, 32 shots]  running A-B: 5-9-0
+game 14: A(team0) 5 - 1 B  winner=A  [14.7s, 32 shots]  running A-B: 6-9-0
+game 15: A(team1) 0 - 2 B  winner=B  [13.9s, 32 shots]  running A-B: 6-10-0
+game 16: A(team0) 1 - 2 B  winner=B  [20.6s, 48 shots]  running A-B: 6-11-0
+game 17: A(team1) 2 - 1 B  winner=A  [13.8s, 32 shots]  running A-B: 7-11-0
+game 18: A(team0) 0 - 5 B  winner=B  [14.5s, 32 shots]  running A-B: 7-12-0
+game 19: A(team1) 0 - 4 B  winner=B  [14.8s, 32 shots]  running A-B: 7-13-0
+hammer end-result histogram (k=-4..4): 2 2 3 5 1 16 9 4 4
+RESULT games=20 A=7 B=13 draws=0 A_score_diff_mean=-1.25

@@ -30,3 +30,4 @@ data/policy_param.dat
 
 # gpw_agent build directory
 /gpw_agent/build/
+/gpw_agent/build_dev/

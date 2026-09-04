@@ -60,6 +60,7 @@ bool ParseArgs(int argc, char** argv, Args& a) {
         else if (s == "--quiet") { a.agent.verbose = false; a.sp.verbose = false; }
         else if (s == "--verbose") { a.agent.verbose = true; a.sp.verbose = true; }
         else if (s == "--no-book") a.agent.use_book = false;
+        else if (s == "--no-refine") a.agent.search_cfg.refine = false;
         else if (s == "--games") a.sp.games = std::atoi(need(i));
         else if (s == "--ends") a.sp.ends = std::atoi(need(i));
         else if (s == "--budget-a") a.sp.budget_a = std::atof(need(i));

@@ -33,6 +33,8 @@ dc::GameState Sim::Apply(const dc::GameState& state, const Shot& shot, bool nois
 // simulation to measure the lateral drift caused by curl.
 // ---------------------------------------------------------------------------
 float VelocitySolver::InitialSpeed(float target_r, float target_speed) {
+    // The low-speed fits contain log(target_r - 29.9): keep the argument positive.
+    if (target_speed <= 1.f && target_r < 30.5f) target_r = 30.5f;
     if (target_speed <= 0.05f) {
         constexpr float kC0[] = {0.0005048122574925176f, 0.2756242531609261f};
         constexpr float kC1[] = {0.00046669575066030805f, -29.898958358378636f, -0.0014030973174948508f};
@@ -81,13 +83,16 @@ dc::Vector2 VelocitySolver::Drift(float v0_speed, float target_speed, bool cw) {
     stones[0].emplace(dc::Vector2(), 0.f, dc::Vector2(0.f, qv), 1.57f * rotation_factor);
     sim->SetStones(stones);
     dc::Vector2 delta;
+    int steps = 0;
     while (true) {
         const auto& st = sim->GetStones();
         if (!st[0]) { delta = dc::Vector2(0.f, 0.f); break; }
         float speed = st[0]->linear_velocity.Length();
-        if (speed <= qt || sim->AreAllStonesStopped()) { delta = st[0]->position; break; }
+        if (!(speed > qt) || sim->AreAllStonesStopped()) { delta = st[0]->position; break; }
+        if (++steps > 200000) { delta = st[0]->position; break; }  // safety net (200 s of simulated time)
         sim->Step();
     }
+    if (!std::isfinite(delta.x) || !std::isfinite(delta.y)) delta = dc::Vector2(0.f, 0.f);
     std::lock_guard<std::mutex> lk(m_);
     cache_.emplace(key, delta);
     return delta;
@@ -98,6 +103,7 @@ Shot VelocitySolver::Solve(dc::Vector2 target, float target_speed, bool cw) {
     float target_r = target.Length();
     if (target_r < 1.f) target_r = 1.f;
     float v0 = InitialSpeed(target_r, target_speed);
+    if (!std::isfinite(v0) || v0 <= 0.f) v0 = 2.4f;  // never propagate NaN into the physics
     if (v0 > kMaxSpeed) v0 = kMaxSpeed;
     dc::Vector2 delta = Drift(v0, target_speed, cw);
     float delta_angle = std::atan2(delta.x, delta.y);
