@@ -40,7 +40,12 @@ def stones_before(j):
                 out.append(None)
             else:
                 p = x.get("position", x)
-                out.append([p["x"], p["y"]])
+                # The server's start layout includes the stone about to be thrown,
+                # parked at the hack (y ~ 0): it is not in play yet.
+                if p["y"] < 20.0:
+                    out.append(None)
+                else:
+                    out.append([p["x"], p["y"]])
     return out
 
 
@@ -100,6 +105,8 @@ def main():
                         if x is None:
                             continue
                         p = x.get("position", x)
+                        if p["y"] < 20.0:
+                            continue
                         dd = ((p["x"]) ** 2 + (p["y"] - TEE_Y) ** 2) ** 0.5
                         if dd <= 1.829 + 0.145:
                             dists.append((dd, t))

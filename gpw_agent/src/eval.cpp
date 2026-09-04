@@ -110,18 +110,6 @@ namespace {
 
 double NormalCdf(double x) { return 0.5 * std::erfc(-x / std::sqrt(2.0)); }
 
-// Straight-line proxy for "stone S is protected by guard G".
-bool Covered(const StoneRef& s, const std::vector<StoneRef>& all) {
-    for (const auto& g : all) {
-        if (&g == &s) continue;
-        if (g.p.y >= s.p.y - 0.3f) continue;
-        if (g.p.y < kHogY - 1.0f) continue;
-        float x_on_line = s.p.x * (g.p.y / s.p.y);
-        if (std::fabs(g.p.x - x_on_line) < 2.f * kStoneR + 0.08f) return true;
-    }
-    return false;
-}
-
 }  // namespace
 
 Evaluator::Evaluator(const EvalParams& params, const dc::GameSetting& setting)
@@ -179,7 +167,7 @@ Evaluator::EndEstimate Evaluator::EstimateEnd(const dc::GameState& s) const {
         if (st.in_house) {
             double q = std::clamp(1.0 - st.d / (kHouseR + kStoneR), 0.0, 1.0);
             q = std::pow(q, 1.5);
-            bool cov = Covered(st, stones);
+            bool cov = CoveredProxy(st, stones);
             double m = cov ? (1.0 + p_.cover_bonus) : 1.0;
             m *= 1.0 - (cov ? p_.covered_penalty : p_.exposed_penalty) * removal;
             pos += (mine ? 1.0 : -1.0) * q * m;

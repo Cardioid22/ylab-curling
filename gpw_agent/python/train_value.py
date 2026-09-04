@@ -34,7 +34,8 @@ HOUSE_R = 1.829
 STONE_R = 0.145
 HOG_Y = 32.004
 HALF_W = 2.375
-NS, NG, K = 6, 10, 9
+NS, NG, K = 9, 12, 9   # v3 superset; --feat-version 2 uses prefixes 6/10
+NS_V2, NG_V2 = 6, 10
 
 
 def stone_feats(stones, hammer):
@@ -48,8 +49,25 @@ def stone_feats(stones, hammer):
         d = math.hypot(x, y - TEE_Y)
         in_house = 1.0 if d <= HOUSE_R + STONE_R else 0.0
         in_fgz = 1.0 if (y > HOG_Y and y < TEE_Y and in_house == 0.0 and abs(x) < HALF_W) else 0.0
-        rows.append((d, [x, y - TEE_Y, 1.0 if team == hammer else -1.0, in_house, d, in_fgz], team, in_house))
+        rows.append((d, [x, y - TEE_Y, 1.0 if team == hammer else -1.0, in_house, d, in_fgz, 0.0, 3.0, 0.0], team, in_house, in_fgz, x, y))
     rows.sort(key=lambda r: r[0])
+    # v3 additions: covered proxy, min distance to another stone, rank
+    pts = [(r[5], r[6]) for r in rows]
+    for i, r in enumerate(rows):
+        sx, sy = pts[i]
+        cov = 0.0
+        md = 3.0
+        for j, (gx, gy) in enumerate(pts):
+            if j == i:
+                continue
+            md = min(md, math.hypot(gx - sx, gy - sy))
+            if gy >= sy - 0.3 or gy < HOG_Y - 1.0:
+                continue
+            if abs(gx - sx * (gy / sy)) < 2 * STONE_R + 0.08:
+                cov = 1.0
+        r[1][6] = cov
+        r[1][7] = md
+        r[1][8] = i / 16.0
     return rows
 
 
@@ -72,6 +90,8 @@ def encode(rec, max_end):
         c = c if t == hammer else -c
     nh = sum(1 for r in rows if r[3] > 0 and r[2] == hammer)
     nn_ = sum(1 for r in rows if r[3] > 0 and r[2] != hammer)
+    nh_fgz = sum(1 for r in rows if r[4] > 0 and r[2] == hammer)
+    nn_fgz = sum(1 for r in rows if r[4] > 0 and r[2] != hammer)
     r_ = 16 - shot
     r_h = (r_ + 1) // 2
     r_n = r_ - r_h
@@ -81,16 +101,18 @@ def encode(rec, max_end):
     g = np.array([
         r_ / 16.0, r_h / 8.0, r_n / 8.0, c / 4.0, nh / 8.0, nn_ / 8.0, n / 16.0,
         1.0 if shot < 5 else 0.0, max(-6, min(6, diff_h)) / 6.0, ends_left / 10.0,
+        nh_fgz / 8.0, nn_fgz / 8.0,
     ], dtype=np.float32)
     return feats, n, g
 
 
 class DeepSetsNet(nn.Module):
-    def __init__(self, h1=64, h2=64, hh1=128, hh2=64):
+    def __init__(self, h1=64, h2=64, hh1=128, hh2=64, ns=NS, ng=NG):
         super().__init__()
-        self.phi1 = nn.Linear(NS, h1)
+        self.ns, self.ng = ns, ng
+        self.phi1 = nn.Linear(ns, h1)
         self.phi2 = nn.Linear(h1, h2)
-        self.head1 = nn.Linear(2 * h2 + NG, hh1)
+        self.head1 = nn.Linear(2 * h2 + ng, hh1)
         self.head2 = nn.Linear(hh1, hh2)
         self.out = nn.Linear(hh2, K)
         nn.init.zeros_(self.out.weight)   # start exactly at the hand-crafted distribution
@@ -98,6 +120,8 @@ class DeepSetsNet(nn.Module):
 
     def forward(self, stones, mask, g, log_hand):
         # stones: B x 16 x NS, mask: B x 16 (1 = present), g: B x NG, log_hand: B x K
+        stones = stones[:, :, :self.ns]
+        g = g[:, :self.ng]
         h = F.relu(self.phi1(stones))
         h = F.relu(self.phi2(h))
         m = mask.unsqueeze(-1)
@@ -113,7 +137,7 @@ class DeepSetsNet(nn.Module):
 def export(model, path):
     with open(path, "w") as f:
         f.write("gpw_value_v2\n")
-        f.write(f"F {NS} G {NG} K {K}\n")
+        f.write(f"F {model.ns} G {model.ng} K {K}\n")
         for name in ["phi1", "phi2", "head1", "head2", "out"]:
             lin = getattr(model, name)
             w = lin.weight.detach().cpu().numpy()
@@ -162,6 +186,7 @@ def main():
     ap.add_argument("--val-frac", type=float, default=0.1)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--threads", type=int, default=0)
+    ap.add_argument("--feat-version", type=int, default=3, choices=[2, 3])
     ap.add_argument("--h1", type=int, default=64)
     ap.add_argument("--h2", type=int, default=64)
     ap.add_argument("--hh1", type=int, default=128)
@@ -204,7 +229,8 @@ def main():
     hand_ce = F.cross_entropy(Lva, Yva).item()
     print(f"hand-crafted val_ce={hand_ce:.4f} (the model must beat this)")
 
-    model = DeepSetsNet(h1=args.h1, h2=args.h2, hh1=args.hh1, hh2=args.hh2)
+    ns, ng = (NS_V2, NG_V2) if args.feat_version == 2 else (NS, NG)
+    model = DeepSetsNet(h1=args.h1, h2=args.h2, hh1=args.hh1, hh2=args.hh2, ns=ns, ng=ng)
     print(f"model sizes phi {args.h1}/{args.h2} head {args.hh1}/{args.hh2}, params {sum(p.numel() for p in model.parameters())}")
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)

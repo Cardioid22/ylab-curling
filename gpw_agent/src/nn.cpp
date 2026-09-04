@@ -11,7 +11,7 @@ NnFeatures EncodeFeatures(const dc::GameState& s, int max_end) {
     NnFeatures f;
     int h = TeamIdx(s.hammer);
     auto stones = Stones(s);
-    int n = 0, nh_house = 0, nn_house = 0;
+    int n = 0, nh_house = 0, nn_house = 0, nh_fgz = 0, nn_fgz = 0;
     for (const auto& st : stones) {
         if (n >= 16) break;
         bool mine = (st.team == h);
@@ -22,7 +22,17 @@ NnFeatures EncodeFeatures(const dc::GameState& s, int max_end) {
         v[3] = st.in_house ? 1.f : 0.f;
         v[4] = st.d;
         v[5] = st.in_fgz ? 1.f : 0.f;
+        // v3 additions
+        v[6] = CoveredProxy(st, stones) ? 1.f : 0.f;
+        float md = 3.f;
+        for (const auto& o : stones) {
+            if (&o == &st) continue;
+            md = std::min(md, Dist(o.p, st.p));
+        }
+        v[7] = md;
+        v[8] = n / 16.f;  // rank by distance to the tee
         if (st.in_house) { if (mine) ++nh_house; else ++nn_house; }
+        if (st.in_fgz) { if (mine) ++nh_fgz; else ++nn_fgz; }
         ++n;
     }
     f.n_stones = n;
@@ -42,6 +52,8 @@ NnFeatures EncodeFeatures(const dc::GameState& s, int max_end) {
     f.global[7] = (s.shot < 5) ? 1.f : 0.f;
     f.global[8] = std::clamp(diff_h, -6, 6) / 6.f;
     f.global[9] = ends_left / 10.f;
+    f.global[10] = nh_fgz / 8.f;
+    f.global[11] = nn_fgz / 8.f;
     return f;
 }
 
@@ -77,15 +89,18 @@ bool ValueNet::Load(const std::string& path) {
     int F, G, K;
     std::string tag;
     in >> tag >> F >> tag >> G >> tag >> K;
-    if (F != kNnStoneFeat || G != kNnGlobalFeat || K != kNnClasses) return false;
+    if (!((F == 6 && G == 10) || (F == kNnStoneFeat && G == kNnGlobalFeat)) || K != kNnClasses) return false;
+    n_stone_feat_ = F;
+    n_global_feat_ = G;
     if (!ReadLinear(in, "phi1", phi1_)) return false;
     if (!ReadLinear(in, "phi2", phi2_)) return false;
     if (!ReadLinear(in, "head1", head1_)) return false;
     if (!ReadLinear(in, "head2", head2_)) return false;
     if (!ReadLinear(in, "out", out_)) return false;
     if (phi1_.in != F || head1_.in != 2 * phi2_.out + G || out_.out != K) return false;
+    if (F == 6) info_ = "(v2 features) ";
     std::ostringstream o;
-    o << path << " (phi " << phi1_.out << "/" << phi2_.out << ", head " << head1_.out << "/" << head2_.out << ")";
+    o << info_ << path << " (phi " << phi1_.out << "/" << phi2_.out << ", head " << head1_.out << "/" << head2_.out << ")";
     info_ = o.str();
     loaded_ = true;
     return true;
@@ -102,9 +117,9 @@ std::array<double, kNnClasses> ValueNet::EndDist(const NnFeatures& f, const std:
         for (int j = 0; j < H; ++j) { sum[j] += h2[j]; mx[j] = std::max(mx[j], h2[j]); }
     }
     if (f.n_stones == 0) std::fill(mx.begin(), mx.end(), 0.f);
-    std::vector<float> x(2 * H + kNnGlobalFeat);
+    std::vector<float> x(2 * H + n_global_feat_);
     for (int j = 0; j < H; ++j) { x[j] = sum[j]; x[H + j] = mx[j]; }
-    for (int j = 0; j < kNnGlobalFeat; ++j) x[2 * H + j] = f.global[j];
+    for (int j = 0; j < n_global_feat_; ++j) x[2 * H + j] = f.global[j];
     std::vector<float> a(head1_.out), b(head2_.out), z(kNnClasses);
     head1_.Apply(x.data(), a.data());
     Relu(a.data(), head1_.out);

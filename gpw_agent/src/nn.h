@@ -10,8 +10,8 @@
 
 namespace gpw {
 
-constexpr int kNnStoneFeat = 6;
-constexpr int kNnGlobalFeat = 10;
+constexpr int kNnStoneFeat = 9;    // v3 superset; v2 models use the first 6
+constexpr int kNnGlobalFeat = 12;  // v3 superset; v2 models use the first 10
 constexpr int kNnClasses = 9;  // hammer-team end result k = -4..4
 
 struct NnFeatures {
@@ -44,6 +44,7 @@ private:
     bool loaded_ = false;
     std::string info_;
     Linear phi1_, phi2_, head1_, head2_, out_;
+    int n_stone_feat_ = 6, n_global_feat_ = 10;  // as declared in the model file
 };
 
 }  // namespace gpw

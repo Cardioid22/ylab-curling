@@ -102,6 +102,18 @@ inline int CountNow(const std::vector<StoneRef>& sorted, int team) {
     return t == team ? n : -n;
 }
 
+// Straight-line proxy for "stone s is protected by another stone in front of it".
+inline bool CoveredProxy(const StoneRef& s, const std::vector<StoneRef>& all) {
+    for (const auto& g : all) {
+        if (&g == &s) continue;
+        if (g.p.y >= s.p.y - 0.3f) continue;
+        if (g.p.y < kHogY - 1.0f) continue;
+        float x_on_line = s.p.x * (g.p.y / s.p.y);
+        if (std::fabs(g.p.x - x_on_line) < 2.f * kStoneR + 0.08f) return true;
+    }
+    return false;
+}
+
 inline int TeamIdx(dc::Team t) { return static_cast<int>(t); }
 inline dc::Team Opp(dc::Team t) { return dc::GetOpponentTeam(t); }
 

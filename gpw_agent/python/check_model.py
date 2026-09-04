@@ -28,7 +28,7 @@ def load_model(path):
         b = np.array([float(t) for t in tokens[pos:pos + o]], dtype=np.float32); pos += o
         layers[name] = (w, b)
     model = DeepSetsNet(h1=layers["phi1"][0].shape[0], h2=layers["phi2"][0].shape[0],
-                        hh1=layers["head1"][0].shape[0], hh2=layers["head2"][0].shape[0])
+                        hh1=layers["head1"][0].shape[0], hh2=layers["head2"][0].shape[0], ns=F_, ng=G_)
     with torch.no_grad():
         for name, (w, b) in layers.items():
             getattr(model, name).weight.copy_(torch.from_numpy(w))
