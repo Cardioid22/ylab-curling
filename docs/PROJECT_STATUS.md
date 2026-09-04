@@ -367,6 +367,9 @@ python scripts/regret_stats.py --joined <OUT>/reinvest_joined.csv --out <OUT>
 - **公平対戦 (両者 4 スレッド, v4)**: 1-1 (10-16, 10-12延長)。負け方 = 先攻でセンターガード 4 枚重ね → 相手が横にハウス石を溜め 4-5 点。対策: 自ガード上限 2 (候補メニュー)。
 - **世代 1 (bear+jaguar, 2026-09-04 夕)**: 1280 局 + ローカル + Jiritsukun 4 局 = 22 万レコード → **gen1 vs v4 = 45-23 (68局×4エンド)** で昇格。gen2 生成中 (12 self + 4 vs 手作り /機)。
   学習は jaguar `~/venv-gpw` (bear は Python 3.12 なので `~/venv-gpw312`)。サーバーログ→JSONL 変換 `python/convert_server_log.py` で相手との実戦も学習に入れる。
+- **2026-09-04 夜の結論**: 評価側の改善は gen1 で飽和 — gen2 (43万) 48-54、容量 1.5 倍 60-42→確認 49-53、2 倍 52-50、v3 特徴も val CE 改善なし。探索側: 応手読み 6 投 vs 4 投 53-49 (差なし)。
+  **公平対戦 (両者 4 スレッド) gen1 vs Jiritsukun-Jr (GAT2025) = 12-5**。相手クラッシュ (こちらの即答→update 連続→相手 JSON エラー) は応答 150 ms 待ちで回避。
+  懸念: hard_max_sims=256 と keep=24 では本番 (48 スレッド, 2.7 s) の ~5000 sims を使い切れない → 予算スケーリング A/B (3.0 s vs 0.6 s) を jaguar で実行中、次の lion ビルド後に hard_max/keep の A/B。
 - **次**: 研究室サーバー (現在 4 台とも run500 系ジョブで満載) が空き次第 `bash gpw_agent/scripts/gen_selfplay.sh data/gen1 16 40 6 0.6 0.15`
   で世代 0 データ (~640 局) → 学習 → model vs 手作りを 100 局で比較 → expert iteration。Linux ビルドは lion docker で確認済み (`gpw_agent/build/gpw_agent`)。
 - パス: `gpw_agent/README.md` (使い方), `gpw_agent/scripts/match_local_jiritsu.sh` (ローカル対戦), `gpw_agent/data/` (ローカル生成データ)
