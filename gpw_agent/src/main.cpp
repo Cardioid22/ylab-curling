@@ -366,7 +366,13 @@ int RunClient(const Args& a) {
         state = j.at("state").get<dc::GameState>();
         if (state.game_result) break;
         if (state.GetNextTeam() == team) {
+            auto t_think = std::chrono::steady_clock::now();
             dc::Move mv = agent.Think(state);
+            // Never answer faster than ~150 ms: an instant reply (opening book) makes the
+            // server emit two updates back-to-back, which crashed the opponent's client
+            // (JSON "Extra data") in local tests. Costs nothing over 80 shots.
+            auto dt = std::chrono::steady_clock::now() - t_think;
+            if (dt < std::chrono::milliseconds(150)) std::this_thread::sleep_for(std::chrono::milliseconds(150) - dt);
             send({{"cmd", "move"}, {"move", mv}});
         }
     }

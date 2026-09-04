@@ -8,7 +8,7 @@ mkdir -p "$ROOTLOG"
 for (( i=0; i<NPAIRS; i++ )); do
   for side in 0 1; do
     D="$ROOTLOG/p${i}_s${side}"
-    GPW_BIN=./build_dev/Release/gpw_agent.exe GPW_EXTRA="--eval $EVAL" JIR_THREADS=4 \
+    GPW_BIN=${GPW_BIN:-./build_dev/Release/gpw_agent.exe} GPW_EXTRA="--eval $EVAL" JIR_THREADS=4 \
       bash scripts/match_local_jiritsu.sh "$D" 4 config.json $side > "$ROOTLOG/p${i}_s${side}.txt" 2>&1
     R=$(grep "game_over" "$D/gpw.log")
     echo "$(date +%m-%d\ %H:%M) pair $i side $side: $R" | tee -a "$ROOTLOG/summary.txt"
