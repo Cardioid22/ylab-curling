@@ -1,4 +1,4 @@
-# プロジェクト現況 (最終更新: 2026-09-03)
+# プロジェクト現況 (最終更新: 2026-09-04)
 
 AIアシスタント (Codex / Claude / Gemini) 向けの現況同期ドキュメント。
 **過去の設計文書ではなく「今」の状態を書く。実験が進んだら必ずここを更新すること。**
@@ -348,3 +348,19 @@ python scripts/aggregate_reinvest.py --reinvest-dir reinvest_experiment/scorescr
   --referee-dir reinvest_experiment/scorescreen/run50/referee --pair A7,A9 --out <OUT>
 python scripts/regret_stats.py --joined <OUT>/reinvest_joined.csv --out <OUT>
 ```
+
+## 9. 大会用エージェント `gpw_agent/` (2026-09-04 開始, 研究とは独立)
+
+- **目標**: GPW2026 併催のデジタルカーリング大会で **Jiritsukun-Jr (GPW2025 優勝) に勝つ**。研究のクラスタリングは使わない。
+  **相手プログラムのコードは参照・流用しない** (readme と起動方法のみ)。スパーリング相手: `C:\Users\atomu\GitHub\Jiritsukun-Jr_GAT2025\jiritsu` (GAT2025 版)。
+- **大会条件**: 10 エンド合計 219 s (1投平均 2.7 s)、延長 +約100 s。大会サーバ (2025 実績) Threadripper 7965WX 24C/48T + RTX 4090。
+- **設計 (Phase 1 実装済, commit 1f9ba76)**: 決定論プレスクリーン → 外乱込み逐次半減 (successive halving)、最後の 4 投は相手応手 (小語彙・決定論) の min。
+  評価 = 盤面 → ハンマー側エンド結果分布 p(k) → 勝率表 WP(点差, 残エンド, ハンマー) (+ margin 項で飽和防止)。行動語彙 draw/guard/around/freeze/hit/peel/raise/through。
+  時間管理は残り時間×0.9/残投数×投数重み。例外・締切超過は必ずフォールバック手。
+- **Phase 2 (パイプライン実装済, 未学習)**: 自己対戦 JSONL (`--selfplay --explore --out`) → `python/train_value.py` (DeepSets, 9 クラス CE) → `model.txt` → C++ 手書き推論 (`src/nn.*`)。
+  C++/PyTorch の出力一致を `--check-model` / `python/check_model.py` で確認済み (小数4桁一致)。
+- **結果 (2026-09-04)**: ローカル (8 論理コア, Jiritsukun と CPU 競合) で **5-14 敗**。プロトコル・時間管理は問題なし (時間は余らせ気味 → hard_max_sims=256 で修正)。
+  敗因は評価の粗さ + 大差時の価値飽和 (E9 で全手 v=-1.000 → margin 項で修正)。
+- **次**: 研究室サーバー (現在 4 台とも run500 系ジョブで満載) が空き次第 `bash gpw_agent/scripts/gen_selfplay.sh data/gen1 16 40 6 0.6 0.15`
+  で世代 0 データ (~640 局) → 学習 → model vs 手作りを 100 局で比較 → expert iteration。Linux ビルドは lion docker で確認済み (`gpw_agent/build/gpw_agent`)。
+- パス: `gpw_agent/README.md` (使い方), `gpw_agent/scripts/match_local_jiritsu.sh` (ローカル対戦), `gpw_agent/data/` (ローカル生成データ)
