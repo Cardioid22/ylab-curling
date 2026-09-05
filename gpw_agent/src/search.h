@@ -20,7 +20,7 @@ struct SearchConfig {
     int min_sims = 4;            // noisy samples per candidate in the first round
     int max_sims = 32;           // samples per finalist before the survivors are frozen
     int hard_max_sims = 256;     // absolute cap per candidate while time remains
-    int reply_last_shots = 4;    // opponent-reply look-ahead when (16 - shot) <= this
+    int reply_last_shots = 0;    // opponent-reply look-ahead when (16 - shot) <= this (0 = off; 600-game A/B: off 323-277)
     int reply_keep = 8;          // candidates kept for the noisy rounds when the reply look-ahead is on
     int reply_min_sims = 2;      // first-round samples per candidate in reply mode
     double sim_cost_init = 0.03; // seconds per physics call (updated online)

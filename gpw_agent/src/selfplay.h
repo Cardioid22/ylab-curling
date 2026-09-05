@@ -24,7 +24,7 @@ struct SelfplayConfig {
     double explore_eps = 0.0;  // exploration for both agents (data generation)
     unsigned seed = 1;
     bool refine_a = true, refine_b = true;
-    int reply_shots_a = 4, reply_shots_b = 4;
+    int reply_shots_a = 0, reply_shots_b = 0;
     SearchConfig search_a, search_b;   // other per-side search settings (keep, min/max sims, reply keep)
 };
 
