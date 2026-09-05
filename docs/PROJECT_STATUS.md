@@ -372,7 +372,9 @@ python scripts/regret_stats.py --joined <OUT>/reinvest_joined.csv --out <OUT>
   懸念: hard_max_sims=256 と keep=24 では本番 (48 スレッド, 2.7 s) の ~5000 sims を使い切れない → 予算スケーリング A/B (3.0 s vs 0.6 s) を jaguar で実行中、次の lion ビルド後に hard_max/keep の A/B。
 - **2026-09-05**: 公平対戦 gen1 最終 19-20 (39局, 互角)。診断: gpw はハンマーでブランク 0% (相手 12%)。**102 局 A/B は SE 5% でノイズ (v3mid 55-47 → 300 局で 135-165)。採否は 300 局以上で**。
   探索上限/候補数/絞り込みは 102 局で全て差なし (上限 2048+候補48 56-46、候補48 46-56、候補8 47-55)、応手読みなし 57-45 (300 局確認中)。
-  **gen3v3mid (v3 特徴 + 96/96/192/96 + 54.5 万レコード incl. Jiritsukun 48 局) vs gen1 = 65-37 → 300 局 186-114 (62%) で昇格 (best)**。gen4 データ生成中 (gen3v3mid ポリシー、混成相手)。
+  **gen3v3mid (v3 特徴 + 96/96/192/96 + 54.5 万レコード incl. Jiritsukun 48 局) vs gen1 = 65-37 → 300 局 186-114, 167-133 (合計 59.5%) で昇格**。
+  **公平対戦 gen3v3mid vs Jiritsukun-Jr (GAT2025) = 25-15 (62.5%, 40 局)** (gen1 は 19-20)。gen4v3mid 319-281 (53%, 限界的昇格)、gen5v3mid 154-146 (頭打ち)。
+  応手読み OFF が 600 局で 323-277 → デフォルト OFF (commit 711ffdd, lion 再ビルド要)。次: Jiritsukun 実戦データの重み付け (gen5jw)。
 - **次**: 研究室サーバー (現在 4 台とも run500 系ジョブで満載) が空き次第 `bash gpw_agent/scripts/gen_selfplay.sh data/gen1 16 40 6 0.6 0.15`
   で世代 0 データ (~640 局) → 学習 → model vs 手作りを 100 局で比較 → expert iteration。Linux ビルドは lion docker で確認済み (`gpw_agent/build/gpw_agent`)。
 - パス: `gpw_agent/README.md` (使い方), `gpw_agent/scripts/match_local_jiritsu.sh` (ローカル対戦), `gpw_agent/data/` (ローカル生成データ)
