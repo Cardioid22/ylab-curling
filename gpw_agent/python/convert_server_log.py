@@ -133,7 +133,7 @@ def main():
                     "game": gi, "max_end": args.max_end, "agent": args.tag, "team": team,
                     "end": e, "shot": s, "hammer": hammer, "score": [sb[0], sb[1]],
                     "stones": stones_before(j),
-                    "shot_v": [j["selected_move"]["velocity"]["x"], j["selected_move"]["velocity"]["y"]],
+                    "shot_v": [j["selected_move"].get("velocity", {}).get("x", 0.0), j["selected_move"].get("velocity", {}).get("y", 0.0)],
                     "cw": 1 if j["selected_move"].get("rotation") == "cw" else 0,
                     "label": "server", "value": 0, "det": 0, "sims": 0, "budget": 0, "used": 0,
                     "end_result_hammer": end_result[e],
