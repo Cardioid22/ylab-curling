@@ -65,6 +65,10 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
     setting.sheet_width = 4.75f;
     setting.thinking_time[0] = setting.thinking_time[1] = std::chrono::milliseconds(1000LL * 60 * 60 * 24);
     setting.extra_end_thinking_time[0] = setting.extra_end_thinking_time[1] = std::chrono::milliseconds(1000LL * 60 * 60);
+    if (cfg.real_clock) {
+        setting.thinking_time[0] = setting.thinking_time[1] = std::chrono::milliseconds(static_cast<long long>(cfg.clock_sec * 1000));
+        setting.extra_end_thinking_time[0] = setting.extra_end_thinking_time[1] = std::chrono::milliseconds(static_cast<long long>(cfg.extra_clock_sec * 1000));
+    }
 
     dc::simulators::SimulatorFCV1Factory simf;
     dc::players::PlayerNormalDistFactory pf;  // tournament defaults
@@ -77,7 +81,7 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
         o.search_cfg.reply_last_shots = reply_shots;
         o.threads = cfg.threads;
         o.verbose = cfg.verbose;
-        o.fixed_budget = budget;
+        o.fixed_budget = cfg.real_clock ? 0.0 : budget;
         o.name = name;
         o.explore_eps = cfg.explore_eps;
         o.explore_seed = cfg.seed * 7919u + static_cast<unsigned>(name[0]);
@@ -110,7 +114,9 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
             Agent* ag = (next == A->team()) ? A.get() : B.get();
             const std::string who = (ag == A.get()) ? "A" : "B";
             dc::GameState before = state;
+            auto t_think = std::chrono::steady_clock::now();
             dc::Move mv = ag->Think(state);
+            long long think_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t_think).count();
             const SearchResult& r = ag->last_result();
             Shot shot;
             if (std::holds_alternative<dc::moves::Shot>(mv)) {
@@ -126,7 +132,7 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
                 rec.p_hand = ag->searcher().evaluator().HandDistribution(before);
                 recs.push_back(std::move(rec));
             }
-            state = referee.Apply(before, shot, true);
+            state = cfg.real_clock ? referee.ApplyTimed(before, shot, true, think_ms + 150) : referee.Apply(before, shot, true);
             ++shots;
             // End finished: record the hammer team's result.
             if (state.shot == 0 && before.shot == 15) {
@@ -158,6 +164,11 @@ SelfplaySummary RunSelfplay(const SelfplayConfig& cfg) {
         if (state.game_result && state.game_result->winner == A->team()) { sum.a_wins++; result = "A"; }
         else if (state.game_result && state.game_result->winner == B->team()) { sum.b_wins++; result = "B"; }
         else sum.draws++;
+        if (state.game_result && state.game_result->reason == dc::GameResult::Reason::kTimeLimit) result += "(TIMEOUT)";
+        if (cfg.real_clock) {
+            result += " clockA=" + Fmt(static_cast<float>(state.thinking_time_remaining[TeamIdx(A->team())].count() / 1000.0), 1)
+                    + " clockB=" + Fmt(static_cast<float>(state.thinking_time_remaining[TeamIdx(B->team())].count() / 1000.0), 1);
+        }
         std::cout << "game " << g << ": A(" << (a_is_0 ? "team0" : "team1") << ") " << sa << " - " << sb
                   << " B  winner=" << result << "  [" << Fmt(static_cast<float>(dt), 1) << "s, "
                   << shots << " shots]  running A-B: " << sum.a_wins << "-" << sum.b_wins << "-" << sum.draws

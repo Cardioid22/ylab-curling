@@ -23,6 +23,9 @@ struct SelfplayConfig {
     bool alternate = true;   // swap colours every game
     double explore_eps = 0.0;  // exploration for both agents (data generation)
     unsigned seed = 1;
+    bool real_clock = false;   // use the tournament clock (time manager) instead of fixed budgets
+    double clock_sec = 219.0;  // per-team thinking time when real_clock
+    double extra_clock_sec = 21.9;
     bool refine_a = true, refine_b = true;
     int reply_shots_a = 0, reply_shots_b = 0;
     SearchConfig search_a, search_b;   // other per-side search settings (keep, min/max sims, reply keep)

@@ -20,6 +20,8 @@ public:
     // Applies `shot` to a copy of `state` and returns the resulting state.
     // noisy=true adds the tournament execution noise (normal_dist player).
     dc::GameState Apply(const dc::GameState& state, const Shot& shot, bool noisy);
+    // Same, but charges `thinking_ms` to the mover's clock (referee use).
+    dc::GameState ApplyTimed(const dc::GameState& state, const Shot& shot, bool noisy, long long thinking_ms);
 
     const dc::GameSetting& setting() const { return setting_; }
 

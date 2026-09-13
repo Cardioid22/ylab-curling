@@ -26,6 +26,15 @@ dc::GameState Sim::Apply(const dc::GameState& state, const Shot& shot, bool nois
     return next;
 }
 
+dc::GameState Sim::ApplyTimed(const dc::GameState& state, const Shot& shot, bool noisy, long long thinking_ms) {
+    dc::GameState next = state;
+    if (next.IsGameOver()) return next;
+    dc::Move move{ToDc(shot)};
+    dc::ApplyMove(setting_, *sim_, noisy ? *noisy_player_ : *exact_player_, next, move,
+                  std::chrono::milliseconds(thinking_ms));
+    return next;
+}
+
 // ---------------------------------------------------------------------------
 // VelocitySolver
 // Piecewise fits of the FCV1 stopping-distance curve (initial speed as a

@@ -88,6 +88,9 @@ bool ParseArgs(int argc, char** argv, Args& a) {
         else if (s == "--eval-b") a.sp.eval_b = need(i);
         else if (s == "--out") a.sp.out_jsonl = need(i);
         else if (s == "--no-alternate") a.sp.alternate = false;
+        else if (s == "--real-clock") a.sp.real_clock = true;
+        else if (s == "--clock-sec") a.sp.clock_sec = std::atof(need(i));
+        else if (s == "--extra-clock-sec") a.sp.extra_clock_sec = std::atof(need(i));
         else if (s == "--explore") a.sp.explore_eps = std::atof(need(i));
         else if (s == "--seed") a.sp.seed = static_cast<unsigned>(std::atoi(need(i)));
         else if (s == "--keep") a.agent.search_cfg.prescreen_keep = std::atoi(need(i));
