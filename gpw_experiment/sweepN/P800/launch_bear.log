@@ -1,0 +1,38 @@
+nohup: ignoring input
+========================================
+Reinvestment run
+========================================
+Arms:               A9P5N
+Base seed:          42  (uses 42..46)
+Num seeds:          5
+N states:           500
+Threads per seed:   24
+Max parallel:       5  (= 120 cores; machine has 128)
+Positions dir:      test_positions500
+Binary:             ./build/ylab_client
+Parent dir:         reinvest_experiment/sweepN/P800
+Calibration:        P_BASE=200 R_BASE=10 P_DEEP=130 P_RINV=100 R_RINV=20 RETENTION=0.20
+Arm specs:
+  A9P5N: ClusterValue 3 200 10 0.20 --r-pre 5 --noisy-tree
+========================================
+
+  launched A9P5N seed=42 pid=140316 (ClusterValue d3 P=800 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P800/A9P5N/seed_42
+  launched A9P5N seed=43 pid=140322 (ClusterValue d3 P=800 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P800/A9P5N/seed_43
+  launched A9P5N seed=44 pid=140352 (ClusterValue d3 P=800 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P800/A9P5N/seed_44
+  launched A9P5N seed=45 pid=140382 (ClusterValue d3 P=800 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P800/A9P5N/seed_45
+  launched A9P5N seed=46 pid=140417 (ClusterValue d3 P=800 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P800/A9P5N/seed_46
+
+All jobs launched. monitor: tail -f reinvest_experiment/sweepN/P800/*/seed_*/run.log
+
+  A9P5N/seed_42 (pid=140316) done
+  A9P5N/seed_43 (pid=140322) done
+  A9P5N/seed_44 (pid=140352) done
+  A9P5N/seed_45 (pid=140382) done
+  A9P5N/seed_46 (pid=140417) done
+
+========================================
+All jobs completed. Parent: reinvest_experiment/sweepN/P800
+
+Next: run the referee once (scripts/run_referee.sh), then aggregate:
+  python3 scripts/aggregate_reinvest.py --reinvest-dir reinvest_experiment/sweepN/P800 --referee-dir experiments/reinvest_referee
+========================================

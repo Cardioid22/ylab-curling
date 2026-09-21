@@ -1,0 +1,49 @@
+nohup: ignoring input
+========================================
+Reinvestment run
+========================================
+Arms:               A1N,A9P5N
+Base seed:          42  (uses 42..46)
+Num seeds:          5
+N states:           500
+Threads per seed:   18
+Max parallel:       5  (= 90 cores; machine has 96)
+Positions dir:      test_positions500
+Binary:             ./build/ylab_client
+Parent dir:         reinvest_experiment/sweepN/P100
+Calibration:        P_BASE=200 R_BASE=10 P_DEEP=130 P_RINV=100 R_RINV=20 RETENTION=0.20
+Arm specs:
+  A1N: AllGrid  3 200 10 0.20 --noisy-tree
+  A9P5N: ClusterValue 3 200 10 0.20 --r-pre 5 --noisy-tree
+========================================
+
+  launched A1N seed=42 pid=2692967 (AllGrid d3 P=100 R=10 --noisy-tree) -> reinvest_experiment/sweepN/P100/A1N/seed_42
+  launched A1N seed=43 pid=2692973 (AllGrid d3 P=100 R=10 --noisy-tree) -> reinvest_experiment/sweepN/P100/A1N/seed_43
+  launched A1N seed=44 pid=2692997 (AllGrid d3 P=100 R=10 --noisy-tree) -> reinvest_experiment/sweepN/P100/A1N/seed_44
+  launched A1N seed=45 pid=2693021 (AllGrid d3 P=100 R=10 --noisy-tree) -> reinvest_experiment/sweepN/P100/A1N/seed_45
+  launched A1N seed=46 pid=2693045 (AllGrid d3 P=100 R=10 --noisy-tree) -> reinvest_experiment/sweepN/P100/A1N/seed_46
+  launched A9P5N seed=42 pid=2745501 (ClusterValue d3 P=100 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P100/A9P5N/seed_42
+  launched A9P5N seed=43 pid=2746082 (ClusterValue d3 P=100 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P100/A9P5N/seed_43
+  launched A9P5N seed=44 pid=2746416 (ClusterValue d3 P=100 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P100/A9P5N/seed_44
+  launched A9P5N seed=45 pid=2746585 (ClusterValue d3 P=100 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P100/A9P5N/seed_45
+  launched A9P5N seed=46 pid=2747246 (ClusterValue d3 P=100 R=10 --r-pre 5 --noisy-tree) -> reinvest_experiment/sweepN/P100/A9P5N/seed_46
+
+All jobs launched. monitor: tail -f reinvest_experiment/sweepN/P100/*/seed_*/run.log
+
+  A1N/seed_42 (pid=2692967) done
+  A1N/seed_43 (pid=2692973) done
+  A1N/seed_44 (pid=2692997) done
+  A1N/seed_45 (pid=2693021) done
+  A1N/seed_46 (pid=2693045) done
+  A9P5N/seed_42 (pid=2745501) done
+  A9P5N/seed_43 (pid=2746082) done
+  A9P5N/seed_44 (pid=2746416) done
+  A9P5N/seed_45 (pid=2746585) done
+  A9P5N/seed_46 (pid=2747246) done
+
+========================================
+All jobs completed. Parent: reinvest_experiment/sweepN/P100
+
+Next: run the referee once (scripts/run_referee.sh), then aggregate:
+  python3 scripts/aggregate_reinvest.py --reinvest-dir reinvest_experiment/sweepN/P100 --referee-dir experiments/reinvest_referee
+========================================

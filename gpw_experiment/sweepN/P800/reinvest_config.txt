@@ -1,0 +1,14 @@
+Reinvestment run
+========================================
+Arms:               A1N
+Base seed:          42  (uses 42..46)
+Num seeds:          5
+N states:           500
+Threads per seed:   24
+Max parallel:       5  (= 120 cores; machine has 128)
+Positions dir:      test_positions500
+Binary:             ./build/ylab_client
+Parent dir:         reinvest_experiment/sweepN/P800
+Calibration:        P_BASE=200 R_BASE=10 P_DEEP=130 P_RINV=100 R_RINV=20 RETENTION=0.20
+Arm specs:
+  A1N: AllGrid  3 200 10 0.20 --noisy-tree
