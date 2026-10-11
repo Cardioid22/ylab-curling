@@ -1,0 +1,160 @@
+%% GPW2026 本論文 (最終原稿) 下書き
+%% 学会配布の jsample-gpw.tex をベースに、UTF-8 版 ipsj.cls (v4.1) で組む構成
+%% Overleaf では latexmkrc により platex + pbibtex + dvipdfmx でコンパイルされる
+\documentclass[submit]{ipsj}
+% [submit] をつけないとフォントの問題が起きる可能性がある (GPWサンプルの注記)
+
+% 受付日などを消す
+\makeatletter
+\def\@uketsuke{}
+\def\@euketsuke{}
+\def\SHUBETUname{}
+\makeatother
+
+% ページ番号を消す
+\pagestyle{empty}
+
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{latexsym}
+\usepackage{amsmath,amssymb}
+\usepackage{url}
+%\usepackage{times,mathptmx} % お好みで
+
+% TODO: タイトルは主張の軸 (性能=価値スクリーン / 表現=クラスタ) が決まってから確定する
+\title{デジタルカーリングにおけるMCTS候補手削減のための\\価値考慮型クラスタリングの適用}
+\etitle{English Title}
+
+% TODO: 所属の表記 (研究科名・住所を載せるか) を確認
+\affiliate{MU}{明治大学\\
+Meiji University}
+
+\author{仲 亜斗夢}{Atomu Naka}{MU}[ce265004@meiji.ac.jp]
+\author{横山 大作}{Daisaku Yokoyama}{MU}[dyokoyama@meiji.ac.jp]
+
+\begin{document}
+
+\begin{abstract}
+和文概要．
+\end{abstract}
+% '22年以後 日英キーワードを加えて統一した方が良い (GPWサンプルの注記)
+\begin{jkeyword}
+デジタルカーリング，モンテカルロ木探索，クラスタリング
+\end{jkeyword}
+
+\begin{eabstract}
+English abstract.
+\end{eabstract}
+\begin{ekeyword}
+Digital Curling, Monte Carlo Tree Search, Clustering
+\end{ekeyword}
+
+\maketitle
+% ページ番号を消す
+\thispagestyle{empty}
+
+%======================================================================
+\section{はじめに}
+\label{sec:intro}
+% TODO: 背景 (デジタルカーリング, MCTS の分枝爆発), GI58 → ClusterMedoid の課題, 本論文の貢献
+
+%======================================================================
+\section{関連研究}
+\label{sec:related}
+% TODO: VOOT, 状態条件付き行動抽象化 (Kwak+ UAI2024), KR-UCT, progressive widening, OGA-UCT/ASAP
+
+%======================================================================
+\section{提案手法}
+\label{sec:method}
+
+\subsection{既存手法: ClusterMedoid}
+\label{sec:method-medoid}
+
+\subsection{ClusterValue}
+\label{sec:method-value}
+% TODO: ClusterMedoid との差分 (代表の選び方 / クラスタの採用 / 評価の規約) を表で明示
+
+\subsection{外乱込み評価}
+\label{sec:method-noisy}
+
+%======================================================================
+\section{評価設定}
+\label{sec:setup}
+% TODO: 審判, regret, 等予算比較, 局面セット (層化), 統計検定
+
+%======================================================================
+\section{実験結果}
+\label{sec:results}
+
+\subsection{主結果}
+\label{sec:results-main}
+
+\subsection{効果の分解}
+\label{sec:results-ablation}
+
+\subsection{予算依存性}
+\label{sec:results-budget}
+
+\subsection{効果が現れる局面}
+\label{sec:results-where}
+
+\subsection{クラスタ表現の価値}
+\label{sec:results-cluster}
+
+\subsection{否定的な結果}
+\label{sec:results-negative}
+
+%======================================================================
+\section{議論と限界}
+\label{sec:discussion}
+
+%======================================================================
+\section{おわりに}
+\label{sec:conclusion}
+
+%======================================================================
+% 1段幅の図の例 (位置指定に h は使わない)
+%\begin{figure}[tb]
+%  \centering
+%  \includegraphics[width=\columnwidth]{figures/xxx.pdf}
+%  \caption{和文見出し}
+%  \ecaption{English caption.}
+%  \label{fig:xxx}
+%\end{figure}
+%
+% 2段幅の図の例 (位置指定は t のみ)
+%\begin{figure*}[t]
+%  \centering
+%  \includegraphics[width=\textwidth]{figures/yyy.pdf}
+%  \caption{和文見出し}
+%  \ecaption{English caption.}
+%  \label{fig:yyy}
+%\end{figure*}
+%
+% 表の例 (見出しは表の上, 一番上の罫線は二重線, 左右端に縦罫線なし)
+%\begin{table}[tb]
+%  \caption{和文見出し}
+%  \ecaption{English caption.}
+%  \label{tab:zzz}
+%  \centering
+%  \begin{tabular}{lcc}\hline\hline
+%    手法 & 列1 & 列2 \\\hline
+%    A & -- & -- \\
+%    B & -- & -- \\\hline
+%  \end{tabular}
+%\end{table}
+% 参照は \figref{fig:xxx}, \tabref{tab:zzz}
+
+%======================================================================
+%\begin{acknowledgment}
+%謝辞．
+%\end{acknowledgment}
+
+% 本文で \cite していない文献はリストに出ない
+\nocite{*} % TODO: 本文で引用し始めたら削除
+\bibliographystyle{ipsjunsrt}
+\bibliography{references}
+
+%\appendix
+%\section{付録の節}
+
+\end{document}
