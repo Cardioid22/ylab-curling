@@ -1,0 +1,21 @@
+== 全体 (局面 x seed)
+all                    n=2500 tk_dup=0.66 tk_ncl=3.01 types cv/tk=2.39/2.21 near cv/tk=0.67/0.69 rescue=0.088 lost=0.109 SL cv/tk=0.211/0.193 reg(A9P5N-A8N)=+0.015
+== 層別 (stratum)
+crowded_late           n= 320 tk_dup=0.59 tk_ncl=3.19 types cv/tk=2.11/2.18 near cv/tk=0.63/0.74 rescue=0.047 lost=0.150 SL cv/tk=0.212/0.176 reg(A9P5N-A8N)=+0.034
+crowded_mid            n= 290 tk_dup=0.58 tk_ncl=3.27 types cv/tk=2.21/2.56 near cv/tk=0.53/0.56 rescue=0.128 lost=0.152 SL cv/tk=0.240/0.244 reg(A9P5N-A8N)=-0.007
+draw_late              n= 110 tk_dup=0.86 tk_ncl=2.52 types cv/tk=2.14/1.60 near cv/tk=0.86/0.92 rescue=0.036 lost=0.091 SL cv/tk=0.113/0.094 reg(A9P5N-A8N)=+0.067
+draw_mid               n= 105 tk_dup=0.73 tk_ncl=3.03 types cv/tk=2.35/1.95 near cv/tk=0.69/0.76 rescue=0.048 lost=0.124 SL cv/tk=0.184/0.166 reg(A9P5N-A8N)=+0.038
+empty_early            n= 200 tk_dup=0.67 tk_ncl=3.15 types cv/tk=2.20/1.77 near cv/tk=0.68/0.69 rescue=0.085 lost=0.095 SL cv/tk=0.182/0.182 reg(A9P5N-A8N)=-0.005
+freeze_late            n= 165 tk_dup=0.73 tk_ncl=2.91 types cv/tk=2.61/2.36 near cv/tk=0.68/0.76 rescue=0.048 lost=0.127 SL cv/tk=0.194/0.157 reg(A9P5N-A8N)=+0.006
+freeze_mid             n= 200 tk_dup=0.60 tk_ncl=3.23 types cv/tk=2.69/2.48 near cv/tk=0.69/0.65 rescue=0.135 lost=0.090 SL cv/tk=0.210/0.215 reg(A9P5N-A8N)=-0.008
+other_late             n=  10 tk_dup=1.00 tk_ncl=2.20 types cv/tk=2.40/1.90 near cv/tk=0.60/0.80 rescue=0.000 lost=0.200 SL cv/tk=0.254/0.175 reg(A9P5N-A8N)=+0.299
+other_mid              n=  10 tk_dup=0.80 tk_ncl=2.80 types cv/tk=2.10/2.20 near cv/tk=0.20/0.30 rescue=0.100 lost=0.200 SL cv/tk=0.271/0.215 reg(A9P5N-A8N)=+0.047
+r1/other               n= 275 tk_dup=0.81 tk_ncl=2.04 types cv/tk=2.60/1.83 near cv/tk=0.66/0.71 rescue=0.058 lost=0.105 SL cv/tk=0.348/0.233 reg(A9P5N-A8N)=+0.067
+sparse_early           n= 260 tk_dup=0.56 tk_ncl=3.31 types cv/tk=2.53/2.47 near cv/tk=0.70/0.71 rescue=0.096 lost=0.108 SL cv/tk=0.186/0.189 reg(A9P5N-A8N)=-0.019
+takeout_late           n= 265 tk_dup=0.74 tk_ncl=2.94 types cv/tk=2.39/2.18 near cv/tk=0.83/0.81 rescue=0.098 lost=0.079 SL cv/tk=0.120/0.128 reg(A9P5N-A8N)=+0.010
+takeout_mid            n= 290 tk_dup=0.59 tk_ncl=3.29 types cv/tk=2.47/2.38 near cv/tk=0.61/0.53 rescue=0.134 lost=0.062 SL cv/tk=0.229/0.250 reg(A9P5N-A8N)=-0.005
+== phase_r
+early_r9+              n= 840 tk_dup=0.59 tk_ncl=3.25 types cv/tk=2.40/2.31 near cv/tk=0.69/0.67 rescue=0.114 lost=0.094 SL cv/tk=0.192/0.201 reg(A9P5N-A8N)=-0.011
+late_r2-4              n= 870 tk_dup=0.70 tk_ncl=2.97 types cv/tk=2.30/2.14 near cv/tk=0.73/0.79 rescue=0.061 lost=0.117 SL cv/tk=0.168/0.147 reg(A9P5N-A8N)=+0.029
+mid_r5-8               n= 630 tk_dup=0.62 tk_ncl=3.23 types cv/tk=2.39/2.40 near cv/tk=0.57/0.58 rescue=0.113 lost=0.114 SL cv/tk=0.231/0.233 reg(A9P5N-A8N)=-0.002
+r1                     n= 160 tk_dup=1.00 tk_ncl=1.09 types cv/tk=2.81/1.25 near cv/tk=0.62/0.75 rescue=0.000 lost=0.125 SL cv/tk=0.459/0.250 reg(A9P5N-A8N)=+0.135
