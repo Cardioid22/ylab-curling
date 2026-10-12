@@ -341,7 +341,7 @@ Friedman **p=0.002**。Holm後有意: **A2 vs A9P5 (p=0.022, 110勝75敗)**、**
 | 分析スクリプト | `scripts/aggregate_reinvest.py, regret_stats.py, aggregate_selfplay_2end.py, analyze_tree_depth.py, plot_treedepth_compare.py, plot_cluster_value_map.py, plot_board.py` |
 | run200 (GPW本論文) | `test_positions200/`, `scripts/README_run200.md`, `scripts/run200_reuse_first50.sh`, `scripts/position_features.py`, `scripts/analyze_when_clustering_helps.py`; 予備結果 `reinvest_experiment/run50v2/features/` |
 | GPW2026 アブスト | `gpw2026/` (main.tex, 提出PDF, DATA_INDEX.md, data/, figures/) |
-| GPW2026 本論文 (最終原稿 10/23) | `gpw2026/paper/` (Overleaf 用プロジェクト: main.tex, references.bib, ipsj.cls v4.1 UTF-8, latexmkrc)。執筆は Overleaf 側が正本 (2026-10-12 雛形作成)。下書き済み: 1章はじめに / 2章関連研究 (VOOT・Kwak+ UAI24・KR-UCT・PW・HOOT・ASAP/OGA-UCT・open-loop) / 3章提案手法 / 6章考察。4・5・7章とアブストは未着手 |
+| GPW2026 本論文 (最終原稿 10/23) | `gpw2026/paper/` (Overleaf 用プロジェクト: main.tex, references.bib, ipsj.cls v4.1 UTF-8, latexmkrc)。執筆は Overleaf 側が正本 (2026-10-12 雛形作成)。下書き済み: 1章はじめに / 2章関連研究 (VOOT・Kwak+ UAI24・KR-UCT・Lee+ ICML18・HOOT・ASAP/OGA-UCT・open-loop。**PW (A11) は本文から外す方針** 2026-10-12) / 3章提案手法 / 6章考察。4・5・7章とアブストは未着手。規定 (GPW-26 カメラレディ執筆案内): A4 2段組 **8ページ以内** (下限なし)・ページ番号/ヘッダ/フッタなし・フォント埋め込み・**英文タイトルと英文概要必須**・EasyChair の Update file で差し替え・著作権譲渡契約書 (自筆署名) を情報処理学会へ |
 
 ## 8. 代表的な実行コマンド
 

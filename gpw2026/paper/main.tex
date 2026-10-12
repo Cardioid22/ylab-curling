@@ -68,8 +68,7 @@ Digital Curling, Monte Carlo Tree Search, Clustering
 % 出典: test_positions500 の候補数 N (平均 70.6, 中央値 61)
 対戦では持ち時間が決まっているため，少ない計算量で良い手を選べることは実用上も重要である．
 大きな行動空間や連続行動空間でのMCTSについては，
-候補を段階的に広げるprogressive widening~\cite{coulom2007,couetoux2011}，
-ボロノイ分割に基づいて行動をサンプリングするVOOT~\cite{kim2020voot}，
+ボロノイ分割に基づいて行動をサンプリングするVOOT~\cite{kim2020voot}や，
 学習した遷移モデルから状態ごとに不要な行動を除く状態条件付き行動抽象化~\cite{kwak2024}
 などが提案されている（\ref{sec:related}章）．
 
@@ -140,12 +139,7 @@ KR-UCTが行動のパラメータ空間での近さによって情報を共有�
 \subsection{連続・大規模な行動空間でのMCTS}
 \label{sec:related-continuous}
 
-分枝数の大きい問題でMCTSを用いる古典的な方法に，
-ノードの訪問回数に応じて子の数を段階的に増やすprogressive widening~\cite{coulom2007,chaslot2008}がある．
-Cou\"{e}touxら~\cite{couetoux2011}は，これを確率的な遷移をもつ連続空間の問題に拡張した．
-本論文でも，ClusterValueの子を固定の$K$個とせず，訪問回数に応じてクラスタ価値の順に増やす変種と比較する（\ref{sec:results-negative}節）．
-% 実装: experiments/reinvest_experiment.cpp widenRoot (A11 ClusterPW, k = C (n+1)^alpha)
-progressive wideningが主に「いつ子を増やすか」を決めるのに対し，「どの行動を試すか」を最適化の問題として扱う手法もある．
+連続行動空間でのMCTSには，各ノードで「どの行動を試すか」を連続空間上の最適化の問題として扱う手法がある．
 HOOT~\cite{mansley2011hoot}は，行動空間を階層的に分割しながら価値の高い領域に試行を集中させる連続腕バンディットのアルゴリズム（HOO）を，木の各ノードに適用した．
 
 Kimら~\cite{kim2020voot}のVOOTは，木の各ノードで，ボロノイ分割に基づくブラックボックス最適化VOOによって行動をサンプリングする．
@@ -363,10 +357,9 @@ ClusterValue+Nのregret 0.309は選別損失0.211と木の損失0.098からな�
 % 出典: E13 (A9P5N の screen_loss 0.211 / tree_loss 0.098), E14 (A1N 0.334)
 すなわち$P=200$では，平均70.6個の子に予算を分散させると各子の評価が不十分になり，
 選別による損失を払ってでも少数の有望な子を厚く評価した方が良い手を選べる．
-子の数を増やす方向の改良がいずれも固定の$K=4$に勝てなかったことも，この解釈を支持する．
-progressive wideningでは（決定的評価の条件），最良手が子に残る割合は0.20から0.29に上がったものの，木の損失が0.193から0.274に増えて相殺された．
-% 出典: E13 (A9P5 → A11, 決定的評価). TODO: A11a/A11b のどちらの値か確認
-Thompson samplingで全クラスタに訪問を配分する手法（\ref{sec:results-negative}節）も，ClusterValue+Nには届かなかった．
+全クラスタを子に持ち，Thompson samplingで訪問を配分する手法（\ref{sec:results-negative}節）が
+ClusterValue+Nに届かなかったことも，この解釈を支持する．
+% 出典: E15 (A12N 0.326 vs A9P5N 0.309, raw p=0.015, Holm n.s.)
 
 この解釈が正しければ，予算が増えて全探索でも各子を十分に評価できるようになると，候補削減の利得は消えるはずである．
 \ref{sec:results-budget}節の予算依存性はこれと整合しており，
