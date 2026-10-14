@@ -1,0 +1,24 @@
+局面数 468 (最終ショット除く, export のある局面)。tau=0.25
+== (1) 別の道
+最良級クラスタが 2 個以上: 382/468
+「今すぐ有利な A」と「今の得点は 2 点以上低いが最良級の B」が別クラスタにある: 184/468
+  そのうち提案の 4 手が A と B の両方を含む (5 seed 平均): 0.07
+  クラスタ価値の順位 (中央値の中央値): A 4.5, B 5.0 (クラスタ数の中央値 12.0); B が価値の上位 4 に入る局面 58/184, 上位 8 156/184
+  B の種類: [('Hit', 77), ('Draw', 73), ('PostGuard', 17), ('Freeze', 15), ('PreGuard', 2)]
+最良級クラスタの medoid (前回の手法の代表手) も最良級である率: 0.45
+== (2) 行動空間 vs 結果盤面空間 (局面ごとの値の中央値)
+  nn_action_dq             0.140
+  nn_result_dq             0.130
+  nn_action_bigjump        0.039
+  nn_result_bigjump        0.019
+  nn_action_diff_cluster   0.451
+  eta2_result              0.549
+  eta2_action_kmeans       0.422
+  eta2_action_kmeans_iqr   0.393
+  eta2_action_voronoi      0.375
+  eta2_random              0.193
+  nn_action_dq vs nn_result_dq: 290 勝 146 敗, Wilcoxon p=5.7e-15
+  eta2_result vs eta2_action_kmeans: 333 勝 135 敗, Wilcoxon p=2.3e-28
+  eta2_result vs eta2_action_kmeans_iqr: 373 勝 95 敗, Wilcoxon p=9.2e-44
+  eta2_result vs eta2_action_voronoi: 385 勝 83 敗, Wilcoxon p=2.7e-55
+  eta2_result vs eta2_random: 453 勝 15 敗, Wilcoxon p=4.0e-77

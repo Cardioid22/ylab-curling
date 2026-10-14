@@ -11,7 +11,7 @@
 
 ## Overleaf へのアップロード
 1. `gpw2026/paper_overleaf.zip` を New Project → Upload Project でアップロード
-   (zip が古ければ、このディレクトリの中身を zip し直す)。
+   (zip が古ければ、このディレクトリの中身を zip し直す。`OUTLINE.md` は構成メモなので入れなくてよい)。
 2. Menu → Compiler は **LaTeX** にする (実際のコマンドは `latexmkrc` が platex に差し替える)。
    Main document は `main.tex`。
 

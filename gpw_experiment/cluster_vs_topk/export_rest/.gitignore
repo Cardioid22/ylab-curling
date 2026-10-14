@@ -1,0 +1,4 @@
+# 残り377局面 (最終ショット除く) の --export-case 出力。約30MBあるのでコミットしない。
+# 再生成: ylab_client --clustering-experiment --load-positions test_positions500 --export-case g,e,s --output-dir gpw_experiment/cluster_vs_topk/export_rest
+*
+!.gitignore
