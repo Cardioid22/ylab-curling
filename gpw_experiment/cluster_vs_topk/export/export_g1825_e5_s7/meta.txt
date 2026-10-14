@@ -1,0 +1,7 @@
+game_id=1825
+end=5
+shot_num=7
+current_team=1
+n_candidates=77
+n_clusters=7
+retention_pct=10

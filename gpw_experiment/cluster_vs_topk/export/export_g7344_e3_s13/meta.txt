@@ -1,0 +1,7 @@
+game_id=7344
+end=3
+shot_num=13
+current_team=1
+n_candidates=91
+n_clusters=9
+retention_pct=10

@@ -1,0 +1,7 @@
+game_id=2919
+end=3
+shot_num=5
+current_team=1
+n_candidates=59
+n_clusters=5
+retention_pct=10

@@ -1,0 +1,7 @@
+game_id=8359
+end=0
+shot_num=13
+current_team=1
+n_candidates=111
+n_clusters=11
+retention_pct=10

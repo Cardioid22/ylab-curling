@@ -1,0 +1,2 @@
+# 1局面1枚の PNG は catalog.pdf と同じ内容 (19MB) なのでコミットしない。scripts/plot_small_cluster_catalog.py で再生成できる
+*.png

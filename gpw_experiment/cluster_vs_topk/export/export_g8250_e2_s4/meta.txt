@@ -1,0 +1,7 @@
+game_id=8250
+end=2
+shot_num=4
+current_team=0
+n_candidates=59
+n_clusters=5
+retention_pct=10

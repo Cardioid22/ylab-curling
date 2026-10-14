@@ -1,0 +1,7 @@
+game_id=4166
+end=2
+shot_num=12
+current_team=0
+n_candidates=75
+n_clusters=7
+retention_pct=10

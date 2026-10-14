@@ -1,0 +1,7 @@
+game_id=1221
+end=1
+shot_num=10
+current_team=0
+n_candidates=113
+n_clusters=11
+retention_pct=10

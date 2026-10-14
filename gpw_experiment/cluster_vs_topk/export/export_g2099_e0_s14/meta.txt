@@ -1,0 +1,7 @@
+game_id=2099
+end=0
+shot_num=14
+current_team=0
+n_candidates=91
+n_clusters=9
+retention_pct=10

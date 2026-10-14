@@ -1,0 +1,7 @@
+game_id=3098
+end=1
+shot_num=14
+current_team=0
+n_candidates=39
+n_clusters=3
+retention_pct=10

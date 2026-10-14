@@ -1,0 +1,7 @@
+game_id=645
+end=7
+shot_num=7
+current_team=1
+n_candidates=49
+n_clusters=4
+retention_pct=10

@@ -1,0 +1,7 @@
+game_id=2703
+end=4
+shot_num=8
+current_team=0
+n_candidates=81
+n_clusters=8
+retention_pct=10

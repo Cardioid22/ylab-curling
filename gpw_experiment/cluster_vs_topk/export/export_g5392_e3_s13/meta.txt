@@ -1,0 +1,7 @@
+game_id=5392
+end=3
+shot_num=13
+current_team=1
+n_candidates=135
+n_clusters=13
+retention_pct=10
