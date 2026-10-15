@@ -363,9 +363,68 @@ def showcase(cases, out):
         panel_result(axes[i, 2], P, ps["tkb"], shot_title(P, ps["tkb"], f"クラスタなし 4手の最良 (seed {P['rep_seed']})"))
     fig.tight_layout(h_pad=2.0); fig.savefig(out, dpi=130); plt.close(fig); print("saved", out)
 
+DRAW_POS_JA = {"TEE": "ティー", "L0": "ハウス奥", "L2": "ハウス右", "L4": "ハウス手前", "L6": "ハウス左"}
+HIT_JA = {"TOUCH": "軽く当てる", "WEAK": "弱いヒット", "MIDDLE": "中程度のヒット", "STRONG": "強いヒット"}
+
+def short_desc(P, c):
+    """論文の図の見出し用の短い説明 (例: 相手のNo.2への弱いヒット, ドロー (ハウス奥))"""
+    label = P["lab"][c]
+    typ = label.split("(")[0]
+    args = label[label.index("(") + 1:-1].split(",") if "(" in label else []
+    if typ == "Draw" and len(args) >= 2: return f"ドロー ({DRAW_POS_JA.get(args[1], args[1])})"
+    if typ == "Hit" and len(args) >= 3:
+        n = int(args[1]); t = (n % 2, n // 2)
+        rk = ranked(P["inp"])
+        who = "自" if t[0] == P["me"] else "相手"
+        pos = f"No.{rk.index(t) + 1}" if t in rk else "ハウス外の石"
+        return f"{who}の{pos}に{HIT_JA[args[2]]}" if args[2] == "TOUCH" else f"{who}の{pos}への{HIT_JA[args[2]]}"
+    return describe(label, P["inp"], P["me"])[0]
+
+def paper(cases, out):
+    """論文 (6章) の図: 行 = 局面, 列 = (a) 局面 (b) 全候補の着地点 (クラスタ色) (c) 最良手 A の結果 (d) 別の道 B の結果。
+    (b) は最良手のクラスタを赤, 別の道 B (paths_rows.csv) のクラスタを紫, 他のクラスタを薄い色で描く。
+    クラスタなし (ScoreTopK) の 4 手は論文に載せないので描かない。"""
+    B = {(int(r["game"]), int(r["end"]), int(r["shot"])): int(r["B_idx"])
+         for r in csv.DictReader(open(D + "/paths_rows.csv", encoding="utf-8")) if r["has_B"] == "1"}
+    Ps = [per_position(k) for k in cases]
+    fig, axes = plt.subplots(len(Ps), 4, figsize=(7.0, 2.05 * len(Ps)), squeeze=False)
+    others = [c for i, c in enumerate(plt.get_cmap("tab20").colors) if i not in (6, 7, 8, 9)]   # 赤と紫は除く
+    for i, P in enumerate(Ps):
+        g, e, s = P["k"]
+        b = B[P["k"]]
+        cl, best = P["cl"], P["best"]
+        ax = axes[i, 0]
+        panel_input(ax, P)
+        ax.set_title(f"(a) g{g} e{e} s{s}\n手番 = {'橙' if P['me'] == 0 else '青'} (第{s + 1}投)")
+        ax = axes[i, 1]
+        house(ax, P, f"(b) 全候補の着地点\n{P['N']} 手 → {P['K']} クラスタ")
+        draw_stones(ax, P["inp"], alpha=0.3, lw=0.3)
+        rest = [c for c in sorted(set(cl.values())) if c not in (cl[best], cl.get(b))]
+        color = {c: others[j % len(others)] for j, c in enumerate(rest)}
+        color[cl[best]] = "#d62728"
+        if b is not None: color[cl[b]] = "#9467bd"
+        for c in cl:
+            p = land(P, c)
+            if not p: continue
+            hi = cl[c] in (cl[best], cl.get(b))
+            ax.plot(*p, "o", ms=4.2 if hi else 3.0, color=color[cl[c]], alpha=0.95 if hi else 0.8,
+                    mec="k" if hi else "none", mew=0.4, zorder=5 if hi else 4)
+        p = land(P, best)
+        if p: ax.plot(*p, "o", ms=10, mfc="none", mec="#d62728", mew=1.4, zorder=7)
+        if land(P, b): ax.plot(*land(P, b), "^", ms=8, mfc="none", mec="k", mew=1.0, zorder=7)
+        for col, c, head in ((2, best, "(c) A"), (3, b, "(d) B")):
+            sc1 = change(P["inp"], P["res"][c], P["me"])[3]
+            panel_result(axes[i, col], P, c, f"{head}: {short_desc(P, c)}\n"
+                                             f"今の得点 {P['sc0']:+d}→{sc1:+d}  審判値 {P['q'][c]:+.2f}")
+        for ax in axes[i]: ax.title.set_fontsize(6.5)
+    fig.tight_layout(h_pad=1.4, w_pad=0.3); fig.savefig(out, dpi=300); plt.close(fig); print("saved", out)
+
 if __name__ == "__main__":
     if len(sys.argv) > 2 and sys.argv[2] == "--showcase":
         # python scripts/plot_small_cluster_catalog.py <dir> --showcase <out.png> g,e,s [g,e,s ...]
         showcase([tuple(int(x) for x in a.split(",")) for a in sys.argv[4:]], sys.argv[3])
+    elif len(sys.argv) > 2 and sys.argv[2] == "--paper":
+        # python scripts/plot_small_cluster_catalog.py <dir> --paper <out.png> g,e,s [g,e,s ...]
+        paper([tuple(int(x) for x in a.split(",")) for a in sys.argv[4:]], sys.argv[3])
     else:
         main()

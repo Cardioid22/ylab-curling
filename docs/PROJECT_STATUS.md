@@ -1,4 +1,4 @@
-# プロジェクト現況 (最終更新: 2026-10-15)
+# プロジェクト現況 (最終更新: 2026-10-16)
 
 > **【2026-10-12 論文方針の変更】** 先生との打ち合わせで、論文を「(1) 人間が見て分かる説明 (メイン, 図必須) + (2) 前回手法との性能比較」の2本柱にする。
 > 実験の結果を固めてから書く。第1次調査 = `gpw_experiment/cluster_vs_topk/README.md`:
@@ -11,6 +11,11 @@
 > 468 局面すべての結果盤面を書き出し (`export_rest/`, 未コミット)、`scripts/analyze_paths_and_spaces.py`:
 > 「今すぐ有利な A」と「今の得点は 2 点以上低いが最良級の B」が別クラスタ = 184/468 (提案の 4 手が両方含むのは 7%)。カタログ `paths_catalog/paths_catalog.pdf`。
 > 価値のまとまり η² (中央値): 結果盤面クラスタ 0.549 > 行動空間 k-means 0.422 > 行動空間ボロノイ 0.375 > ランダム 0.193 (対 k-means p=2e-28)。審判値 = 外乱込み K=200。
+> **2026-10-16 論文 4〜9章を執筆** (`gpw2026/paper/main.tex`): 事例は **g9633 e1 s10 と g964 e0 s8** に決定 (ユーザー選定: どちらも相手の中心の石を取り除いて有利になる)。
+> 限界の節は削除、英文タイトル/概要は一旦省略 (ただし GPW 規定では最終版に必須)。図 = `gpw2026/paper/figures/fig_cases.png` (局面/着地点クラスタ/A/B の結果盤面) と `fig_action_vs_result.png` (g1555)。
+> 載せる 9 条件 (A1/A2/A5/A9P5 + A1N/A2N/A5N/A5N4/A9P5N) だけで検定し直し = `scripts/gpw_paper_numbers.py` → `gpw_experiment/paper_numbers/numbers.txt`
+> (Holm は 36 対: A9P5N vs A1N p=1.9e-4, vs A2N p=3.6e-8; A2N≈A5N p=1.0)。6.1 の数値も再計算 (1手クラスタは **29%**、README の 27% は局面中央値)。
+> 小クラスタ 91 局面では提案の 4 手に最良手が残る率 46% (それ以外 14%)。執筆は Overleaf が正本なので、Overleaf 側で 10/12 以降に編集していれば取り込みが必要。
 
 > **7〜9月の全実験の整理 (GPW 本論文執筆用) は `docs/RESEARCH_OUTLINE_2026-07_09.md`**。
 > 主張の最終形・論文構成案・査読対応・注意点・具体例候補はそちらが最新。
@@ -353,7 +358,7 @@ Friedman **p=0.002**。Holm後有意: **A2 vs A9P5 (p=0.022, 110勝75敗)**、**
 | 分析スクリプト | `scripts/aggregate_reinvest.py, regret_stats.py, aggregate_selfplay_2end.py, analyze_tree_depth.py, plot_treedepth_compare.py, plot_cluster_value_map.py, plot_board.py` |
 | run200 (GPW本論文) | `test_positions200/`, `scripts/README_run200.md`, `scripts/run200_reuse_first50.sh`, `scripts/position_features.py`, `scripts/analyze_when_clustering_helps.py`; 予備結果 `reinvest_experiment/run50v2/features/` |
 | GPW2026 アブスト | `gpw2026/` (main.tex, 提出PDF, DATA_INDEX.md, data/, figures/) |
-| GPW2026 本論文 (最終原稿 10/23) | `gpw2026/paper/` (Overleaf 用プロジェクト: main.tex, references.bib, ipsj.cls v4.1 UTF-8, latexmkrc)。執筆は Overleaf 側が正本 (2026-10-12 雛形作成)。下書き済み: 1章はじめに / 2章関連研究 (VOOT・Kwak+ UAI24・KR-UCT・Lee+ ICML18・HOOT・ASAP/OGA-UCT・open-loop。**PW (A11) は本文から外す方針** 2026-10-12) / 3章提案手法 / 6章考察。4・5・7章とアブストは未着手。規定 (GPW-26 カメラレディ執筆案内): A4 2段組 **8ページ以内** (下限なし)・ページ番号/ヘッダ/フッタなし・フォント埋め込み・**英文タイトルと英文概要必須**・EasyChair の Update file で差し替え・著作権譲渡契約書 (自筆署名) を情報処理学会へ |
+| GPW2026 本論文 (最終原稿 10/23) | `gpw2026/paper/` (Overleaf 用プロジェクト: main.tex, references.bib, ipsj.cls v4.1 UTF-8, latexmkrc)。執筆は Overleaf 側が正本 (2026-10-12 雛形作成)。**2026-10-16 時点で全章の下書きあり**: 1はじめに / 2関連研究 (VOOT・Kwak+ UAI24・KR-UCT・Lee+ ICML18・HOOT・ASAP/OGA-UCT・open-loop。PW は外す) / 3提案手法 / 4評価設定 / 5性能面の評価 / 6視覚的評価 / 7結果盤面による分割とボロノイ領域 / 8考察 / 9おわりに (構成は `gpw2026/paper/OUTLINE.md`)。和文概要は未着手、英文は一旦省略。ローカルに TeX が無いのでページ数は Overleaf で要確認。規定 (GPW-26 カメラレディ執筆案内): A4 2段組 **8ページ以内** (下限なし)・ページ番号/ヘッダ/フッタなし・フォント埋め込み・**英文タイトルと英文概要必須**・EasyChair の Update file で差し替え・著作権譲渡契約書 (自筆署名) を情報処理学会へ |
 
 ## 8. 代表的な実行コマンド
 
