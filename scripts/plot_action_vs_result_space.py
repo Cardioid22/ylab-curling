@@ -2,7 +2,7 @@
 """ボロノイ節の図: 行動空間 (投石の初速 vx, vy と回転) での候補の配置を、結果盤面クラスタで色分けする。
 行動空間で近い候補が別の結果 (別のクラスタ) になり、離れた候補が同じ結果になる様子を見せる。
 右は 468 局面での η² (価値 q が分割でどれだけまとまるか) の分布 (scripts/analyze_paths_and_spaces.py の space_rows.csv)。
-Usage: python scripts/plot_action_vs_result_space.py gpw_experiment/cluster_vs_topk <game,end,shot> <out.png>
+Usage: python scripts/plot_action_vs_result_space.py gpw_experiment/cluster_vs_topk <game,end,shot> <out.png> [局面の呼び名]
 """
 import csv, glob, os, sys
 from collections import Counter
@@ -12,6 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 plt.rcParams["font.family"] = "MS Gothic"; plt.rcParams["axes.unicode_minus"] = False
 GE = ROOT + "/gpw_experiment"
 D, case, out = sys.argv[1], tuple(int(x) for x in sys.argv[2].split(",")), sys.argv[3]
+name = sys.argv[4] if len(sys.argv) > 4 else f"g{case[0]} e{case[1]} s{case[2]}"   # 論文では内部IDを出さない (例: 局面3)
 
 def key(r): return (int(r["game_id"]), int(r["end"]), int(r["shot_num"]))
 d = next(f"{D}/{s}/export_g{case[0]}_e{case[1]}_s{case[2]}" for s in ("export", "export_rest")
@@ -43,7 +44,7 @@ n_out = sum(1 for v in vys if not lo <= v <= hi)
 ax.set_ylim(lo, hi)
 if n_out: ax.text(0.01, 0.98, f"範囲外 {n_out} 手 (強いヒット等)", transform=ax.transAxes, va="top", fontsize=6)
 ax.set_xlabel("横方向の初速 vx [m/s]", fontsize=7); ax.set_ylabel("前方向の初速 vy [m/s]", fontsize=7)
-ax.set_title(f"(a) g{case[0]} e{case[1]} s{case[2]} の候補 {len(cand)} 手 (色 = 結果盤面のクラスタ)\n"
+ax.set_title(f"(a) {name}の候補{len(cand)}手\n"
              f"○ = 時計回り, △ = 反時計回り, 赤丸 = 最良手", fontsize=7)
 ax.tick_params(labelsize=6.5); ax.grid(alpha=0.3)
 
@@ -54,6 +55,6 @@ cols = [("eta2_result", "結果盤面の\nクラスタ"), ("eta2_action_kmeans",
 data = [[float(r[c]) for r in S if r[c] != "nan"] for c, _ in cols]
 ax.boxplot(data, tick_labels=[l for _, l in cols], widths=0.55, showfliers=False)
 ax.set_ylabel("η²", fontsize=7)
-ax.set_title(f"(b) 同じ数の領域に分けたときの η² ({len(S)} 局面)", fontsize=7)
+ax.set_title("(b)", fontsize=7)
 ax.tick_params(labelsize=6.5); ax.grid(axis="y", alpha=0.3)
 fig.tight_layout(); fig.savefig(out, dpi=300); print("saved", out)

@@ -395,7 +395,7 @@ def paper(cases, out):
         cl, best = P["cl"], P["best"]
         ax = axes[i, 0]
         panel_input(ax, P)
-        ax.set_title(f"(a) g{g} e{e} s{s}\n手番 = {'橙' if P['me'] == 0 else '青'} (第{s + 1}投)")
+        ax.set_title(f"(a) 局面{i + 1}（第{e + 1}エンド第{s + 1}投）\n手番 = {'橙' if P['me'] == 0 else '青'}")
         ax = axes[i, 1]
         house(ax, P, f"(b) 全候補の着地点\n{P['N']} 手 → {P['K']} クラスタ")
         draw_stones(ax, P["inp"], alpha=0.3, lw=0.3)
@@ -415,7 +415,7 @@ def paper(cases, out):
         for col, c, head in ((2, best, "(c) A"), (3, b, "(d) B")):
             sc1 = change(P["inp"], P["res"][c], P["me"])[3]
             panel_result(axes[i, col], P, c, f"{head}: {short_desc(P, c)}\n"
-                                             f"今の得点 {P['sc0']:+d}→{sc1:+d}  審判値 {P['q'][c]:+.2f}")
+                                             f"即時得点 {P['sc0']:+d}→{sc1:+d}  審判値 {P['q'][c]:+.2f}")
         for ax in axes[i]: ax.title.set_fontsize(6.5)
     fig.tight_layout(h_pad=1.4, w_pad=0.3); fig.savefig(out, dpi=300); plt.close(fig); print("saved", out)
 
