@@ -73,6 +73,7 @@
 - 5 考察: 5.1 既存手法との性能の差, 5.2 人間にとって意味のあるクラスタ (旧 6章を1節に), 5.3 ボロノイ領域との関係 (旧 7章を1節に)。
 - 6 今後の課題: 弱み (最終投, 大予算で差が消える, 根だけの選別, 実時間) と改善案, 人による評価, VOO 的な候補生成, 距離の重み。
 - 7 おわりに: 600字程度で、はじめにと一貫させる。
+- 提案手法の呼び名は「ClusterValue」(ユーザー指示)。「ClusterValue+N」とは呼ばない (外乱込み評価は ClusterValue の一部)。
 - 論文中の局面は 局面1 = g9633 e1 s10, 局面2 = g964 e0 s8, 局面3 = g1555 e2 s3。図の中のタイトルも内部 ID をやめてこの呼び名にした。
 - 図: `python scripts/plot_budget_sweep.py gpw_experiment/regret500 gpw2026/paper/figures/fig_budget.png` (新規),
   `python scripts/plot_action_vs_result_space.py gpw_experiment/cluster_vs_topk 1555,2,3 gpw2026/paper/figures/fig_action_vs_result.png 局面3`。

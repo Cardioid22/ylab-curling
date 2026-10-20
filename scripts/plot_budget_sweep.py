@@ -12,8 +12,8 @@ plt.rcParams["font.family"] = "MS Gothic"; plt.rcParams["axes.unicode_minus"] = 
 D, out = sys.argv[1], sys.argv[2]
 sims = {(int(r["P"]), r["arm"]): float(r["mean_sims"]) / 1e4 for r in csv.DictReader(open(D + "/sweep_sims.csv", encoding="utf-8"))}
 rows = list(csv.DictReader(open(D + "/sweep_dP.csv", encoding="utf-8")))
-ARMS = [("A9P5N", "ClusterValue+N", "#d62728", "o"), ("A1N", "AllGrid+N", "#1f77b4", "s")]
-SUBSETS = [("ex_r1", "最終ショットを除く168局面", "-"), ("all", "最終ショットを含む200局面", "--")]
+ARMS = [("A9P5N", "ClusterValue", "#d62728", "o"), ("A1N", "AllGrid（外乱込み）", "#1f77b4", "s")]
+SUBSETS = [("ex_r1", "最終投を除く168局面", "-"), ("all", "最終投を含む200局面", "--")]
 
 fig, ax = plt.subplots(figsize=(3.4, 2.4))
 for subset, slabel, ls in SUBSETS:
