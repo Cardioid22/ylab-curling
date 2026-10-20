@@ -395,7 +395,7 @@ def paper(cases, out):
         cl, best = P["cl"], P["best"]
         ax = axes[i, 0]
         panel_input(ax, P)
-        ax.set_title(f"(a) 局面{i + 1}（第{e + 1}エンド第{s + 1}投）\n手番 = {'橙' if P['me'] == 0 else '青'}")
+        ax.set_title(f"(a) 局面{i + 1}（第{e + 1}エンド第{s + 1}投）\n手番 = {'赤' if P['me'] == 0 else '青'}")
         ax = axes[i, 1]
         house(ax, P, f"(b) 全候補の着地点\n{P['N']} 手 → {P['K']} クラスタ")
         draw_stones(ax, P["inp"], alpha=0.3, lw=0.3)
