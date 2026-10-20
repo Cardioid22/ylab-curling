@@ -24,6 +24,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT + "/scripts")
 from plot_board import HC_X, HC_Y, R12, R8, R4, RBTN, SR, AREA_X, C0, C1
 plt.rcParams["font.family"] = "MS Gothic"; plt.rcParams["axes.unicode_minus"] = False
+HL = "#d00"   # 強調色 (最良手が狙う石の円など)。論文の図 (paper) では石を赤にするので緑に変える
 GE = ROOT + "/gpw_experiment"
 D = sys.argv[1]
 OUT = D + "/catalog"
@@ -202,7 +203,7 @@ def panel_input(ax, P):
         x, y = P["inp"][s]
         ax.text(x, y, str(n), ha="center", va="center", fontsize=6.5, color="w", weight="bold", zorder=4)
     if P["target"] in P["inp"]:
-        ax.add_patch(Circle(P["inp"][P["target"]], SR * 1.9, facecolor="none", edgecolor="#d00", lw=1.8, zorder=5))
+        ax.add_patch(Circle(P["inp"][P["target"]], SR * 1.9, facecolor="none", edgecolor=HL, lw=1.8, zorder=5))
 
 def land(P, c):
     s = (P["me"], P["k"][2] // 2)
@@ -382,13 +383,16 @@ def short_desc(P, c):
 
 def paper(cases, out):
     """論文 (6章) の図: 行 = 局面, 列 = (a) 局面 (b) 全候補の着地点 (クラスタ色) (c) 最良手 A の結果 (d) 別の道 B の結果。
-    (b) は最良手のクラスタを赤, 別の道 B (paths_rows.csv) のクラスタを紫, 他のクラスタを薄い色で描く。
+    (b) は最良手のクラスタを緑, 別の道 B (paths_rows.csv) のクラスタを紫, 他のクラスタを薄い色で描く。
+    手番側 (team 0) の石は赤で描く (本文で「赤」と呼ぶため。2026-10-20)。
     クラスタなし (ScoreTopK) の 4 手は論文に載せないので描かない。"""
+    global C0, HL
+    C0, HL = "#D62728", "#2CA02C"
     B = {(int(r["game"]), int(r["end"]), int(r["shot"])): int(r["B_idx"])
          for r in csv.DictReader(open(D + "/paths_rows.csv", encoding="utf-8")) if r["has_B"] == "1"}
     Ps = [per_position(k) for k in cases]
     fig, axes = plt.subplots(len(Ps), 4, figsize=(7.0, 2.05 * len(Ps)), squeeze=False)
-    others = [c for i, c in enumerate(plt.get_cmap("tab20").colors) if i not in (6, 7, 8, 9)]   # 赤と紫は除く
+    others = [c for i, c in enumerate(plt.get_cmap("tab20").colors) if i not in (4, 5, 6, 7, 8, 9)]   # 緑・赤・紫は除く
     for i, P in enumerate(Ps):
         g, e, s = P["k"]
         b = B[P["k"]]
@@ -401,16 +405,17 @@ def paper(cases, out):
         draw_stones(ax, P["inp"], alpha=0.3, lw=0.3)
         rest = [c for c in sorted(set(cl.values())) if c not in (cl[best], cl.get(b))]
         color = {c: others[j % len(others)] for j, c in enumerate(rest)}
-        color[cl[best]] = "#d62728"
+        color[cl[best]] = HL
         if b is not None: color[cl[b]] = "#9467bd"
         for c in cl:
             p = land(P, c)
             if not p: continue
             hi = cl[c] in (cl[best], cl.get(b))
-            ax.plot(*p, "o", ms=4.2 if hi else 3.0, color=color[cl[c]], alpha=0.95 if hi else 0.8,
-                    mec="k" if hi else "none", mew=0.4, zorder=5 if hi else 4)
+            top = cl[c] == cl[best]   # 最良手のクラスタは他の点に隠れないよう最前面に描く
+            ax.plot(*p, "o", ms=5.0 if top else (4.2 if hi else 3.0), color=color[cl[c]], alpha=0.95 if hi else 0.8,
+                    mec="k" if hi else "none", mew=0.4, zorder=6 if top else (5 if hi else 4))
         p = land(P, best)
-        if p: ax.plot(*p, "o", ms=10, mfc="none", mec="#d62728", mew=1.4, zorder=7)
+        if p: ax.plot(*p, "o", ms=10, mfc="none", mec=HL, mew=1.4, zorder=7)
         if land(P, b): ax.plot(*land(P, b), "^", ms=8, mfc="none", mec="k", mew=1.0, zorder=7)
         for col, c, head in ((2, best, "(c) A"), (3, b, "(d) B")):
             sc1 = change(P["inp"], P["res"][c], P["me"])[3]
